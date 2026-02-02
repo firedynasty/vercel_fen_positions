@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Position Saver</title>
+    <link rel="stylesheet" href="css/chessboard-1.0.0.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        /* Chess board table styles (Unicode pieces) */
+        table.chess { border: 1px solid black; margin: 10px auto; font-size: xx-large; }
+        table.chess td { width: 1.5em; height: 1.5em; padding: 0; margin: 1em; vertical-align: middle; text-align: center; }
+        table.chess tr td { background: #F2E0CB; }
+        table.chess tr:nth-child(odd) td:nth-child(even), table.chess tr:nth-child(even) td:nth-child(odd) { background: #C4AA8B; }
+
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #333;
+            z-index: 1001;
+            background: #1a1a2e;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-header {
+            padding: 15px 10px;
+            font-size: 14px;
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0d0d1a;
+            color: #4da6ff;
+        }
+
+        .sidebar-header button {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            color: inherit;
+            font-size: 16px;
+        }
+
+        .sidebar-access-code {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .sidebar-new-file-btn {
+            margin: 10px;
+            padding: 12px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .sidebar-new-file-btn:hover {
+            background: #45a049;
+        }
+
+        .sidebar-file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .sidebar-file-item {
+            margin-bottom: 8px;
+            padding: 10px;
+            background: #2c2c3e;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+
+        .sidebar-file-item.selected {
+            background: #3B82F6;
+        }
+
+        .sidebar-file-item:hover {
+            background: #3d3d52;
+        }
+
+        .sidebar-file-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+
+        .sidebar-file-actions button {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 4px;
+        }
+
+        .sidebar-delete-btn {
+            background: #f44336;
+            color: white;
+        }
+
+        .sidebar-refresh-btn {
+            margin: 10px;
+            padding: 10px 16px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .sidebar-no-files {
+            padding: 20px;
+            color: #888;
+        }
+
+        .sidebar-toggle-btn {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            padding: 8px 16px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .sidebar.open ~ .sidebar-toggle-btn {
+            left: 290px;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            padding: 8px 16px;
+            background: #ff9800;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Main content */
+        .main-content {
+            padding: 20px;
+            padding-top: 60px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            color: #a8d8ea;
+            text-align: center;
+        }
+
+        .lead {
+            color: #888;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* FEN Builder Container */
+        .fen-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .fen-controls {
+            margin-bottom: 15px;
+        }
+
+        #fenDisplay {
+            width: 100%;
+            height: 80px;
+            font-size: 16px;
+            font-family: monospace;
+            border: 2px solid #555;
+            border-radius: 5px;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            resize: vertical;
+        }
+
+        #fenDisplay:focus {
+            outline: none;
+            border-color: #4285f4;
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin: 15px 0 8px 0;
+            color: #a8d8ea;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 5px;
+        }
+
+        .button-section {
+            margin-bottom: 15px;
+        }
+
+        .button-grid {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        }
+
+        button {
+            padding: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            transition: all 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: rgba(59, 130, 246, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .complete-btn {
+            background-color: rgba(76, 175, 80, 0.3);
+        }
+
+        .complete-btn:hover {
+            background-color: rgba(76, 175, 80, 0.5);
+        }
+
+        .copy-btn {
+            background-color: rgba(33, 150, 243, 0.3);
+        }
+
+        .copy-btn:hover {
+            background-color: rgba(33, 150, 243, 0.5);
+        }
+
+        /* Chess board styling */
+        .board {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            border: 2px solid #8ca2ad;
+            border-radius: 8px;
+        }
+
+        /* Position Saver Table */
+        .position-saver {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .position-input-row {
+            display: grid;
+            grid-template-columns: 2fr 3fr auto;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .position-input-row input {
+            padding: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .position-input-row input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .position-input-row input:focus {
+            outline: none;
+            border-color: #4285f4;
+        }
+
+        #savedPositionsTable {
+            width: 100%;
+            margin-top: 15px;
+            border-collapse: collapse;
+        }
+
+        #savedPositionsTable th,
+        #savedPositionsTable td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        #savedPositionsTable th {
+            background-color: rgba(59, 130, 246, 0.3);
+            color: #a8d8ea;
+            font-weight: bold;
+        }
+
+        #savedPositionsTable tr {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        #savedPositionsTable tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        #savedPositionsTable tr:hover {
+            background-color: rgba(59, 130, 246, 0.2);
+        }
+
+        #savedPositionsTable td {
+            cursor: pointer;
+        }
+
+        .delete-position-btn {
+            background: #f44336;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .delete-position-btn:hover {
+            background: #d32f2f;
+        }
+
+        /* Toast notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #10B981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .toast-notification.show {
+            opacity: 1;
+        }
+
+        /* Light Mode */
+        body.light-mode {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            color: #333;
+        }
+
+        body.light-mode .fen-container,
+        body.light-mode .position-saver {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+        }
+
+        body.light-mode #fenDisplay {
+            background-color: #fff;
+            color: #333;
+            border-color: #ccc;
+        }
+
+        body.light-mode button {
+            background-color: #fff;
+            color: #333;
+            border-color: #ccc;
+        }
+
+        body.light-mode button:hover:not(:disabled) {
+            background-color: rgba(59, 130, 246, 0.15);
+        }
+
+        body.light-mode .complete-btn {
+            background-color: rgba(76, 175, 80, 0.2);
+        }
+
+        body.light-mode .copy-btn {
+            background-color: rgba(33, 150, 243, 0.2);
+        }
+
+        body.light-mode .position-input-row input {
+            background-color: #fff;
+            color: #333;
+            border-color: #ccc;
+        }
+
+        body.light-mode #savedPositionsTable th {
+            background-color: rgba(59, 130, 246, 0.15);
+            color: #1e40af;
+        }
+
+        body.light-mode #savedPositionsTable tbody tr {
+            background-color: #fff;
+        }
+
+        body.light-mode #savedPositionsTable tbody tr:nth-child(even) {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        body.light-mode #savedPositionsTable tbody tr:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        body.light-mode .theme-toggle-btn {
+            background: #333;
+            color: #fff;
+        }
+
+        body.light-mode .sidebar {
+            background: #fff;
+            border-right: 1px solid #ddd;
+        }
+
+        body.light-mode .sidebar-header {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        body.light-mode .sidebar-file-item {
+            background: #f9f9f9;
+            color: #333;
+        }
+
+        body.light-mode .sidebar-file-item.selected {
+            background: #3B82F6;
+            color: #fff;
+        }
+
+        body.light-mode .sidebar-file-item:hover {
+            background: #e9e9e9;
+        }
+
+        body.light-mode .sidebar-access-code input {
+            background: #fff;
+            color: #333;
+            border-color: #ff9800;
+        }
+
+        body.light-mode .section-title {
+            color: #333;
+            border-bottom-color: #ddd;
+        }
+
+        body.light-mode h1 {
+            color: #1e40af;
+        }
+
+        body.light-mode .lead {
+            color: #666;
+        }
+
+        body.light-mode #lichessUrlDisplay {
+            background-color: #f0f0f0 !important;
+            border-color: #ddd !important;
+        }
+
+        body.light-mode .lichess-white-section {
+            background-color: #fff !important;
+        }
+
+        body.light-mode .lichess-black-section {
+            background-color: #fff !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span>SAVED POSITIONS</span>
+            <button onclick="toggleSidebar()">&#10005;</button>
+        </div>
+        <div class="sidebar-access-code">
+            <input type="text" id="accessCodeInput" placeholder="123" autocomplete="off" style="width: 80px; padding: 8px 12px; font-size: 14px; border: 2px solid #ff9800; border-radius: 6px; background: #2a2a2a; color: #fff; outline: none;">
+            <span style="margin-left: 8px; font-size: 12px; color: #888;">Access code</span>
+        </div>
+        <button class="sidebar-new-file-btn" onclick="saveCurrentPositionSet()">&#128190; Save Position Set</button>
+        <div class="sidebar-file-list" id="fileList">
+            <div class="sidebar-no-files">No position sets saved yet</div>
+        </div>
+        <button class="sidebar-refresh-btn" onclick="loadSavedSets()">Refresh</button>
+    </div>
+
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle-btn" id="sidebarToggle" onclick="toggleSidebar()">&#9776; Sets</button>
+
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()">&#9788; Light</button>
+
+    <div class="main-content">
+        <h1>Chess Position Saver</h1>
+        <p class="lead">Build and save chess positions with FEN notation</p>
+
+        <!-- FEN Builder Section -->
+        <div class="fen-container">
+            <div class="section-title">FEN Input</div>
+            <div class="fen-controls">
+                <textarea id="fenDisplay" placeholder="Paste or build your FEN here..."></textarea>
+            </div>
+
+            <div class="button-section">
+                <div class="button-grid">
+                    <button class="complete-btn" onclick="loadFenOnBoard()">&#127937; Load on Board</button>
+                    <button class="copy-btn" onclick="copyFenToClipboard()">&#128203; Copy FEN</button>
+                    <button class="copy-btn" onclick="pasteFenFromClipboard()">&#128203; Paste FEN</button>
+                </div>
+            </div>
+
+            <!-- Interactive Chess Board -->
+            <div id="myBoard" class="board"></div>
+
+            <!-- Lichess Analysis URL Display -->
+            <div id="lichessUrlDisplay" style="display: none; margin-top: 15px; padding: 12px; background-color: rgba(255, 255, 255, 0.1); border-radius: 5px; border: 1px solid rgba(255, 255, 255, 0.2);">
+                <div style="font-weight: bold; margin-bottom: 12px; color: #a8d8ea;">Lichess Analysis:</div>
+
+                <!-- White to Move -->
+                <div class="lichess-white-section" style="background-color: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 2px solid #4CAF50;">
+                    <div style="font-weight: 600; margin-bottom: 5px; color: #4CAF50;">♔ White to Move:</div>
+                    <a id="lichessUrlLinkWhite" href="" target="_blank" style="word-break: break-all; color: #4285f4; text-decoration: none; font-size: 13px; display: block; margin-bottom: 6px;"></a>
+                    <button onclick="copyLichessUrl('white')" class="copy-btn" style="width: 100%; padding: 6px; font-size: 13px;">Copy White to Move URL</button>
+                </div>
+
+                <!-- Black to Move -->
+                <div class="lichess-black-section" style="background-color: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 2px solid #999;">
+                    <div style="font-weight: 600; margin-bottom: 5px; color: #ddd;">♚ Black to Move:</div>
+                    <a id="lichessUrlLinkBlack" href="" target="_blank" style="word-break: break-all; color: #4285f4; text-decoration: none; font-size: 13px; display: block; margin-bottom: 6px;"></a>
+                    <button onclick="copyLichessUrl('black')" class="copy-btn" style="width: 100%; padding: 6px; font-size: 13px;">Copy Black to Move URL</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Position Saver Section -->
+        <div class="position-saver">
+            <div class="section-title">Save Positions</div>
+            <p class="lead" style="margin-bottom: 15px;">Add positions to your collection. FEN auto-fills when you load a position on the board.</p>
+
+            <div class="position-input-row">
+                <input type="text" id="positionName" placeholder="Position name/description">
+                <input type="text" id="positionFen" placeholder="FEN notation (auto-filled)" readonly>
+                <button class="complete-btn" onclick="addPosition()">+ Add Position</button>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button class="copy-btn" onclick="downloadAsCSV()">⬇ Download as CSV</button>
+                <button class="copy-btn" onclick="clearAllPositions()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear All</button>
+            </div>
+
+            <table id="savedPositionsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">#</th>
+                        <th style="width: 30%;">Name</th>
+                        <th style="width: 55%;">FEN</th>
+                        <th style="width: 10%;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="savedPositionsBody">
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #888;">No positions saved yet. Add your first position above!</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="toast" class="toast-notification">Copied!</div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="js/chessboard-1.0.0.min.js"></script>
+    <script>
+        let board;
+        let savedPositions = [];
+        let currentFen = '';
+
+        // Initialize chessboard
+        board = Chessboard('myBoard', {
+            draggable: true,
+            dropOffBoard: 'snapback',
+            position: 'start',
+            onDrop: function(source, target, piece, newPos, oldPos, orientation) {
+                updateFenFromBoard();
+            }
+        });
+
+        // Theme toggle
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const btn = document.getElementById('themeToggle');
+            if (document.body.classList.contains('light-mode')) {
+                btn.innerHTML = '&#9788; Dark';
+                localStorage.setItem('theme', 'light');
+            } else {
+                btn.innerHTML = '&#9788; Light';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Load saved theme
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-mode');
+            document.getElementById('themeToggle').innerHTML = '&#9788; Dark';
+        }
+
+        // Sidebar toggle
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        // Load FEN on board
+        function loadFenOnBoard() {
+            const fenInput = document.getElementById('fenDisplay').value.trim();
+            if (!fenInput) {
+                showToast('Please enter a FEN string first');
+                return;
+            }
+
+            // Extract just the position part (first section of FEN)
+            const fenParts = fenInput.split(' ');
+            const positionPart = fenParts[0];
+
+            try {
+                board.position(positionPart);
+                currentFen = fenInput;
+
+                // Auto-fill the position FEN input
+                document.getElementById('positionFen').value = fenInput;
+
+                // Update Lichess URLs
+                updateLichessUrls(fenInput);
+
+                showToast('Position loaded on board!');
+            } catch (e) {
+                showToast('Invalid FEN notation');
+            }
+        }
+
+        // Update FEN from board position
+        function updateFenFromBoard() {
+            const position = board.position();
+            const fen = boardPositionToFen(position);
+            currentFen = fen;
+            document.getElementById('fenDisplay').value = fen;
+            document.getElementById('positionFen').value = fen;
+            updateLichessUrls(fen);
+        }
+
+        // Convert board position object to FEN
+        function boardPositionToFen(position) {
+            let fen = '';
+            for (let row = 8; row >= 1; row--) {
+                let emptyCount = 0;
+                for (let col of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
+                    const square = col + row;
+                    if (position[square]) {
+                        if (emptyCount > 0) {
+                            fen += emptyCount;
+                            emptyCount = 0;
+                        }
+                        fen += position[square];
+                    } else {
+                        emptyCount++;
+                    }
+                }
+                if (emptyCount > 0) fen += emptyCount;
+                if (row > 1) fen += '/';
+            }
+            return fen + ' w KQkq - 0 1'; // Add default additional FEN components
+        }
+
+        // Update Lichess URLs
+        function updateLichessUrls(fen) {
+            if (!fen) return;
+
+            const baseFen = fen.split(' ')[0];
+            const whiteUrl = `https://lichess.org/analysis/${baseFen}_w_KQkq_-_0_1`;
+            const blackUrl = `https://lichess.org/analysis/${baseFen}_b_KQkq_-_0_1`;
+
+            document.getElementById('lichessUrlLinkWhite').href = whiteUrl;
+            document.getElementById('lichessUrlLinkWhite').textContent = whiteUrl;
+            document.getElementById('lichessUrlLinkBlack').href = blackUrl;
+            document.getElementById('lichessUrlLinkBlack').textContent = blackUrl;
+            document.getElementById('lichessUrlDisplay').style.display = 'block';
+        }
+
+        // Copy Lichess URL
+        function copyLichessUrl(color) {
+            const link = color === 'white' ?
+                document.getElementById('lichessUrlLinkWhite').href :
+                document.getElementById('lichessUrlLinkBlack').href;
+
+            navigator.clipboard.writeText(link).then(() => {
+                showToast(`${color === 'white' ? 'White' : 'Black'} to move URL copied!`);
+            });
+        }
+
+        // Copy FEN to clipboard
+        function copyFenToClipboard() {
+            const fen = document.getElementById('fenDisplay').value;
+            if (!fen) {
+                showToast('No FEN to copy');
+                return;
+            }
+            navigator.clipboard.writeText(fen).then(() => {
+                showToast('FEN copied to clipboard!');
+            });
+        }
+
+        // Paste FEN from clipboard
+        async function pasteFenFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('fenDisplay').value = text;
+                showToast('FEN pasted from clipboard!');
+            } catch (err) {
+                showToast('Failed to paste from clipboard');
+            }
+        }
+
+        // Add position to table
+        function addPosition() {
+            const name = document.getElementById('positionName').value.trim();
+            const fen = document.getElementById('positionFen').value.trim();
+
+            if (!name) {
+                showToast('Please enter a position name');
+                return;
+            }
+
+            if (!fen) {
+                showToast('Please load a position on the board first');
+                return;
+            }
+
+            savedPositions.push({ name, fen });
+            renderPositionsTable();
+            saveToLocalStorage();
+
+            // Clear inputs
+            document.getElementById('positionName').value = '';
+
+            showToast('Position added!');
+        }
+
+        // Render positions table
+        function renderPositionsTable() {
+            const tbody = document.getElementById('savedPositionsBody');
+
+            if (savedPositions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">No positions saved yet. Add your first position above!</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = savedPositions.map((pos, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td onclick="loadPositionByIndex(${index})" title="Click to load position">${escapeHtml(pos.name)}</td>
+                    <td onclick="copyCell('${escapeHtml(pos.fen)}')" title="Click to copy FEN">${escapeHtml(pos.fen)}</td>
+                    <td><button class="delete-position-btn" onclick="deletePosition(${index})">Delete</button></td>
+                </tr>
+            `).join('');
+        }
+
+        // Load position by index
+        function loadPositionByIndex(index) {
+            const pos = savedPositions[index];
+            document.getElementById('fenDisplay').value = pos.fen;
+            loadFenOnBoard();
+            showToast(`Loaded: ${pos.name}`);
+        }
+
+        // Copy cell content
+        function copyCell(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Copied to clipboard!');
+            });
+        }
+
+        // Delete position
+        function deletePosition(index) {
+            if (confirm('Delete this position?')) {
+                savedPositions.splice(index, 1);
+                renderPositionsTable();
+                saveToLocalStorage();
+                showToast('Position deleted');
+            }
+        }
+
+        // Clear all positions
+        function clearAllPositions() {
+            if (confirm('Delete all saved positions?')) {
+                savedPositions = [];
+                renderPositionsTable();
+                saveToLocalStorage();
+                showToast('All positions cleared');
+            }
+        }
+
+        // Download as CSV
+        function downloadAsCSV() {
+            if (savedPositions.length === 0) {
+                showToast('No positions to download');
+                return;
+            }
+
+            let csv = 'Name,FEN\n';
+            savedPositions.forEach(pos => {
+                csv += `"${pos.name.replace(/"/g, '""')}","${pos.fen.replace(/"/g, '""')}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chess-positions-${Date.now()}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+
+            showToast('CSV downloaded!');
+        }
+
+        // Save to localStorage
+        function saveToLocalStorage() {
+            localStorage.setItem('currentPositions', JSON.stringify(savedPositions));
+        }
+
+        // Load from localStorage
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('currentPositions');
+            if (saved) {
+                savedPositions = JSON.parse(saved);
+                renderPositionsTable();
+            }
+        }
+
+        // Save current position set to Vercel Blob
+        async function saveCurrentPositionSet() {
+            if (savedPositions.length === 0) {
+                showToast('No positions to save');
+                return;
+            }
+
+            const name = prompt('Enter a name for this position set:');
+            if (!name) return;
+
+            const accessCode = document.getElementById('accessCodeInput').value || '123';
+
+            const data = {
+                name: name,
+                timestamp: Date.now(),
+                positions: savedPositions
+            };
+
+            const filename = `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}.json`;
+
+            try {
+                const response = await fetch('/api/files', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename: filename,
+                        content: JSON.stringify(data),
+                        accessCode: accessCode
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to save');
+                }
+
+                showToast('Position set saved to cloud!');
+                loadSavedSets();
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('Error: ' + error.message);
+            }
+        }
+
+        // Load saved sets from Vercel Blob
+        async function loadSavedSets() {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '<div class="sidebar-no-files">Loading...</div>';
+
+            try {
+                const response = await fetch('/api/files');
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to load');
+                }
+
+                const files = result.files;
+                const fileNames = Object.keys(files);
+
+                if (fileNames.length === 0) {
+                    fileList.innerHTML = '<div class="sidebar-no-files">No position sets saved yet</div>';
+                    return;
+                }
+
+                const sets = fileNames.map(filename => {
+                    try {
+                        return {
+                            filename: filename,
+                            data: JSON.parse(files[filename])
+                        };
+                    } catch (e) {
+                        console.error('Error parsing', filename, e);
+                        return null;
+                    }
+                }).filter(s => s !== null);
+
+                fileList.innerHTML = sets.map((set, index) => `
+                    <div class="sidebar-file-item">
+                        <div class="sidebar-file-name" onclick="loadPositionSet('${escapeHtml(set.filename)}')">${escapeHtml(set.data.name)} (${set.data.positions.length})</div>
+                        <div class="sidebar-file-actions">
+                            <button class="sidebar-delete-btn" onclick="deletePositionSet('${escapeHtml(set.filename)}')">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Load error:', error);
+                fileList.innerHTML = '<div class="sidebar-no-files">Error loading sets</div>';
+            }
+        }
+
+        // Load position set from cloud
+        async function loadPositionSet(filename) {
+            try {
+                const response = await fetch('/api/files');
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to load');
+                }
+
+                const data = JSON.parse(result.files[filename]);
+                savedPositions = data.positions;
+                renderPositionsTable();
+                saveToLocalStorage();
+                showToast(`Loaded set: ${data.name}`);
+                toggleSidebar();
+            } catch (error) {
+                console.error('Load error:', error);
+                showToast('Error loading position set');
+            }
+        }
+
+        // Delete position set from cloud
+        async function deletePositionSet(filename) {
+            if (!confirm('Delete this position set from cloud storage?')) {
+                return;
+            }
+
+            const accessCode = document.getElementById('accessCodeInput').value || '123';
+
+            try {
+                const response = await fetch(`/api/files?filename=${encodeURIComponent(filename)}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accessCode: accessCode })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to delete');
+                }
+
+                showToast('Position set deleted');
+                loadSavedSets();
+            } catch (error) {
+                console.error('Delete error:', error);
+                showToast('Error: ' + error.message);
+            }
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Show toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFromLocalStorage();
+            loadSavedSets();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,2608 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Fen-Builder</title>
+  
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess FEN Builder</title>
+    <link rel="stylesheet" href="css/chessboard-1.0.0.min.css">
+
+    <style>
+        /* Chess board table styles (Unicode pieces) */
+        table.chess { border: 1px solid black; margin: 10px auto; font-size: xx-large; }
+        table.chess td { width: 1.5em; height: 1.5em; padding: 0; margin: 1em; vertical-align: middle; text-align: center; }
+        table.chess tr td { background: #F2E0CB; }
+        table.chess tr:nth-child(odd) td:nth-child(even), table.chess tr:nth-child(even) td:nth-child(odd) { background: #C4AA8B; }
+    </style>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        
+        .fen-display-container {
+            position: relative;
+            margin-bottom: 25px;
+        }
+        
+        .fen-controls {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            padding: 10px 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin: 0 -25px;
+        }
+
+        #fenDisplay {
+            width: 100%;
+            height: 80px;
+            font-size: 18px;
+            font-family: monospace;
+            text-align: left;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 0;
+            overflow-x: auto;
+            white-space: nowrap;
+            box-sizing: border-box;
+            background-color: #f9f9f9;
+        }
+        
+        #fenDisplay:focus {
+            outline: none;
+            border-color: #4285f4;
+        }
+        
+        .section-title {
+            font-weight: bold;
+            margin: 15px 0 8px 0;
+            color: #555;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        
+        .button-section {
+            margin-bottom: 15px;
+        }
+        
+        .button-grid {
+            display: grid;
+            gap: 8px;
+        }
+        
+        .numbers-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            row-gap: 15px;
+        }
+
+        .numbers-grid button {
+            flex: 0 0 60px;
+            height: 40px;
+            padding: 8px 0;
+        }
+
+        .pieces-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            row-gap: 15px;
+        }
+
+        .pieces-grid button {
+            flex: 0 0 60px;
+            height: 40px;
+            padding: 8px 0;
+        }
+        
+        .special-grid {
+            grid-template-columns: repeat(4, 1fr);
+            margin-top: 15px;
+        }
+        
+        button {
+            padding: 12px 0;
+            font-size: 18px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+            transition: all 0.2s;
+        }
+        
+        button:hover:not(:disabled) {
+            background-color: #f0f0f0;
+        }
+
+        /* Auto-append on hover for number and piece buttons */
+        .numbers-grid button:hover:not(:disabled),
+        .pieces-grid button:hover:not(:disabled) {
+            background-color: #d4edda;
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Disabled piece buttons */
+        .pieces-grid button:disabled {
+            opacity: 0.5 !important;
+            cursor: not-allowed !important;
+            background-color: #ccc !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        .number-btn {
+            background-color: #e3f2fd;
+        }
+        
+        .black-piece {
+            background-color: #ffebee;
+        }
+        
+        .white-piece {
+            background-color: #e8f5e9;
+        }
+        
+        .special-btn {
+            background-color: #f5f5f5;
+        }
+        
+        .clear-btn {
+            background-color: #ffebee;
+        }
+        
+        .backspace-btn {
+            background-color: #fff8e1;
+        }
+        
+        .copy-btn {
+            background-color: #e0f7fa;
+        }
+        
+        .complete-btn {
+            background-color: #e8f5e9;
+        }
+        
+        .chess-piece-img {
+            height: 24px;
+            vertical-align: middle;
+        }
+
+        .piece-btn {
+            position: relative;
+            padding: 8px;
+            font-size: 14px;
+            border: 2px solid #ddd;
+            transition: all 0.2s;
+        }
+
+        .piece-btn:hover {
+            border-color: #4285f4;
+            transform: translateY(-1px);
+        }
+
+        .piece-btn.selected {
+            border-color: #4285f4;
+            background-color: #e3f2fd;
+            box-shadow: 0 0 8px rgba(66, 133, 244, 0.3);
+        }
+
+        /* Toggle slider styles */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ddd;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        input:checked + .slider {
+            background-color: #ff6b6b;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .tooltip {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .tooltip.show {
+            opacity: 1;
+        }
+        
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+        }
+        
+        .instructions {
+            background-color: #f9f9f9;
+            border-left: 4px solid #4285f4;
+            padding: 10px 15px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .tally-display {
+            margin-top: 12px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            font-family: monospace;
+            color: #333;
+        }
+        
+        .tally-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .tally-table th, .tally-table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        .tally-table th {
+            background-color: #e6e6e6;
+            font-weight: bold;
+        }
+        
+        .tally-complete {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .tally-over {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .tally-under {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        /* Chess board styling */
+        .board {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            border: 2px solid #8ca2ad;
+            border-radius: 8px;
+        }
+        
+        @media (max-width: 480px) {
+            .board {
+                max-width: 70vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chess FEN Builder</h1>
+
+        <!-- Image Notes Textarea -->
+        <div style="margin-bottom: 15px; text-align: center;">
+            <textarea id="imageNotes" placeholder="Take notes on the image here..." style="width: 100%; max-width: 500px; height: 80px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; resize: vertical;"></textarea>
+        </div>
+
+        <!-- Load Image Button and Preview -->
+        <div style="margin-bottom: 15px; text-align: center;">
+            <button id="loadImageBtn" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;" onclick="document.getElementById('imageFileInput').click()">🖼️ Load Reference Image</button>
+            <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
+        </div>
+
+        <div class="fen-controls">
+            <input type="text" id="fenDisplay" placeholder="Build your FEN here...">
+            <div id="tooltip" class="tooltip"></div>
+        </div>
+
+        <div id="imagePreviewContainer" style="display: none; margin-bottom: 15px; text-align: center;">
+            <img id="imagePreview" src="" alt="Reference chess position" style="max-width: 100%; max-height: 150px; border: 2px solid #ccc; border-radius: 5px; cursor: pointer;" onclick="toggleImageSize()">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 10px;">
+                <span style="font-weight: bold; color: #555;">Reference Image:</span>
+                <button onclick="toggleImageSize()" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">Toggle Size</button>
+                <button onclick="closeImagePreview()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">✕ Close</button>
+            </div>
+        </div>
+
+        <!-- Chess Board Display (Unicode pieces) - only shown via Show Board button -->
+        <div id="chessBoardDisplay" style="display: none; margin-top: 15px; padding: 12px; background-color: #f0f0f0; border-radius: 5px; border: 1px solid #ddd;">
+            <div id="chessBoardOut"></div>
+            <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 8px;">
+                <span style="font-weight: bold; color: #333;">Your Position:</span>
+                <button onclick="showChessBoard()" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">↻ Refresh</button>
+                <button onclick="hideChessBoard()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">✕ Hide Board</button>
+            </div>
+        </div>
+
+        <div class="instructions" style="display: none;">
+            FEN (Forsyth-Edwards Notation) is a standard notation for describing chess positions.
+            Build your FEN string using the buttons below.
+            Escape keycode works to input. And, the FEN Variant will go to clipboard.
+        </div>
+
+        <div class="fen-display-container">
+
+            <div style="display: flex; gap: 20px; align-items: center; justify-content: center; margin: 10px 0;">
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="radio" name="fenPerspective" value="nonflipped" checked onchange="switchFenPerspective(this.value)">
+                    <span>Nonflipped (White's perspective)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="radio" name="fenPerspective" value="flipped" onchange="switchFenPerspective(this.value)">
+                    <span>Flipped (Black's perspective)</span>
+                </label>
+            </div>
+
+            <!-- White pieces after input (hidden) -->
+            <div class="button-grid pieces-grid" style="margin-top: 20px; display: none;">
+                <button class="white-piece" onclick="appendToFen('P')">P </button>
+                <button class="white-piece" onclick="appendToFen('N')">N </button>
+                <button class="white-piece" onclick="appendToFen('B')">B </button>
+                <button class="white-piece" onclick="appendToFen('R')">R </button>
+                <button class="white-piece" onclick="appendToFen('Q')">Q </button>
+                <button class="white-piece" onclick="appendToFen('K')">K </button>
+            </div>
+            <!-- Load on Board button -->
+            <div style="margin-top: 20px; text-align: center; display: flex; gap: 10px; justify-content: center;">
+                <button class="complete-btn" onclick="showChessBoard()" style="background: #28a745;">👁️ Show Board</button>
+                <button class="complete-btn" onclick="loadFenOnBoard()">🏁 Load on Board</button>
+            </div>
+
+            <!-- Backspace and Clear buttons below white pieces -->
+            <div class="button-grid" style="display: flex; gap: 30px; margin-top: 20px; margin-bottom: 20px;">
+                <button class="backspace-btn" onclick="backspaceFen()" style="flex: 0 0 60px; height: 40px;">⌫</button>
+                <button class="clear-btn" onclick="clearFen()" style="flex: 0 0 60px; height: 40px;">CLR</button>
+            </div>
+
+            <!-- Number buttons hidden -->
+            <div class="button-grid numbers-grid" style="display: none;">
+                <button class="number-btn" onclick="appendToFen('1')">1</button>
+                <button class="number-btn" onclick="appendToFen('2')">2</button>
+                <button class="number-btn" onclick="appendToFen('3')">3</button>
+                <button class="number-btn" onclick="appendToFen('4')">4</button>
+                <button class="number-btn" onclick="appendToFen('5')">5</button>
+                <button class="number-btn" onclick="appendToFen('6')">6</button>
+                <button class="number-btn" onclick="appendToFen('7')">7</button>
+                <button class="number-btn" onclick="appendToFen('8')">8</button>
+                <button class="special-btn" onclick="appendToFen('/')">/</button>
+            </div>
+
+            <div class="button-grid numbers-grid" style="display: none;">
+                <button class="number-btn" onclick="appendToFen('1')">1</button>
+                <button class="number-btn" onclick="appendToFen('2')">2</button>
+                <button class="number-btn" onclick="appendToFen('3')">3</button>
+                <button class="number-btn" onclick="appendToFen('4')">4</button>
+                <button class="number-btn" onclick="appendToFen('5')">5</button>
+                <button class="number-btn" onclick="appendToFen('6')">6</button>
+                <button class="number-btn" onclick="appendToFen('7')">7</button>
+                <button class="number-btn" onclick="appendToFen('8')">8</button>
+                <button class="special-btn" onclick="appendToFen('/')">/</button>
+            </div>
+            <div id="tallyDisplay" class="tally-display">
+                <table class="tally-table">
+                    <tbody>
+                        <tr id="rankLabelsRow">
+                            <th>Rank</th>
+                            <th>1</th>
+                            <th>2</th>
+                            <th>3</th>
+                            <th>4</th>
+                            <th>5</th>
+                            <th>6</th>
+                            <th>7</th>
+                            <th>8</th>
+                        </tr>
+                        <tr id="tallyValuesRow">
+                            <th>Tally</th>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Lichess Analysis URL Display -->
+            <div id="lichessUrlDisplay" style="display: none; margin-top: 15px; padding: 12px; background-color: #f0f0f0; border-radius: 5px; border: 1px solid #ddd;">
+                <div style="font-weight: bold; margin-bottom: 12px; color: #333;">Lichess Analysis:</div>
+
+                <!-- White to Move -->
+                <div style="background-color: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 2px solid #4CAF50;">
+                    <div style="font-weight: 600; margin-bottom: 5px; color: #4CAF50;">♔ White to Move:</div>
+                    <a id="lichessUrlLinkWhite" href="" target="_blank" style="word-break: break-all; color: #4285f4; text-decoration: none; font-size: 13px; display: block; margin-bottom: 6px;"></a>
+                    <button onclick="copyLichessUrl('white')" class="copy-btn" style="width: 100%; padding: 6px; font-size: 13px;">Copy White to Move URL</button>
+                </div>
+
+                <!-- Black to Move -->
+                <div style="background-color: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 2px solid #333;">
+                    <div style="font-weight: 600; margin-bottom: 5px; color: #333;">♚ Black to Move:</div>
+                    <a id="lichessUrlLinkBlack" href="" target="_blank" style="word-break: break-all; color: #4285f4; text-decoration: none; font-size: 13px; display: block; margin-bottom: 6px;"></a>
+                    <button onclick="copyLichessUrl('black')" class="copy-btn" style="width: 100%; padding: 6px; font-size: 13px;">Copy Black to Move URL</button>
+                </div>
+
+                <!-- Redo Input Button - repaste current FEN to input for editing -->
+                <button onclick="redoFenInput()" class="complete-btn" style="width: 100%; padding: 8px; font-size: 14px;">✏️ Redo Input (Edit FEN)</button>
+            </div>
+        </div>
+        
+        <div class="button-section">
+            <div class="section-title">FEN Reading Perspective</div>
+            <div style="display: flex; gap: 20px; align-items: center; justify-content: center; margin: 10px 0;">
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="radio" name="fenPerspective" value="nonflipped" checked onchange="switchFenPerspective(this.value)">
+                    <span>Nonflipped (White's perspective)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="radio" name="fenPerspective" value="flipped" onchange="switchFenPerspective(this.value)">
+                    <span>Flipped (Black's perspective)</span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="button-section" style="display: none;">
+            <div class="button-grid" style="grid-template-columns: 1fr 1fr; margin-top: 10px; gap: 10px;">
+                <button class="complete-btn" onclick="loadFenOnBoard()">🏁 Load (for Links)</button>
+                <button class="copy-btn" onclick="readBoardPosition()">🔊 Read Board Position</button>
+            </div>
+        </div>
+                  <!-- <base href="https://chessboardjs.com/" /> -->
+
+        <div style="font-size: 12px; color: #666; margin: 10px 0; font-family: monospace; background: #f5f5f5; padding: 8px; border-radius: 4px;">
+            <strong>Castling Rights in FEN:</strong><br>
+            <code>KQkq</code> = All can castle (K=White kingside, Q=White queenside, k=Black kingside, q=Black queenside)<br>
+            <code>-</code> = No castling available
+        </div>
+
+        <textarea id="myTextArea" style="width: 100%; height: 60px; margin-top: 10px; padding: 10px; border: 2px solid #ccc; border-radius: 5px; font-family: monospace; font-size: 14px;" placeholder="FEN Variant will appear here..."></textarea><br>
+
+        <div id="myBoard" class="board"></div><br>
+
+        <textarea id="myTextArea2" style="width: 100%; height: 60px; margin-top: 10px; padding: 10px; border: 2px solid #ccc; border-radius: 5px; font-family: monospace; font-size: 14px;" placeholder="For adding extra notes"></textarea><br>
+
+        <div class="button-section">
+            <div class="section-title">Board Setup</div>
+            <div class="button-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
+                <button class="complete-btn" onclick="loadFenVariantOnBoard()">📥 Load FEN to Board</button>
+                <button class="copy-btn" onclick="flipBoard()">🔄 Flip Board</button>
+                <button class="complete-btn" onclick="resetBoard()">♟️ Reset Board</button>
+                <button class="complete-btn" onclick="setKingVsKing()">King vs King</button>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin: 15px 0; padding: 10px; background-color: #f0f0f0; border-radius: 8px;">
+            <span style="font-weight: bold; color: #4CAF50;">ADD</span>
+            <label class="switch">
+                <input type="checkbox" id="globalAddRemoveToggle">
+                <span class="slider"></span>
+            </label>
+            <span style="font-weight: bold; color: #ff6b6b;">REMOVE</span>
+        </div>
+
+        <div class="button-section">
+            <div class="section-title">Input Mode</div>
+            <div style="display: flex; gap: 20px; align-items: center; justify-content: center; margin: 10px 0;">
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="radio" name="inputMode" value="addPieces" checked onchange="switchInputMode(this.value)">
+                    <span>Add Pieces (buttons only)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="radio" name="inputMode" value="writeInput" onchange="switchInputMode(this.value)">
+                    <span>Write Input (P,N,B,R,Q,K,p,n,b,r,q,k keys add pieces to board)</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="button-section" id="addPiecesSection">
+            <div class="section-title" id="whitePieceTitle">Add White Pieces (fills ranks 4→3→2→1 with overflow)</div>
+            <div class="button-grid" style="grid-template-columns: repeat(6, 1fr); gap: 5px; margin-bottom: 10px;">
+                <button class="white-piece piece-btn" onclick="addPieceToRank('wP', 4)">
+                    <img src="img/chesspieces/wikipedia/wP.png" class="chess-piece-img"> P
+                </button>
+                <button class="white-piece piece-btn" onclick="addPieceToRank('wN', 4)">
+                    <img src="img/chesspieces/wikipedia/wN.png" class="chess-piece-img"> N
+                </button>
+                <button class="white-piece piece-btn" onclick="addPieceToRank('wB', 4)">
+                    <img src="img/chesspieces/wikipedia/wB.png" class="chess-piece-img"> B
+                </button>
+                <button class="white-piece piece-btn" onclick="addPieceToRank('wR', 4)">
+                    <img src="img/chesspieces/wikipedia/wR.png" class="chess-piece-img"> R
+                </button>
+                <button class="white-piece piece-btn" onclick="addPieceToRank('wQ', 4)">
+                    <img src="img/chesspieces/wikipedia/wQ.png" class="chess-piece-img"> Q
+                </button>
+                <button class="white-piece piece-btn" onclick="addPieceToRank('wK', 4)">
+                    <img src="img/chesspieces/wikipedia/wK.png" class="chess-piece-img"> K
+                </button>
+            </div>
+            <div class="section-title" id="blackPieceTitle">Add Black Pieces (fills ranks 5→6→7→8 with overflow)</div>
+            <div class="button-grid" style="grid-template-columns: repeat(6, 1fr); gap: 5px;">
+                <button class="black-piece piece-btn" onclick="addPieceToRank('bP', 5)">
+                    <img src="img/chesspieces/wikipedia/bP.png" class="chess-piece-img"> p
+                </button>
+                <button class="black-piece piece-btn" onclick="addPieceToRank('bN', 5)">
+                    <img src="img/chesspieces/wikipedia/bN.png" class="chess-piece-img"> n
+                </button>
+                <button class="black-piece piece-btn" onclick="addPieceToRank('bB', 5)">
+                    <img src="img/chesspieces/wikipedia/bB.png" class="chess-piece-img"> b
+                </button>
+                <button class="black-piece piece-btn" onclick="addPieceToRank('bR', 5)">
+                    <img src="img/chesspieces/wikipedia/bR.png" class="chess-piece-img"> r
+                </button>
+                <button class="black-piece piece-btn" onclick="addPieceToRank('bQ', 5)">
+                    <img src="img/chesspieces/wikipedia/bQ.png" class="chess-piece-img"> q
+                </button>
+                <button class="black-piece piece-btn" onclick="addPieceToRank('bK', 5)">
+                    <img src="img/chesspieces/wikipedia/bK.png" class="chess-piece-img"> k
+                </button>
+            </div>
+            <div class="button-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap: 5px; margin-top: 10px;">
+                <button class="clear-btn" onclick="deleteLastWhitePiece()">⌫ Delete Last White</button>
+                <button class="clear-btn" onclick="deleteLastBlackPiece()">⌫ Delete Last Black</button>
+                <button class="backspace-btn" onclick="clearRank(4)">Clear 4th Rank</button>
+                <button class="backspace-btn" onclick="clearRank(5)">Clear 5th Rank</button>
+            </div>
+        </div>
+
+        <div class="button-section" id="writeInputSection" style="display: none;">
+            <div class="section-title">Write Input Mode - Press keys to add/remove pieces</div>
+            
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-family: monospace; font-size: 16px;">
+                    <div>
+                        <strong>White Pieces:</strong><br>
+                        P = Pawn<br>
+                        N = Knight<br>
+                        B = Bishop<br>
+                        R = Rook<br>
+                        Q = Queen<br>
+                        K = King
+                    </div>
+                    <div>
+                        <strong>Black Pieces:</strong><br>
+                        p = pawn<br>
+                        n = knight<br>
+                        b = bishop<br>
+                        r = rook<br>
+                        q = queen<br>
+                        k = king
+                    </div>
+                </div>
+                <div style="margin-top: 10px; text-align: center; color: #666;">
+                    <small id="writeInputInstructions">ADD mode: Keys add pieces to board | REMOVE mode: Keys remove nearest matching piece</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="button-section">
+            <div class="button-grid" style="grid-template-columns: 1fr 1fr; margin-top: 10px;">
+                <button id="showFenVariant" class="complete-btn">Show FEN Variant (from board + clipboard)</button>
+                <button id="convertFenToVariant" class="complete-btn">Convert FEN to Variant (+ clipboard)</button>
+            </div>
+        </div>
+
+        <div class="button-section">
+            <button id="syntaxConvertFenPositions" class="complete-btn" style="width: 100%; margin-top: 5px;">Syntax: Convert FEN Positions</button>
+        </div>
+
+        <div class="button-section">
+            <div class="button-grid" style="grid-template-columns: 1fr 1fr; margin-top: 10px;">
+                <button class="copy-btn" onclick="copyTextAreaToClipboard()">Copy to Clipboard</button>
+                <button class="complete-btn" onclick="loadFenVariantOnBoard()">Load FEN Variant</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; font-size: 12px; color: #666;">
+                <span style="text-align: center;">Get FEN variant from the board</span>
+                <span style="text-align: center;">Load FEN variant from textarea</span>
+            </div>
+        </div>
+        
+        
+        <div class="footer">
+            Hover over a button and press Esc to click it. Press Enter to copy the FEN.
+        </div>
+    </div>
+
+    <audio id="keyPressSound" src="https://assets.codepen.io/1075762/touchbeep.mp3" preload="auto"></audio>
+
+    <!-- Chess dependencies (local for offline use) -->
+    <script src='js/jquery-2.2.4.min.js'></script>
+    <script src='js/chessboard-1.0.0.min.js'></script>
+
+    <!-- Firebase integration (only loads when online) -->
+    <script type="module">
+        // Only initialize Firebase if online
+        if (navigator.onLine) {
+            try {
+                const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
+                const { getDatabase, ref, set } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js");
+
+                // Initialize Firebase
+                const firebaseConfig = {
+                    apiKey: "AIzaSyB0_4AT0jzRoSeV5jK4rN4Ah7BTKKTl78I",
+                    authDomain: "linked-in-creators.firebaseapp.com",
+                    databaseURL: "https://linked-in-creators-default-rtdb.firebaseio.com",
+                    projectId: "linked-in-creators",
+                    storageBucket: "linked-in-creators.appspot.com",
+                    messagingSenderId: "282570385061",
+                    appId: "1:282570385061:web:24fcf17921e99540984f4c",
+                    measurementId: "G-5G6JG8VERG"
+                };
+
+                const app = initializeApp(firebaseConfig);
+                const database = getDatabase(app);
+
+                // Make Firebase functions accessible globally
+                window.firebaseDatabase = database;
+                window.firebaseRef = ref;
+                window.firebaseSet = set;
+                console.log('Firebase initialized (online)');
+            } catch (error) {
+                console.log('Firebase initialization skipped');
+            }
+        } else {
+            console.log('Offline - Firebase disabled');
+        }
+    </script>
+    
+    <script>
+        // Initialize chessboard.js board
+        var board = null;
+
+        // Wait for dependencies and initialize board
+        function initializeBoard() {
+            if (typeof Chessboard === 'undefined' || typeof $ === 'undefined') {
+                console.log('Waiting for dependencies...');
+                setTimeout(initializeBoard, 100);
+                return;
+            }
+
+            console.log('Initializing chessboard...');
+            board = Chessboard('myBoard', {
+                draggable: true,
+                dropOffBoard: 'snapback',
+                position: 'start',
+                snapbackSpeed: 500,
+                snapSpeed: 100,
+                pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
+                onDrop: function(source, target, piece, newPos, oldPos, orientation) {
+                    // After a piece is moved, update myTextArea2 with the new FEN variant
+                    setTimeout(function() {
+                        if (board) {
+                            const fenPosition = board.position('fen');
+                            const completeFen = fenPosition + ' w KQkq - 0 1';
+                            const fenVariant = '[Variant "From Position"][FEN "' + completeFen + '"]';
+                            document.getElementById('myTextArea2').value = fenVariant;
+
+                            // Also copy to clipboard
+                            navigator.clipboard.writeText(fenVariant).then(function() {
+                                showTooltip('Position updated and copied to clipboard!');
+                            }).catch(function(err) {
+                                console.log('Clipboard write failed:', err);
+                            });
+                        }
+                    }, 100);
+                }
+            });
+
+            console.log('Chessboard initialized successfully');
+        }
+
+        // Start initialization when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeBoard);
+        } else {
+            initializeBoard();
+        }
+
+        // Unicode chess pieces mapping
+        const chessPieces = {
+            K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙",
+            k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟",
+        };
+
+        // Function to render FEN as HTML table with Unicode pieces
+        function fenToHtml(fenString) {
+            // Extract just the board position (first part before space)
+            const boardPosition = fenString.trim().split(' ')[0];
+
+            let html = boardPosition
+                .replace(/\d+/g, n => " ".repeat(parseInt(n)))  // Replace numbers with spaces
+                .replace(/./g, char => "<td>" + (chessPieces[char] || char))  // Convert to table cells
+                .replace(/^|<td>\//g, "\n  <tr>");  // Add table rows
+
+            html = '<table class="chess">' + html + "\n</table>";
+
+            // Display the board
+            const chessBoardDisplay = document.getElementById('chessBoardDisplay');
+            const chessBoardOut = document.getElementById('chessBoardOut');
+            chessBoardOut.innerHTML = html;
+            chessBoardDisplay.style.display = 'block';
+        }
+
+        // Function to hide/clear the chess board
+        function hideChessBoard() {
+            const chessBoardDisplay = document.getElementById('chessBoardDisplay');
+            const chessBoardOut = document.getElementById('chessBoardOut');
+            chessBoardDisplay.style.display = 'none';
+            chessBoardOut.innerHTML = '';
+        }
+
+        // Function to show the chess board with current FEN input
+        function showChessBoard() {
+            console.log('DEBUG showChessBoard: Function called');
+            try {
+                const fenDisplay = document.getElementById('fenDisplay');
+                let fen = fenDisplay.value.trim();
+                console.log('DEBUG showChessBoard: FEN input value:', fen);
+                console.log('DEBUG showChessBoard: lastLoadedFen:', lastLoadedFen);
+
+                // If empty, try lastLoadedFen, then use starting position
+                if (!fen) {
+                    fen = lastLoadedFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
+                }
+                console.log('DEBUG showChessBoard: Final FEN to render:', fen);
+
+                // Apply flip conversion if reading from flipped perspective
+                if (typeof fenPerspective !== 'undefined' && fenPerspective === 'flipped' && fen.includes('/')) {
+                    fen = convertFlippedFen(fen);
+                    console.log('DEBUG showChessBoard: After flip conversion:', fen);
+                }
+
+                // Only render if it looks like a valid FEN (has slashes)
+                if (fen.includes('/')) {
+                    // Extract just the board part for rendering
+                    let boardPart = fen.split(' ')[0];
+                    console.log('DEBUG showChessBoard: Board part to render:', boardPart);
+                    fenToHtml(boardPart + ' w KQkq - 0 1');
+                } else {
+                    // Show empty board if no valid FEN yet
+                    console.log('DEBUG showChessBoard: No slashes, showing empty board');
+                    fenToHtml('8/8/8/8/8/8/8/8 w - - 0 1');
+                }
+
+                const chessBoardDisplay = document.getElementById('chessBoardDisplay');
+                console.log('DEBUG showChessBoard: chessBoardDisplay element:', chessBoardDisplay);
+                console.log('DEBUG showChessBoard: Current display style:', chessBoardDisplay.style.display);
+                chessBoardDisplay.style.display = 'block';
+                console.log('DEBUG showChessBoard: Set display to block');
+            } catch (e) {
+                console.error('Error showing chess board:', e);
+            }
+        }
+
+        // Store the last loaded FEN for redo functionality
+        var lastLoadedFen = '';
+
+        // Function to repaste current FEN to input for editing
+        function redoFenInput() {
+            if (lastLoadedFen) {
+                const fenDisplay = document.getElementById('fenDisplay');
+                // Extract just the board position (first part before space)
+                fenDisplay.value = lastLoadedFen.split(' ')[0];
+                fenDisplay.focus();
+                showTooltip('FEN pasted to input - ready to edit!');
+            } else {
+                showTooltip('No FEN loaded yet');
+            }
+        }
+    </script>
+
+    <script>
+        // Variables to manage sound
+        let soundEnabled = true;
+        const keyPressSound = document.getElementById('keyPressSound');
+        
+        // Function to add a character to the FEN display at cursor position
+        function appendToFen(character) {
+            const fenDisplay = document.getElementById('fenDisplay');
+
+            // Get the current cursor position
+            const start = fenDisplay.selectionStart;
+            const end = fenDisplay.selectionEnd;
+            const value = fenDisplay.value;
+
+            // Insert the character at the cursor position
+            fenDisplay.value = value.substring(0, start) + character + value.substring(end);
+
+            // Move cursor to after the inserted character
+            const newCursorPos = start + character.length;
+            fenDisplay.setSelectionRange(newCursorPos, newCursorPos);
+
+            // Update the tally display
+            updateTallyDisplay();
+
+            // Set focus back to input (for keyboard support)
+            fenDisplay.focus();
+
+            // Board only shows when user clicks "Show Board" button
+        }
+        
+        // Function to clear the FEN display
+        function clearFen() {
+            const fenDisplay = document.getElementById('fenDisplay');
+
+            // Check if there's content to clear
+            if (!fenDisplay.value.trim()) {
+                showTooltip('FEN is already empty');
+                return;
+            }
+
+            // Show confirmation dialog
+            if (confirm('Are you sure you want to clear the FEN input?')) {
+                fenDisplay.value = '';
+                fenDisplay.scrollLeft = 0; // Reset scroll to the start
+
+                // Update the tally display
+                updateTallyDisplay();
+
+                showTooltip('FEN cleared');
+
+                // Set focus back to input
+                fenDisplay.focus();
+            }
+        }
+        
+        // Function to remove character at cursor position (or before cursor)
+        function backspaceFen() {
+            const fenDisplay = document.getElementById('fenDisplay');
+            const start = fenDisplay.selectionStart;
+            const end = fenDisplay.selectionEnd;
+            const value = fenDisplay.value;
+
+            // If there's a selection, delete the selection
+            if (start !== end) {
+                fenDisplay.value = value.substring(0, start) + value.substring(end);
+                fenDisplay.setSelectionRange(start, start);
+            }
+            // If cursor is not at the beginning, delete the character before the cursor
+            else if (start > 0) {
+                fenDisplay.value = value.substring(0, start - 1) + value.substring(start);
+                const newPosition = start - 1;
+                fenDisplay.setSelectionRange(newPosition, newPosition);
+            }
+            // If cursor is at the beginning, do nothing
+
+            // Update the tally display
+            updateTallyDisplay();
+
+            // Set focus back to input
+            fenDisplay.focus();
+        }
+        
+        // Function to correct and validate the FEN string
+        function correctFen(fen) {
+            // Split the FEN into its components
+            let parts = fen.split(' ');
+            
+            // If we just have the position part (no spaces), assume it's incomplete
+            if (parts.length === 1) {
+                // Ensure we have the right number of ranks
+                let ranks = parts[0].split('/');
+                
+                // Validate each rank
+                if (ranks.length <= 8) {
+                    return parts[0]; // Return as is, we'll complete it later
+                }
+            }
+            
+            // Ensure the FEN has exactly 6 parts
+            while (parts.length < 6) {
+                switch (parts.length) {
+                    case 1: parts.push('w'); break; // Active color
+                    case 2: parts.push('KQkq'); break; // Castling availability
+                    case 3: parts.push('-'); break; // En passant target square
+                    case 4: parts.push('0'); break; // Halfmove clock
+                    case 5: parts.push('1'); break; // Fullmove number
+                }
+            }
+            
+            let ranks = parts[0].split('/');
+            
+            // Ensure there are exactly 8 ranks
+            if (ranks.length !== 8) {
+                while (ranks.length < 8) {
+                    ranks.push('8'); // Add empty ranks as needed
+                }
+                parts[0] = ranks.join('/');
+            }
+            
+            // Validate each rank
+            let correctedRanks = ranks.map(rank => {
+                let count = 0;
+                let newRank = '';
+                
+                // Process each character in the rank
+                for (let i = 0; i < rank.length; i++) {
+                    let char = rank[i];
+                    
+                    if (!isNaN(char)) {
+                        count += parseInt(char, 10);
+                        newRank += char;
+                    } else if ('rnbqkpRNBQKP'.includes(char)) {
+                        count += 1;
+                        newRank += char;
+                    } else {
+                        // Skip any invalid characters
+                        console.warn(`Invalid character ${char} found in rank. Skipping.`);
+                    }
+                }
+                
+                // Adjust the rank length to 8
+                if (count < 8) {
+                    newRank += (8 - count).toString();
+                } else if (count > 8) {
+                    // Too many squares in this rank, need to fix
+                    console.warn(`Rank ${rank} has ${count} squares, adjusting...`);
+                    newRank = '';
+                    count = 0;
+                    
+                    // Rebuild the rank, counting squares
+                    for (let i = 0; i < rank.length && count < 8; i++) {
+                        let char = rank[i];
+                        
+                        if (!isNaN(char)) {
+                            let num = parseInt(char, 10);
+                            if (count + num <= 8) {
+                                newRank += char;
+                                count += num;
+                            } else {
+                                // Only add what we need
+                                newRank += (8 - count).toString();
+                                count = 8;
+                            }
+                        } else if ('rnbqkpRNBQKP'.includes(char) && count < 8) {
+                            newRank += char;
+                            count += 1;
+                        }
+                    }
+                    
+                    // If still not enough, pad with empty squares
+                    if (count < 8) {
+                        newRank += (8 - count).toString();
+                    }
+                }
+                
+                return newRank;
+            });
+            
+            // Reassemble the corrected FEN string
+            parts[0] = correctedRanks.join('/');
+            
+            // Ensure side to move is valid ('w' or 'b')
+            parts[1] = parts[1] === 'b' ? 'b' : 'w';
+            
+            // Ensure castling availability is valid or replace with '-'
+            parts[2] = /^[KQkq]+$/.test(parts[2]) ? parts[2] : 'KQkq';
+            
+            // Ensure en passant target square is valid or replace with '-'
+            parts[3] = /^([a-h][36])$/.test(parts[3]) ? parts[3] : '-';
+            
+            // Ensure halfmove clock is a number or replace with '0'
+            parts[4] = !isNaN(parts[4]) ? parts[4] : '0';
+            
+            // Ensure fullmove number is a number or replace with '1'
+            parts[5] = !isNaN(parts[5]) && parseInt(parts[5]) > 0 ? parts[5] : '1';
+            
+            return parts.join(' ');
+        }
+        
+        // Function to complete partial FEN with standard values
+        function completeFen() {
+            const fenDisplay = document.getElementById('fenDisplay');
+            let fen = fenDisplay.value.trim();
+            
+            // If empty, use starting position
+            if (!fen) {
+                fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+                fenDisplay.value = fen;
+                showTooltip('Starting position set');
+                return;
+            }
+            
+            // Complete the FEN
+            let completedFen = correctFen(fen);
+            
+            // If it's just the board position, add the standard parameters
+            if (!completedFen.includes(' ')) {
+                completedFen = `${completedFen} w KQkq - 0 1`;
+            }
+            
+            fenDisplay.value = completedFen;
+            fenDisplay.scrollLeft = fenDisplay.scrollWidth;
+            
+            showTooltip('FEN completed');
+            fenDisplay.focus();
+        }
+        
+        // Function to copy the FEN to clipboard
+        function copyFenToClipboard() {
+            const fenDisplay = document.getElementById('fenDisplay');
+            let fen = fenDisplay.value.trim();
+            
+            // If empty, show a message
+            if (!fen) {
+                showTooltip('FEN is empty');
+                return;
+            }
+            
+            // Just copy what's in the input field, no corrections
+            navigator.clipboard.writeText(fen).then(
+                () => {
+                    showTooltip('FEN copied to clipboard!');
+                }).catch(err => {
+                    console.error('Failed to copy FEN to clipboard: ', err);
+                    showTooltip('Copy failed. Try again.');
+                });
+            
+            fenDisplay.focus();
+        }
+        
+        // Helper function to parse FEN piece placement into position object
+        function parseFenToPosition(fenPiecePlacement) {
+            const position = {};
+            const ranks = fenPiecePlacement.split('/');
+
+            if (ranks.length > 8) {
+                throw new Error('FEN cannot have more than 8 ranks');
+            }
+
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+            for (let rankIndex = 0; rankIndex < ranks.length; rankIndex++) {
+                const rank = ranks[rankIndex];
+                const rankNumber = 8 - rankIndex; // FEN starts from rank 8
+                let fileIndex = 0;
+
+                for (let char of rank) {
+                    if (fileIndex >= 8) {
+                        throw new Error(`Too many pieces in rank ${rankNumber}`);
+                    }
+
+                    if (/[1-8]/.test(char)) {
+                        // It's a number - skip that many files
+                        fileIndex += parseInt(char);
+                    } else {
+                        // It's a piece
+                        const square = files[fileIndex] + rankNumber;
+                        const pieceColor = char === char.toUpperCase() ? 'w' : 'b';
+                        const pieceType = char.toUpperCase();
+
+                        // Validate piece type
+                        if (!'KQRBNP'.includes(pieceType)) {
+                            throw new Error(`Invalid piece: ${char}`);
+                        }
+
+                        position[square] = pieceColor + pieceType;
+                        fileIndex++;
+                    }
+                }
+
+                if (fileIndex > 8) {
+                    throw new Error(`Rank ${rankNumber} has too many files (got ${fileIndex})`);
+                }
+            }
+
+            return position;
+        }
+
+        // Function to generate Lichess links from FEN
+        async function loadFenOnBoard() {
+            const fenDisplay = document.getElementById('fenDisplay');
+            let fen = fenDisplay.value.trim();
+
+            // If empty, use starting position
+            if (!fen) {
+                const startingFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+                lastLoadedFen = startingFen;
+                fenToHtml(startingFen);
+                updateLichessUrl(startingFen, fenPerspective);
+                showTooltip('Showing starting position');
+                return;
+            }
+
+            try {
+                // Apply flip conversion if reading from flipped perspective
+                if (fenPerspective === 'flipped') {
+                    fen = convertFlippedFen(fen);
+                    console.log('Converted flipped FEN:', fen);
+                }
+
+                // Check if it's a valid FEN (has slashes for ranks)
+                if (fen.includes('/')) {
+                    // Complete the FEN
+                    let completedFen = correctFen(fen);
+
+                    // Store for redo functionality
+                    lastLoadedFen = completedFen;
+
+                    // Render the board with Unicode pieces
+                    fenToHtml(completedFen);
+
+                    // Save FEN to Firebase clipboardManager/FenBuilder
+                    await saveFenToFirebase(completedFen);
+
+                    // Update Lichess URL display
+                    updateLichessUrl(completedFen, fenPerspective);
+
+                    // Update URL parameter with the FEN
+                    updateUrlParameter(completedFen);
+
+                    showTooltip('Position loaded!');
+
+                    // Clear the FEN input after successful processing
+                    fenDisplay.value = '';
+
+                    // Auto-trigger Show FEN Variant
+                    setTimeout(function() {
+                        document.getElementById('showFenVariant').click();
+                    }, 500);
+                } else {
+                    showTooltip('Invalid FEN: must contain "/" to separate ranks');
+                }
+
+            } catch (error) {
+                showTooltip('Invalid FEN: ' + error.message);
+                console.error('Error processing FEN:', error);
+            }
+
+            fenDisplay.focus();
+        }
+
+        // Function to generate and display Lichess analysis URL
+        function updateLichessUrl(fenString, perspective) {
+            const lichessUrlDisplay = document.getElementById('lichessUrlDisplay');
+            const lichessUrlLinkWhite = document.getElementById('lichessUrlLinkWhite');
+            const lichessUrlLinkBlack = document.getElementById('lichessUrlLinkBlack');
+
+            // Extract board position (first part before space)
+            const boardPosition = fenString.split(' ')[0];
+
+            // Create FEN with white to move
+            const fenWhite = boardPosition + ' w KQkq - 0 1';
+            const lichessFormattedFenWhite = fenWhite.replace(/ /g, '_');
+            const lichessUrlWhite = `https://lichess.org/analysis/${lichessFormattedFenWhite}`;
+
+            // Create FEN with black to move
+            const fenBlack = boardPosition + ' b KQkq - 0 1';
+            const lichessFormattedFenBlack = fenBlack.replace(/ /g, '_');
+            const lichessUrlBlack = `https://lichess.org/analysis/${lichessFormattedFenBlack}`;
+
+            // Update white to move link
+            lichessUrlLinkWhite.href = lichessUrlWhite;
+            lichessUrlLinkWhite.textContent = lichessUrlWhite;
+
+            // Update black to move link
+            lichessUrlLinkBlack.href = lichessUrlBlack;
+            lichessUrlLinkBlack.textContent = lichessUrlBlack;
+
+            // Show the display
+            lichessUrlDisplay.style.display = 'block';
+
+            console.log('Lichess URLs updated:');
+            console.log('White to move:', lichessUrlWhite);
+            console.log('Black to move:', lichessUrlBlack);
+        }
+
+        // Function to copy Lichess URL to clipboard
+        function copyLichessUrl(side) {
+            let lichessUrlLink;
+            let message;
+
+            if (side === 'white') {
+                lichessUrlLink = document.getElementById('lichessUrlLinkWhite');
+                message = 'White to move URL copied!';
+            } else if (side === 'black') {
+                lichessUrlLink = document.getElementById('lichessUrlLinkBlack');
+                message = 'Black to move URL copied!';
+            } else {
+                // Fallback for backward compatibility
+                lichessUrlLink = document.getElementById('lichessUrlLinkWhite');
+                message = 'Lichess URL copied to clipboard!';
+            }
+
+            const url = lichessUrlLink.textContent;
+
+            navigator.clipboard.writeText(url).then(
+                () => {
+                    showTooltip(message);
+                }).catch(err => {
+                    console.error('Failed to copy Lichess URL: ', err);
+                    showTooltip('Copy failed. Try again.');
+                });
+        }
+
+        // Function to update URL parameter to reflect current FEN
+        function updateUrlParameter(fenString) {
+            // Convert spaces to commas for cleaner URLs
+            const fenWithCommas = fenString.replace(/ /g, ',');
+
+            // Build the shareable link (no need to encode since commas are URL-safe)
+            const shareableLink = `${window.location.origin}${window.location.pathname}?${fenWithCommas}`;
+
+            // Update URL without reloading
+            window.history.replaceState({}, '', shareableLink);
+
+            console.log('♟️ URL updated:', shareableLink);
+        }
+
+        // Function to copy shareable link to clipboard
+        async function copyShareableFenLink() {
+            const fenDisplay = document.getElementById('fenDisplay');
+            let fen = fenDisplay.value.trim();
+
+            // If FEN input is empty, try to get it from lastLoadedFen (works offline)
+            if (!fen && lastLoadedFen) {
+                fen = lastLoadedFen;
+            }
+
+            if (!fen) {
+                showTooltip('No FEN to share - build a position first');
+                return;
+            }
+
+            // Convert spaces to commas for cleaner URLs
+            // Example: r1bqkbnr/.../RNB1K2R b KQkq - 0 6 -> r1bqkbnr/.../RNB1K2R,b,KQkq,-,0,6
+            const fenWithCommas = fen.replace(/ /g, ',');
+
+            // Build the shareable link (no need to encode since commas are URL-safe)
+            const shareableLink = `${window.location.origin}${window.location.pathname}?${fenWithCommas}`;
+
+            // Copy to clipboard
+            try {
+                await navigator.clipboard.writeText(shareableLink);
+                showTooltip('Shareable link copied to clipboard!');
+                console.log('♟️ Shareable link:', shareableLink);
+            } catch (err) {
+                console.error('Failed to copy shareable link:', err);
+                showTooltip('Failed to copy link');
+            }
+        }
+
+        // Function to save FEN to Firebase clipboardManager/FenBuilder (only when online)
+        async function saveFenToFirebase(fenString) {
+            // Skip if offline - no error messages
+            if (!navigator.onLine) {
+                console.log('Offline - skipping Firebase save');
+                return;
+            }
+
+            // Skip if Firebase not initialized
+            if (!window.firebaseDatabase || !window.firebaseRef || !window.firebaseSet) {
+                console.log('Firebase not available - skipping save');
+                return;
+            }
+
+            try {
+                // Format as FEN variant
+                const fenVariant = '[Variant "From Position"][FEN "' + fenString + '"]';
+
+                // Save to Firebase
+                const fenBuilderRef = window.firebaseRef(window.firebaseDatabase, 'clipboardManager/FenBuilder');
+                await window.firebaseSet(fenBuilderRef, fenVariant);
+
+                console.log('FEN saved to Firebase clipboardManager/FenBuilder:', fenVariant);
+
+            } catch (error) {
+                // Silently fail when offline or network error
+                console.log('Firebase save skipped (network issue)');
+            }
+        }
+        
+        // Function to show a temporary tooltip
+        function showTooltip(message) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = message;
+            tooltip.classList.add('show');
+            
+            // Hide after 2 seconds
+            setTimeout(() => {
+                tooltip.classList.remove('show');
+            }, 2000);
+        }
+        
+        // Function to switch input mode
+        function switchInputMode(mode) {
+            inputMode = mode;
+            
+            const writeInputSection = document.getElementById('writeInputSection');
+            
+            if (mode === 'addPieces') {
+                writeInputSection.style.display = 'none';
+                showTooltip('Switched to Add Pieces mode');
+            } else if (mode === 'writeInput') {
+                writeInputSection.style.display = 'block';
+                showTooltip('Switched to Write Input mode - use P,N,B,R,Q,K,p,n,b,r,q,k keys');
+                // Focus the document so keyboard input works immediately
+                document.body.focus();
+            }
+            
+            console.log('Input mode switched to:', mode);
+        }
+
+        // Function to switch FEN perspective
+        function switchFenPerspective(perspective) {
+            fenPerspective = perspective;
+            console.log('FEN perspective switched to:', perspective);
+            
+            if (perspective === 'nonflipped') {
+                showTooltip('FEN will be read from White\'s perspective');
+            } else {
+                showTooltip('FEN will be read from Black\'s perspective and converted');
+            }
+        }
+
+        // Function to convert flipped FEN to normal perspective
+        function convertFlippedFen(fenString) {
+            try {
+                // Extract just the position part (before any spaces)
+                const positionPart = fenString.split(' ')[0];
+                
+                if (!positionPart) {
+                    throw new Error('Invalid FEN position');
+                }
+                
+                // Split into ranks
+                const ranks = positionPart.split('/');
+                
+                if (ranks.length !== 8) {
+                    throw new Error('FEN must have exactly 8 ranks separated by /');
+                }
+                
+                // Reverse the ranks and reverse each rank (no case swapping)
+                const convertedRanks = ranks.reverse().map(rank => {
+                    return rank.split('').reverse().join('');
+                });
+                
+                // Join back together
+                const convertedPosition = convertedRanks.join('/');
+                
+                // Preserve the rest of the FEN string or add defaults
+                const fenParts = fenString.split(' ');
+                if (fenParts.length > 1) {
+                    fenParts[0] = convertedPosition;
+                    return fenParts.join(' ');
+                } else {
+                    return convertedPosition + ' w KQkq - 0 1';
+                }
+                
+            } catch (error) {
+                console.error('Error converting flipped FEN:', error);
+                throw error;
+            }
+        }
+
+        // Function to update add/remove mode UI and feedback
+        function updateAddRemoveMode() {
+            const instructions = document.getElementById('writeInputInstructions');
+            if (addRemoveMode === 'add') {
+                instructions.textContent = 'ADD mode: Keys add pieces to board | Toggle to switch to REMOVE mode';
+                showTooltip('Switched to ADD mode');
+            } else {
+                instructions.textContent = 'REMOVE mode: Keys remove nearest matching piece | Toggle to switch to ADD mode';
+                showTooltip('Switched to REMOVE mode');
+            }
+            console.log('Add/Remove mode:', addRemoveMode);
+        }
+
+        // Function to find nearest piece of a specific type and remove it
+        function removeNearestPiece(pieceType) {
+            const currentPosition = board.position();
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            const ranks = [1, 2, 3, 4, 5, 6, 7, 8];
+            
+            // Find all squares with the specified piece type
+            const matchingSquares = [];
+            for (let rank of ranks) {
+                for (let file of files) {
+                    const square = file + rank;
+                    if (currentPosition[square] === pieceType) {
+                        matchingSquares.push(square);
+                    }
+                }
+            }
+            
+            if (matchingSquares.length === 0) {
+                showTooltip(`No ${pieceType} pieces found on board`);
+                return false;
+            }
+            
+            // For now, remove the first found piece (you could implement distance logic here)
+            // We'll use the order: center squares first, then work outward
+            const centerDistance = (square) => {
+                const file = square.charCodeAt(0) - 97; // a=0, b=1, etc.
+                const rank = parseInt(square[1]) - 1; // 1=0, 2=1, etc.
+                const centerFile = 3.5; // between d and e
+                const centerRank = 3.5; // between 4 and 5
+                return Math.abs(file - centerFile) + Math.abs(rank - centerRank);
+            };
+            
+            // Sort by distance from center, remove the most central piece
+            matchingSquares.sort((a, b) => centerDistance(a) - centerDistance(b));
+            const squareToRemove = matchingSquares[0];
+            
+            delete currentPosition[squareToRemove];
+            board.position(currentPosition);
+            
+            // Remove from history if it exists
+            const whiteIndex = whitePieceHistory.indexOf(squareToRemove);
+            if (whiteIndex > -1) whitePieceHistory.splice(whiteIndex, 1);
+            
+            const blackIndex = blackPieceHistory.indexOf(squareToRemove);
+            if (blackIndex > -1) blackPieceHistory.splice(blackIndex, 1);
+            
+            showTooltip(`Removed ${pieceType} from ${squareToRemove}`);
+            console.log(`Removed ${pieceType} from ${squareToRemove}`);
+            return true;
+        }
+
+        // Function to handle piece input via keyboard
+        function handlePieceKeyInput(key) {
+            const pieceMap = {
+                'P': 'wP', 'N': 'wN', 'B': 'wB', 'R': 'wR', 'Q': 'wQ', 'K': 'wK',
+                'p': 'bP', 'n': 'bN', 'b': 'bB', 'r': 'bR', 'q': 'bQ', 'k': 'bK'
+            };
+            
+            const piece = pieceMap[key];
+            if (piece) {
+                if (addRemoveMode === 'add') {
+                    // Add piece using existing logic
+                    const isWhite = piece.startsWith('w');
+                    const originalRank = isWhite ? 4 : 5;
+                    addPieceToRank(piece, originalRank);
+                } else {
+                    // Remove nearest piece of this type
+                    removeNearestPiece(piece);
+                }
+                return true;
+            }
+            return false;
+        }
+
+        // Track currently hovered button
+        let currentlyHoveredButton = null;
+
+        // Track mouse position over fenDisplay input
+        let fenDisplayMousePosition = null;
+        let isMouseOverFenDisplay = false;
+
+        // Track last auto-append button and time for hover delay (only applies to same button)
+        let lastAutoAppendButton = null;
+        let lastAutoAppendTime = 0;
+        const AUTO_APPEND_DELAY = 500; // 500ms delay between auto-appends on SAME button
+
+        // Add hover tracking to all buttons in the FEN builder sections
+        function setupButtonHoverTracking() {
+            const buttonSections = [
+                '.numbers-grid button',
+                '.pieces-grid button',
+                '.backspace-btn',
+                '.clear-btn',
+                'button[onclick="loadFenOnBoard()"]'
+            ];
+
+            buttonSections.forEach(selector => {
+                document.querySelectorAll(selector).forEach(button => {
+                    button.addEventListener('mouseenter', function() {
+                        currentlyHoveredButton = this;
+
+                        // Skip if button is disabled
+                        if (this.disabled) {
+                            return;
+                        }
+
+                        // Check if this is the same button as last time AND if delay time hasn't passed
+                        const currentTime = Date.now();
+                        if (lastAutoAppendButton === this && currentTime - lastAutoAppendTime < AUTO_APPEND_DELAY) {
+                            return; // Skip this hover event - same button too soon
+                        }
+
+                        // Auto-trigger on hover for FEN builder buttons
+                        const onclickAttr = this.getAttribute('onclick');
+
+                        if (onclickAttr && onclickAttr.includes('appendToFen')) {
+                            const match = onclickAttr.match(/appendToFen\('(.+?)'\)/);
+                            if (match && match[1]) {
+                                appendToFen(match[1]);
+                                lastAutoAppendButton = this; // Track which button was triggered
+                                lastAutoAppendTime = currentTime; // Update last append time
+                            }
+                        } else if (onclickAttr && onclickAttr.includes('backspaceFen')) {
+                            // Auto-backspace on hover
+                            backspaceFen();
+                            lastAutoAppendButton = this; // Track which button was triggered
+                            lastAutoAppendTime = currentTime; // Update last append time
+                        }
+                    });
+                    button.addEventListener('mouseleave', function() {
+                        if (currentlyHoveredButton === this) {
+                            currentlyHoveredButton = null;
+                        }
+                    });
+                });
+            });
+        }
+
+        // Setup mouse tracking for fenDisplay input
+        function setupFenDisplayMouseTracking() {
+            const fenDisplay = document.getElementById('fenDisplay');
+
+            fenDisplay.addEventListener('mouseenter', function() {
+                isMouseOverFenDisplay = true;
+            });
+
+            fenDisplay.addEventListener('mouseleave', function() {
+                isMouseOverFenDisplay = false;
+                fenDisplayMousePosition = null;
+            });
+
+            fenDisplay.addEventListener('mousemove', function(event) {
+                fenDisplayMousePosition = event.clientX;
+            });
+        }
+
+        // Function to get cursor position from mouse X coordinate
+        function getCursorPositionFromMouse(input, mouseX) {
+            const inputRect = input.getBoundingClientRect();
+            const relativeX = mouseX - inputRect.left - parseInt(getComputedStyle(input).paddingLeft);
+
+            // Use a temporary span to measure text width
+            const span = document.createElement('span');
+            span.style.font = getComputedStyle(input).font;
+            span.style.visibility = 'hidden';
+            span.style.position = 'absolute';
+            span.style.whiteSpace = 'pre';
+            document.body.appendChild(span);
+
+            const text = input.value;
+            let closestPosition = 0;
+            let closestDistance = Math.abs(relativeX);
+
+            // Find the character position closest to the mouse
+            for (let i = 0; i <= text.length; i++) {
+                span.textContent = text.substring(0, i);
+                const textWidth = span.offsetWidth;
+                const distance = Math.abs(textWidth - relativeX);
+
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestPosition = i;
+                }
+            }
+
+            document.body.removeChild(span);
+            return closestPosition;
+        }
+
+        // Add keyboard event listeners
+        document.addEventListener('keydown', function(event) {
+            const fenDisplay = document.getElementById('fenDisplay');
+
+            // Only handle piece keys if we're in writeInput mode
+            if (inputMode === 'writeInput') {
+                const handled = handlePieceKeyInput(event.key);
+                if (handled) {
+                    event.preventDefault();
+                    return;
+                }
+            }
+
+            // Handle Escape key
+            if (event.key === 'Escape') {
+                // If mouse is over fenDisplay, move cursor to mouse position
+                if (isMouseOverFenDisplay && fenDisplayMousePosition !== null) {
+                    const cursorPos = getCursorPositionFromMouse(fenDisplay, fenDisplayMousePosition);
+                    fenDisplay.setSelectionRange(cursorPos, cursorPos);
+                    fenDisplay.focus();
+                    event.preventDefault();
+                    return;
+                }
+
+                // Otherwise, click the currently hovered button
+                if (currentlyHoveredButton) {
+                    currentlyHoveredButton.click();
+                    event.preventDefault();
+                }
+                return;
+            }
+
+            // If we're in writeInput mode, we've already handled piece keys above
+            // Don't allow FEN input in writeInput mode
+            if (inputMode === 'writeInput') {
+                return;
+            }
+
+            // Make sure the input is focused for FEN keyboard input (only in addPieces mode)
+            if (document.activeElement !== fenDisplay) {
+                return;
+            }
+
+            // Handle other special keys for FEN input (only in addPieces mode)
+            if (event.key === 'Enter') {
+                // Check if we're focused on the fenDisplay input
+                if (document.activeElement === fenDisplay && fenDisplay.value.trim()) {
+                    // Show confirmation dialog first
+                    if (confirm('Load this FEN position on the board?')) {
+                        // User confirmed, trigger the Load on Board button
+                        loadFenOnBoard();
+                    }
+                } else {
+                    // Original behavior: copy to clipboard if fenDisplay is focused but might be empty
+                    copyFenToClipboard();
+                }
+                event.preventDefault();
+            }
+        });
+        
+        // Function to update the tally display
+        function updateTallyDisplay() {
+            const fenDisplay = document.getElementById('fenDisplay');
+            const tallyValuesRow = document.getElementById('tallyValuesRow');
+            const fen = fenDisplay.value;
+
+            // Split the FEN into ranks
+            const ranks = fen.split('/');
+
+            // Reset all tally cells to zero
+            for (let i = 1; i <= 8; i++) {
+                const cell = tallyValuesRow.cells[i];
+                cell.textContent = '0';
+                cell.className = '';
+            }
+
+            // Track if we just completed a rank
+            let justCompletedRank = false;
+
+            // Update tally for each rank that exists in the FEN
+            for (let i = 0; i < ranks.length && i < 8; i++) {
+                const rankContent = ranks[i];
+                let rankTally = 0;
+
+                // Calculate tally for this rank
+                for (let j = 0; j < rankContent.length; j++) {
+                    const char = rankContent[j];
+                    if (!isNaN(char)) {
+                        rankTally += parseInt(char, 10);
+                    } else if ('rnbqkpRNBQKP'.includes(char)) {
+                        rankTally += 1;
+                    }
+                }
+
+                // Update the tally cell for this rank
+                const cell = tallyValuesRow.cells[i + 1]; // +1 for the header cell
+                cell.textContent = rankTally;
+
+                // Apply styling based on tally value
+                if (rankTally === 8) {
+                    cell.className = 'tally-complete';
+
+                    // Check if this is the current (last) rank and just completed
+                    if (i === ranks.length - 1 && !fen.endsWith('/')) {
+                        justCompletedRank = true;
+                    }
+                } else if (rankTally > 8) {
+                    cell.className = 'tally-over';
+                } else if (rankTally > 0) {
+                    cell.className = 'tally-under';
+                }
+
+                // Highlight the current rank we're working on
+                if (i === ranks.length - 1 && rankContent !== '') {
+                    cell.style.fontWeight = 'bold';
+                    tallyValuesRow.cells[0].textContent = 'Tally (' + (i + 1) + ')';
+                }
+            }
+
+            // Auto-add "/" if we just completed a rank
+            if (justCompletedRank && ranks.length < 8) {
+                fenDisplay.value += '/';
+                // Recursively update tally to show the new rank
+                setTimeout(() => updateTallyDisplay(), 0);
+            }
+
+            // Check if all 8 ranks are complete (each has tally of 8)
+            let allRanksComplete = false;
+            if (ranks.length === 8) {
+                allRanksComplete = true;
+                for (let i = 1; i <= 8; i++) {
+                    const cell = tallyValuesRow.cells[i];
+                    if (cell.textContent !== '8') {
+                        allRanksComplete = false;
+                        break;
+                    }
+                }
+            }
+
+            // Enable/disable piece buttons based on completion
+            const pieceButtons = document.querySelectorAll('.white-piece, .black-piece');
+            pieceButtons.forEach(btn => {
+                btn.disabled = allRanksComplete;
+                btn.style.opacity = allRanksComplete ? '0.5' : '1';
+                btn.style.cursor = allRanksComplete ? 'not-allowed' : 'pointer';
+            });
+        }
+        
+        // Add event listener for Show FEN Variant button
+        document.getElementById('showFenVariant').addEventListener('click', function() {
+          // Clear myTextArea first
+          document.getElementById('myTextArea').value = '';
+          
+          // Add a 500ms delay to ensure the board has been updated before extracting the FEN
+          setTimeout(function() {
+            // Get current position from lastLoadedFen or FEN input (works offline without chessboard.js)
+            var completeFen = lastLoadedFen || document.getElementById('fenDisplay').value.trim();
+
+            // If still empty, use starting position
+            if (!completeFen) {
+                completeFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+            }
+
+            // Ensure FEN has all parts (add defaults if just board position)
+            if (!completeFen.includes(' ')) {
+                completeFen = completeFen + ' w KQkq - 0 1';
+            }
+            
+            // Format the FEN variant string
+            var fenVariant = '[Variant "From Position"][FEN "' + completeFen + '"]';
+            
+            // Display in myTextArea
+            document.getElementById('myTextArea').value = fenVariant;
+            
+            // Copy to clipboard silently
+            navigator.clipboard.writeText(fenVariant).then(
+              () => {
+                console.log('DEBUG: Successfully copied board FEN to clipboard');
+                showTooltip('Board converted and copied to clipboard!');
+              }).catch(err => {
+                console.error('DEBUG: Failed to copy board FEN to clipboard:', err);
+                showTooltip('Board converted but clipboard copy failed');
+              });
+            
+            console.log('FEN Variant displayed:', fenVariant);
+          }, 500);
+        });
+
+        // Add event listener for Convert FEN to Variant button
+        document.getElementById('convertFenToVariant').addEventListener('click', function() {
+          console.log('DEBUG: Convert FEN to Variant button clicked');
+          
+          // Get textarea element
+          const textArea = document.getElementById('myTextArea');
+          console.log('DEBUG: myTextArea element found:', !!textArea);
+          
+          if (!textArea) {
+            console.error('DEBUG: myTextArea element not found!');
+            showTooltip('Error: Output textarea not found');
+            return;
+          }
+          
+          // Try to read from clipboard first, fallback to textarea content
+          navigator.clipboard.readText().then(clipboardContent => {
+            console.log('DEBUG: Successfully read from clipboard:', clipboardContent);
+            console.log('DEBUG: Clipboard content length:', clipboardContent.length);
+            
+            let contentToConvert = clipboardContent.trim();
+            
+            // If clipboard is empty, try textarea content
+            if (!contentToConvert) {
+              const textAreaContent = textArea.value.trim();
+              console.log('DEBUG: Clipboard empty, trying textarea content:', textAreaContent);
+              contentToConvert = textAreaContent;
+            } else {
+              // Put clipboard content into textarea first
+              textArea.value = contentToConvert;
+              console.log('DEBUG: Put clipboard content into textarea');
+            }
+            
+            // If still empty, show message
+            if (!contentToConvert) {
+              console.log('DEBUG: Both clipboard and textarea are empty');
+              showTooltip('Both clipboard and textarea are empty - please copy some FEN content first');
+              return;
+            }
+            
+            try {
+              // Format the FEN variant string
+              const fenVariant = '[Variant "From Position"][FEN "' + contentToConvert + '"]';
+              console.log('DEBUG: Final fenVariant:', fenVariant);
+              
+              // Put the wrapped content back into textarea
+              textArea.value = fenVariant;
+              console.log('DEBUG: Successfully set textarea value back');
+              
+              // Copy to clipboard silently
+              navigator.clipboard.writeText(fenVariant).then(
+                () => {
+                  console.log('DEBUG: Successfully copied to clipboard');
+                  showTooltip('Converted from clipboard and copied back!');
+                }).catch(err => {
+                  console.error('DEBUG: Failed to copy to clipboard:', err);
+                  showTooltip('Converted from clipboard but copy back failed');
+                });
+              
+              console.log('DEBUG: Conversion completed successfully');
+              
+            } catch (error) {
+              console.error('DEBUG: Error during conversion:', error);
+              showTooltip('Error during conversion: ' + error.message);
+            }
+            
+          }).catch(err => {
+            console.error('DEBUG: Failed to read from clipboard:', err);
+            console.log('DEBUG: Falling back to textarea content');
+            
+            // Fallback to original textarea-only behavior
+            const textAreaContent = textArea.value.trim();
+            console.log('DEBUG: Fallback textarea content:', textAreaContent);
+            
+            if (!textAreaContent) {
+              console.log('DEBUG: Textarea is empty');
+              showTooltip('Clipboard access failed and textarea is empty - please paste FEN content first');
+              return;
+            }
+            
+            try {
+              // Format the FEN variant string using textarea content
+              const fenVariant = '[Variant "From Position"][FEN "' + textAreaContent + '"]';
+              console.log('DEBUG: Final fenVariant (fallback):', fenVariant);
+              
+              // Put the wrapped content back into textarea
+              textArea.value = fenVariant;
+              console.log('DEBUG: Successfully set textarea value back (fallback)');
+              
+              // Copy to clipboard silently
+              navigator.clipboard.writeText(fenVariant).then(
+                () => {
+                  console.log('DEBUG: Successfully copied to clipboard (fallback)');
+                  showTooltip('Converted and copied to clipboard!');
+                }).catch(copyErr => {
+                  console.error('DEBUG: Failed to copy to clipboard (fallback):', copyErr);
+                  showTooltip('Converted but clipboard copy failed');
+                });
+              
+              console.log('DEBUG: Conversion completed successfully (fallback)');
+              
+            } catch (error) {
+              console.error('DEBUG: Error during conversion (fallback):', error);
+              showTooltip('Error during conversion: ' + error.message);
+            }
+          });
+        });
+
+        // Add event listener for Syntax Convert FEN Positions button
+        document.getElementById('syntaxConvertFenPositions').addEventListener('click', function() {
+          console.log('DEBUG: Syntax Convert FEN Positions button clicked');
+
+          // Get textarea element
+          const textArea = document.getElementById('myTextArea');
+
+          if (!textArea) {
+            console.error('DEBUG: myTextArea element not found!');
+            showTooltip('Error: Output textarea not found');
+            return;
+          }
+
+          // Get content from textarea
+          const content = textArea.value.trim();
+
+          if (!content) {
+            console.log('DEBUG: Textarea is empty');
+            showTooltip('Textarea is empty - please add FEN positions first');
+            return;
+          }
+
+          try {
+            // Split content by lines, preserving empty lines
+            const lines = content.split('\n');
+
+            // Function to detect if a line contains a valid FEN position
+            const isFenPosition = (line) => {
+              const trimmed = line.trim();
+              // More flexible FEN validation: must contain board position with slashes and chess pieces
+              // Accepts both full FEN and just board position
+              const fenPattern = /^[rnbqkpRNBQKP1-8\/]+/;
+              return fenPattern.test(trimmed) && trimmed.includes('/');
+            };
+
+            // Process each line - only convert lines that are FEN positions
+            const processedLines = lines.map(line => {
+              const trimmedLine = line.trim();
+
+              if (!trimmedLine) {
+                return line; // Keep empty lines as-is
+              }
+
+              if (isFenPosition(trimmedLine)) {
+                return `[Variant "From Position"][FEN "${trimmedLine}"]`;
+              } else {
+                return line; // Keep non-FEN lines unchanged
+              }
+            });
+
+            // Join all lines with newlines
+            const result = processedLines.join('\n');
+
+            console.log('DEBUG: Converted result:', result);
+
+            // Put the result back into textarea
+            textArea.value = result;
+
+            // Copy to clipboard silently
+            navigator.clipboard.writeText(result).then(
+              () => {
+                console.log('DEBUG: Successfully copied converted result to clipboard');
+                showTooltip('FEN positions converted to PGN variant format and copied to clipboard!');
+              }).catch(err => {
+                console.error('DEBUG: Failed to copy to clipboard:', err);
+                showTooltip('FEN positions converted but clipboard copy failed');
+              });
+
+            console.log('DEBUG: Syntax conversion completed successfully');
+
+          } catch (error) {
+            console.error('DEBUG: Error during syntax conversion:', error);
+            showTooltip('Error during conversion: ' + error.message);
+          }
+        });
+
+        // Function to copy textarea content to clipboard
+        function copyTextAreaToClipboard() {
+            const textArea = document.getElementById('myTextArea');
+            const textToCopy = textArea.value.trim();
+            
+            // If empty, show a message
+            if (!textToCopy) {
+                showTooltip('Textarea is empty');
+                return;
+            }
+            
+            // Copy the textarea content to clipboard
+            navigator.clipboard.writeText(textToCopy).then(
+                () => {
+                    showTooltip('Copied to clipboard!');
+                }).catch(err => {
+                    console.error('Failed to copy to clipboard: ', err);
+                    showTooltip('Copy failed. Try again.');
+                });
+            
+            textArea.focus();
+        }
+
+        // Function to load FEN variant from textarea onto the board
+        function loadFenVariantOnBoard() {
+            const textArea = document.getElementById('myTextArea');
+            const content = textArea.value.trim();
+            
+            // If empty, show a message
+            if (!content) {
+                showTooltip('Textarea is empty');
+                return;
+            }
+            
+            try {
+                // Extract FEN from variant format like [Variant "From Position"][FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
+                const fenMatch = content.match(/\[FEN\s+"([^"]+)"\]/);
+                
+                if (fenMatch && fenMatch[1]) {
+                    const fenString = fenMatch[1];
+                    console.log('Extracted FEN:', fenString);
+                    
+                    // Extract just the position part (before first space) for chessboard.js
+                    const positionPart = fenString.split(' ')[0];
+                    
+                    // Load position on board
+                    board.position(positionPart);
+                    
+                    showTooltip('FEN variant loaded on board!');
+                    console.log('Loaded FEN variant on board:', positionPart);
+                } else {
+                    // If no FEN variant format found, try to load it as a plain FEN
+                    const positionPart = content.split(' ')[0];
+                    board.position(positionPart);
+                    showTooltip('Plain FEN loaded on board!');
+                    console.log('Loaded plain FEN on board:', positionPart);
+                }
+            } catch (error) {
+                showTooltip('Invalid FEN format: ' + error.message);
+                console.error('Error loading FEN variant on board:', error);
+            }
+            
+            textArea.focus();
+        }
+
+        // Variable to track board orientation
+        let boardFlipped = false;
+        
+        // Arrays to track the order pieces were added
+        let whitePieceHistory = []; // Stores squares where white pieces were added
+        let blackPieceHistory = []; // Stores squares where black pieces were added
+        
+        // Variable to track input mode
+        let inputMode = 'addPieces'; // 'addPieces' or 'writeInput'
+        let addRemoveMode = 'add'; // 'add' or 'remove'
+        let fenPerspective = 'nonflipped'; // 'nonflipped' or 'flipped'
+
+        // Function to flip the chess board orientation
+        function flipBoard() {
+            board.flip();
+            boardFlipped = !boardFlipped;
+            showTooltip('Board flipped!');
+            
+            console.log('Board orientation flipped. Flipped:', boardFlipped);
+        }
+
+        // Function to reset the board to starting position
+        function resetBoard() {
+            // Set up the standard chess starting position
+            board.position('start');
+            
+            // Clear the piece history
+            whitePieceHistory = [];
+            blackPieceHistory = [];
+            
+            showTooltip('Board reset to starting position!');
+            
+            // Clear the textarea
+            document.getElementById('myTextArea').value = '';
+            
+            console.log('Board reset to starting position');
+        }
+
+        // Function to set up king vs king position
+        function setKingVsKing() {
+            // Clear the board first
+            board.clear();
+            
+            // Clear the piece history
+            whitePieceHistory = [];
+            blackPieceHistory = [];
+            
+            // Set up king vs king position
+            // White king on e1, Black king on e8
+            const kingVsKingPosition = {
+                e1: 'wK',
+                e8: 'bK'
+            };
+            
+            board.position(kingVsKingPosition);
+            showTooltip('King vs King setup!');
+            
+            // Clear the textarea
+            document.getElementById('myTextArea').value = '';
+            
+            console.log('King vs King position set');
+        }
+
+        // Function to find the next available square for white or black pieces with overflow
+        function getNextAvailableSquareForColor(isWhite) {
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            const currentPosition = board.position();
+            
+            // If board is flipped, reverse the file order so pieces fill from right to left visually
+            const orderedFiles = boardFlipped ? [...files].reverse() : files;
+            
+            // Define the rank progression for each color
+            const whiteRanks = [4, 3, 2, 1]; // White: 4→3→2→1
+            const blackRanks = [5, 6, 7, 8]; // Black: 5→6→7→8
+            const ranks = isWhite ? whiteRanks : blackRanks;
+            
+            // Try each rank in order until we find an available square
+            for (let rankIndex = 0; rankIndex < ranks.length; rankIndex++) {
+                const rank = ranks[rankIndex];
+                for (let fileIndex = 0; fileIndex < orderedFiles.length; fileIndex++) {
+                    const square = orderedFiles[fileIndex] + rank;
+                    if (!currentPosition[square]) {
+                        return { square, rank };
+                    }
+                }
+            }
+            
+            return null; // All ranks are full
+        }
+
+        // Legacy function for backward compatibility (still used by clear rank functionality)
+        function getNextAvailableSquareInRank(rank) {
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            const currentPosition = board.position();
+            
+            // If board is flipped, reverse the file order so pieces fill from right to left visually
+            const orderedFiles = boardFlipped ? [...files].reverse() : files;
+            
+            for (let i = 0; i < orderedFiles.length; i++) {
+                const square = orderedFiles[i] + rank;
+                if (!currentPosition[square]) {
+                    return square;
+                }
+            }
+            return null; // Rank is full
+        }
+
+        // Function to add or remove a piece based on current mode
+        function addPieceToRank(piece, originalRank) {
+            if (addRemoveMode === 'remove') {
+                // Remove mode: remove nearest piece of this type
+                removeNearestPiece(piece);
+                return;
+            }
+            
+            // Add mode: use existing add logic
+            const isWhite = piece.startsWith('w');
+            const result = getNextAvailableSquareForColor(isWhite);
+            
+            if (result) {
+                const { square, rank } = result;
+                const currentPosition = board.position();
+                currentPosition[square] = piece;
+                board.position(currentPosition);
+                
+                // Track the piece addition in history
+                if (isWhite) {
+                    whitePieceHistory.push(square);
+                } else {
+                    blackPieceHistory.push(square);
+                }
+                
+                // Show different message if we overflowed to a different rank
+                if (rank === originalRank) {
+                    showTooltip(`${piece} added to ${square}`);
+                } else {
+                    showTooltip(`${piece} added to ${square} (overflowed to rank ${rank})`);
+                }
+                
+                console.log(`Added ${piece} to ${square} on rank ${rank}`, {
+                    originalRank,
+                    actualRank: rank,
+                    whiteHistory: whitePieceHistory,
+                    blackHistory: blackPieceHistory
+                });
+            } else {
+                const colorName = isWhite ? 'white' : 'black';
+                showTooltip(`All ${colorName} ranks are full!`);
+                console.log(`All ${colorName} ranks are full`);
+            }
+        }
+
+        // Function to clear all pieces from a specific rank
+        function clearRank(rank) {
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            const currentPosition = board.position();
+            let clearedCount = 0;
+            
+            files.forEach(file => {
+                const square = file + rank;
+                if (currentPosition[square]) {
+                    delete currentPosition[square];
+                    clearedCount++;
+                    
+                    // Remove from history arrays
+                    const whiteIndex = whitePieceHistory.indexOf(square);
+                    if (whiteIndex > -1) whitePieceHistory.splice(whiteIndex, 1);
+                    
+                    const blackIndex = blackPieceHistory.indexOf(square);
+                    if (blackIndex > -1) blackPieceHistory.splice(blackIndex, 1);
+                }
+            });
+            
+            if (clearedCount > 0) {
+                board.position(currentPosition);
+                showTooltip(`Cleared ${clearedCount} pieces from rank ${rank}`);
+                console.log(`Cleared rank ${rank}`);
+            } else {
+                showTooltip(`Rank ${rank} was already empty`);
+            }
+        }
+
+        // Function to delete the last white piece added
+        function deleteLastWhitePiece() {
+            if (whitePieceHistory.length === 0) {
+                showTooltip('No white pieces to remove');
+                return;
+            }
+            
+            // Get the last square where a white piece was added
+            const lastSquare = whitePieceHistory.pop();
+            const currentPosition = board.position();
+            
+            // Remove the piece from the board
+            if (currentPosition[lastSquare]) {
+                delete currentPosition[lastSquare];
+                board.position(currentPosition);
+                showTooltip(`Removed white piece from ${lastSquare}`);
+                console.log(`Removed white piece from ${lastSquare}`);
+            } else {
+                // Piece was already removed somehow, just remove from history
+                showTooltip(`White piece at ${lastSquare} was already removed`);
+            }
+        }
+
+        // Function to delete the last black piece added
+        function deleteLastBlackPiece() {
+            if (blackPieceHistory.length === 0) {
+                showTooltip('No black pieces to remove');
+                return;
+            }
+            
+            // Get the last square where a black piece was added
+            const lastSquare = blackPieceHistory.pop();
+            const currentPosition = board.position();
+            
+            // Remove the piece from the board
+            if (currentPosition[lastSquare]) {
+                delete currentPosition[lastSquare];
+                board.position(currentPosition);
+                showTooltip(`Removed black piece from ${lastSquare}`);
+                console.log(`Removed black piece from ${lastSquare}`);
+            } else {
+                // Piece was already removed somehow, just remove from history
+                showTooltip(`Black piece at ${lastSquare} was already removed`);
+            }
+        }
+
+        // Check URL parameters on page load
+        function checkUrlParameters() {
+            // Get everything after the ? in the URL
+            const queryString = window.location.search;
+
+            if (!queryString || queryString.length <= 1) return null;
+
+            // Remove the leading '?' and decode the URL
+            let param = decodeURIComponent(queryString.substring(1));
+
+            // Convert comma-separated format to space-separated FEN
+            // Example: r1bqkbnr/.../RNB1K2R,b,KQkq,-,0,6 -> r1bqkbnr/.../RNB1K2R b KQkq - 0 6
+            param = param.replace(/,/g, ' ');
+
+            // Clean up any extra whitespace
+            const cleanParam = param.trim();
+
+            console.log('♟️ URL parameter found (original):', decodeURIComponent(queryString.substring(1)));
+            console.log('♟️ URL parameter found (converted):', cleanParam);
+            return cleanParam;
+        }
+
+        // Add an input event listener to the FEN display
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DEBUG: DOM Content Loaded');
+
+            const fenDisplay = document.getElementById('fenDisplay');
+
+            // Check if URL parameter exists and load it
+            const urlParam = checkUrlParameters();
+
+            if (urlParam) {
+                console.log('♟️ Loading FEN from URL parameter:', urlParam);
+
+                // Put the FEN in the input field
+                fenDisplay.value = urlParam;
+
+                // Update the tally display
+                updateTallyDisplay();
+
+                // Automatically load it on the board after a short delay
+                setTimeout(function() {
+                    loadFenOnBoard();
+                    showTooltip('FEN loaded from URL!');
+                }, 500);
+            } else {
+                // No URL parameter, just focus the input
+                fenDisplay.focus();
+            }
+
+            // Add an input event listener to update the tally when typing
+            fenDisplay.addEventListener('input', function() {
+                updateTallyDisplay();
+            });
+
+            // Add event listener for the global add/remove toggle
+            document.getElementById('globalAddRemoveToggle').addEventListener('change', function() {
+                addRemoveMode = this.checked ? 'remove' : 'add';
+                updateAddRemoveMode();
+            });
+
+            // Setup button hover tracking for Escape key functionality
+            setupButtonHoverTracking();
+
+            // Setup mouse tracking for fenDisplay input
+            setupFenDisplayMouseTracking();
+
+            // Debug: Check if our new button exists
+            const convertButton = document.getElementById('convertFenToVariant');
+            console.log('DEBUG: convertFenToVariant button found:', !!convertButton);
+            if (convertButton) {
+                console.log('DEBUG: Button element:', convertButton);
+                console.log('DEBUG: Button text:', convertButton.textContent);
+            } else {
+                console.error('DEBUG: convertFenToVariant button NOT found!');
+            }
+
+            // Initial update
+            updateTallyDisplay();
+        });
+
+        // Function to read out the current board position using text-to-speech
+        function readBoardPosition() {
+            const currentPosition = board.position();
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            const ranks = [8, 7, 6, 5, 4, 3, 2, 1]; // Read from rank 8 down to rank 1
+            
+            // Piece name mapping
+            const pieceNames = {
+                'wP': 'White Pawn',
+                'wN': 'White Knight', 
+                'wB': 'White Bishop',
+                'wR': 'White Rook',
+                'wQ': 'White Queen',
+                'wK': 'White King',
+                'bP': 'Black Pawn',
+                'bN': 'Black Knight',
+                'bB': 'Black Bishop', 
+                'bR': 'Black Rook',
+                'bQ': 'Black Queen',
+                'bK': 'Black King'
+            };
+            
+            let positionText = 'Current board position: ';
+            let piecesFound = false;
+            
+            // Go through each rank and file to describe the position
+            for (let rank of ranks) {
+                for (let file of files) {
+                    const square = file + rank;
+                    const piece = currentPosition[square];
+                    
+                    if (piece) {
+                        const pieceName = pieceNames[piece];
+                        const squareName = file.toUpperCase() + rank;
+                        positionText += `${pieceName} on ${squareName}, `;
+                        piecesFound = true;
+                    }
+                }
+            }
+            
+            if (!piecesFound) {
+                positionText = 'The board is empty.';
+            } else {
+                // Remove the trailing comma and space
+                positionText = positionText.slice(0, -2) + '.';
+            }
+            
+            // Use text-to-speech to read the position
+            speakText(positionText);
+            showTooltip('Reading board position...');
+            
+            console.log('Board position text:', positionText);
+        }
+        
+        // Function to get the best available voice
+        function getBestVoice() {
+            const voices = speechSynthesis.getVoices();
+            
+            // First preference: Google voices
+            let preferredVoice = voices.find(voice => 
+                voice.lang.includes('en-') && voice.name.includes('Google')
+            );
+            
+            // Second preference: Other enhanced voices
+            if (!preferredVoice) {
+                preferredVoice = voices.find(voice => 
+                    voice.lang.includes('en-') && (
+                        voice.name.includes('Enhanced') ||
+                        voice.name.includes('Premium')
+                    )
+                );
+            }
+            
+            // Fallback: Any English voice
+            if (!preferredVoice) {
+                preferredVoice = voices.find(voice => voice.lang.includes('en-'));
+            }
+            
+            return preferredVoice;
+        }
+        
+        // Function to speak text using Web Speech API
+        function speakText(text) {
+            if (!text) return;
+            
+            // Cancel any ongoing speech
+            speechSynthesis.cancel();
+            
+            // Function to actually speak after voices are loaded
+            const doSpeak = () => {
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                // Configure speech settings
+                utterance.lang = 'en-US';
+                utterance.rate = 0.8; // Slightly slower for better comprehension
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                
+                // Get the best voice
+                const preferredVoice = getBestVoice();
+                if (preferredVoice) {
+                    utterance.voice = preferredVoice;
+                    console.log('Using voice:', preferredVoice.name);
+                }
+                
+                // Add event handlers
+                utterance.onstart = () => {
+                    console.log('Speech started');
+                };
+                
+                utterance.onend = () => {
+                    console.log('Speech ended');
+                    showTooltip('Finished reading position');
+                };
+                
+                utterance.onerror = (event) => {
+                    console.error('Speech error:', event);
+                    showTooltip('Speech error occurred');
+                };
+                
+                speechSynthesis.speak(utterance);
+            };
+            
+            // Check if voices are loaded, if not wait for them
+            const voices = speechSynthesis.getVoices();
+            if (voices.length === 0) {
+                // Voices not loaded yet, wait for the voiceschanged event
+                speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true });
+            } else {
+                // Voices are loaded, speak immediately
+                doSpeak();
+            }
+        }
+
+        // ============================================
+        // IMAGE LOADING FUNCTIONALITY
+        // ============================================
+
+        let imageSizeState = 'small'; // 'small', 'regular', 'large'
+
+        // Handle image file selection
+        document.getElementById('imageFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Check if it's an image
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file (PNG, JPG, etc.)');
+                return;
+            }
+
+            // Create object URL and display image
+            const objectURL = URL.createObjectURL(file);
+            const imagePreview = document.getElementById('imagePreview');
+            const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+
+            imagePreview.src = objectURL;
+            imagePreviewContainer.style.display = 'block';
+
+            // Update button text
+            document.getElementById('loadImageBtn').textContent = '🖼️ ' + file.name;
+
+            // Reset size state
+            imageSizeState = 'small';
+            imagePreview.style.maxHeight = '150px';
+        });
+
+        // Toggle image size: small -> regular -> large -> small
+        function toggleImageSize() {
+            const imagePreview = document.getElementById('imagePreview');
+            if (imageSizeState === 'small') {
+                imagePreview.style.maxHeight = '400px';
+                imageSizeState = 'regular';
+            } else if (imageSizeState === 'regular') {
+                imagePreview.style.maxHeight = 'none';
+                imageSizeState = 'large';
+            } else {
+                imagePreview.style.maxHeight = '150px';
+                imageSizeState = 'small';
+            }
+        }
+
+        // Close image preview
+        function closeImagePreview() {
+            const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+            imagePreviewContainer.style.display = 'none';
+            document.getElementById('loadImageBtn').textContent = '🖼️ Load Reference Image';
+        }
+    </script>
+</body>
+</html>
+<!-- partial -->
+  
+</body>
+</html>
+
+
