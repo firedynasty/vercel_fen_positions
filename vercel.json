@@ -1,16 +1,23 @@
 {
-  "builds": [
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" }
+  ],
+  "routes": [
     {
-      "src": "index.html",
-      "use": "@vercel/static"
+      "src": "/css/(.*)",
+      "dest": "/css/$1"
     },
     {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+      "src": "/js/(.*)",
+      "dest": "/js/$1"
+    },
+    {
+      "src": "/img/(.*)",
+      "dest": "/img/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
     }
-  ],
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
