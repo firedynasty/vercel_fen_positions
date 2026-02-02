@@ -630,14 +630,26 @@
         let savedPositions = [];
         let currentFen = '';
 
-        // Initialize chessboard
-        board = Chessboard('myBoard', {
-            draggable: true,
-            dropOffBoard: 'snapback',
-            position: 'start',
-            onDrop: function(source, target, piece, newPos, oldPos, orientation) {
-                updateFenFromBoard();
+        // Initialize chessboard after DOM loads
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof Chessboard === 'undefined') {
+                console.error('Chessboard library failed to load');
+                showToast('Error: Chessboard library not loaded. Please refresh.');
+                return;
             }
+
+            board = Chessboard('myBoard', {
+                draggable: true,
+                dropOffBoard: 'snapback',
+                position: 'start',
+                onDrop: function(source, target, piece, newPos, oldPos, orientation) {
+                    updateFenFromBoard();
+                }
+            });
+
+            // Load saved data after board is initialized
+            loadFromLocalStorage();
+            loadSavedSets();
         });
 
         // Theme toggle
@@ -672,23 +684,37 @@
                 return;
             }
 
-            // Extract just the position part (first section of FEN)
+            // Auto-complete FEN if only position part is provided
+            let completeFen = fenInput;
             const fenParts = fenInput.split(' ');
+
+            // If only position part provided, add default values
+            if (fenParts.length === 1) {
+                completeFen = fenInput + ' w KQkq - 0 1';
+            }
+
+            // Extract just the position part (first section of FEN)
             const positionPart = fenParts[0];
 
             try {
+                if (typeof board === 'undefined') {
+                    showToast('Chessboard library not loaded. Please refresh the page.');
+                    return;
+                }
+
                 board.position(positionPart);
-                currentFen = fenInput;
+                currentFen = completeFen;
 
                 // Auto-fill the position FEN input
-                document.getElementById('positionFen').value = fenInput;
+                document.getElementById('positionFen').value = completeFen;
 
                 // Update Lichess URLs
-                updateLichessUrls(fenInput);
+                updateLichessUrls(completeFen);
 
                 showToast('Position loaded on board!');
             } catch (e) {
-                showToast('Invalid FEN notation');
+                console.error('FEN error:', e);
+                showToast('Invalid FEN notation: ' + e.message);
             }
         }
 
@@ -1054,12 +1080,6 @@
                 toast.classList.remove('show');
             }, 2000);
         }
-
-        // Initialize on load
-        window.addEventListener('DOMContentLoaded', () => {
-            loadFromLocalStorage();
-            loadSavedSets();
-        });
     </script>
 </body>
 </html>
