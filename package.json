@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Chess Position Saver with FEN notation and CSV export",
   "scripts": {
-    "start": "npx http-server -p 3000 -o",
     "dev": "npx http-server -p 3000 -o"
   },
   "dependencies": {
