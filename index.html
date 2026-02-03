@@ -629,7 +629,10 @@
                 <button class="complete-btn" onclick="addPosition()">+ Add Position</button>
             </div>
 
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                <button class="copy-btn" onclick="document.getElementById('csvFileInput').click()" style="background-color: rgba(255, 152, 0, 0.3);">⬆ Load CSV</button>
                 <button class="copy-btn" onclick="downloadAsCSV()">⬇ Download as CSV</button>
                 <button id="saveChangesBtn" class="copy-btn" onclick="saveChangesToCurrentSet()" style="background-color: rgba(76, 175, 80, 0.3); display: none;">💾 Save Changes</button>
                 <button class="copy-btn" onclick="addRowFromClipboard()" style="background-color: rgba(33, 150, 243, 0.3);">📋 Add from Clipboard</button>
@@ -659,6 +662,7 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script>
         let board;
         let savedPositions = [];
@@ -994,11 +998,11 @@
             }
 
             tbody.innerHTML = savedPositions.map((pos, index) => `
-                <tr>
+                <tr onclick="cycleThroughPosition(${index})" style="cursor: pointer;" title="Click to cycle through positions">
                     <td>${index + 1}</td>
-                    <td onclick="loadPositionByIndex(${index})" title="Click to load position">${escapeHtml(pos.name)}</td>
-                    <td onclick="cycleThroughPosition(${index})" title="Click to cycle through positions" style="cursor: pointer;">${escapeHtml(pos.fen.length > 160 ? pos.fen.substring(0, 160) + '...' : pos.fen)}</td>
-                    <td><button class="delete-position-btn" onclick="deletePosition(${index})">Delete</button></td>
+                    <td>${escapeHtml(pos.name)}</td>
+                    <td>${escapeHtml(pos.fen.length > 160 ? pos.fen.substring(0, 160) + '...' : pos.fen)}</td>
+                    <td><button class="delete-position-btn" onclick="event.stopPropagation(); deletePosition(${index})">Delete</button></td>
                 </tr>
             `).join('');
         }
@@ -1193,6 +1197,48 @@
 
             showToast('CSV downloaded!');
         }
+
+        // Load CSV file into table
+        document.getElementById('csvFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (!results.data || results.data.length === 0) {
+                        showToast('CSV file is empty');
+                        return;
+                    }
+
+                    // Map CSV rows to positions (expects Name and FEN columns)
+                    const loaded = results.data
+                        .filter(row => row.Name || row.FEN)
+                        .map(row => ({
+                            name: (row.Name || '').trim(),
+                            fen: (row.FEN || '').trim()
+                        }));
+
+                    if (loaded.length === 0) {
+                        showToast('No valid rows found. CSV needs Name and FEN columns.');
+                        return;
+                    }
+
+                    savedPositions = loaded;
+                    renderPositionsTable();
+                    saveToLocalStorage();
+                    showToast(`Loaded ${loaded.length} positions from CSV`);
+                },
+                error: function(err) {
+                    console.error('CSV parse error:', err);
+                    showToast('Error parsing CSV file');
+                }
+            });
+
+            // Reset file input so the same file can be loaded again
+            e.target.value = '';
+        });
 
         // Save to localStorage
         function saveToLocalStorage() {
