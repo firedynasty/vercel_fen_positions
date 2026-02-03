@@ -288,16 +288,20 @@
             background-color: rgba(33, 150, 243, 0.5);
         }
 
-        /* Chess board styling */
-        .board {
-            width: 100%;
-            max-width: 400px;
-            margin: 20px auto;
-            border: 2px solid #8ca2ad;
-            border-radius: 8px;
+        /* Sticky board container */
+        .board-sticky-wrapper {
             position: sticky;
             top: 20px;
             z-index: 100;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+
+        /* Chess board styling */
+        .board {
+            width: 100%;
+            border: 2px solid #8ca2ad;
+            border-radius: 8px;
             background: inherit;
         }
 
@@ -596,7 +600,10 @@
             </div>
 
             <!-- Interactive Chess Board -->
-            <div id="myBoard" class="board"></div>
+            <div class="board-sticky-wrapper">
+                <div id="myBoard" class="board"></div>
+                <button id="cycleBoardStickyBtn" class="copy-btn" onclick="cycleBoard()" style="width: 100%; margin-top: 8px; background-color: rgba(233, 30, 99, 0.3); font-size: 15px;">&#128260; Cycle Board</button>
+            </div>
 
             <!-- Lichess Analysis URL Display -->
             <div id="lichessUrlDisplay" style="display: none; margin-top: 15px; padding: 12px; background-color: rgba(255, 255, 255, 0.1); border-radius: 5px; border: 1px solid rgba(255, 255, 255, 0.2);">
@@ -1028,10 +1035,13 @@
             const pos = savedPositions[index];
             const fenText = pos.fen;
 
+            // Always copy FEN to clipboard on click
+            navigator.clipboard.writeText(fenText).catch(() => {});
+
             // Check if this is a FEN variant format (not full PGN or comma-separated)
             if (!fenText.includes('[Variant "From Position"]') || fenText.includes(',')) {
-                // Not a variant format or has commas - just copy to clipboard
-                copyCell(fenText);
+                // Not a variant format or has commas - just show toast and return
+                showToast('Copied to clipboard!');
                 currentCyclingIndex = null; // Reset cycling
                 return;
             }
