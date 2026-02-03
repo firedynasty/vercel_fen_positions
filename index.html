@@ -552,13 +552,39 @@
         <!-- FEN Builder Section -->
         <div class="fen-container">
             <div class="section-title">FEN Input</div>
+
+            <!-- Load Image Button and Preview -->
+            <div style="margin-bottom: 15px; text-align: center;">
+                <button id="loadImageBtn" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;" onclick="document.getElementById('imageFileInput').click()">🖼️ Load Reference Image</button>
+                <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
+            </div>
+
             <div class="fen-controls">
                 <textarea id="fenDisplay" placeholder="Paste or build your FEN here..."></textarea>
+            </div>
+
+            <!-- Image Preview Container -->
+            <div id="imagePreviewContainer" style="display: none; margin-top: 15px; text-align: center; position: relative;">
+                <img id="imagePreview" style="max-width: 100%; max-height: 400px; border-radius: 5px; cursor: pointer;" onclick="toggleImageSize()">
+                <button onclick="closeImagePreview()" style="position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 18px; line-height: 1;">×</button>
+            </div>
+
+            <!-- FEN Perspective Radio Buttons -->
+            <div style="display: flex; gap: 20px; align-items: center; justify-content: center; margin: 10px 0;">
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="radio" name="fenPerspective" value="nonflipped" checked onchange="switchFenPerspective(this.value)">
+                    <span>Nonflipped (White's perspective)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="radio" name="fenPerspective" value="flipped" onchange="switchFenPerspective(this.value)">
+                    <span>Flipped (Black's perspective)</span>
+                </label>
             </div>
 
             <div class="button-section">
                 <div class="button-grid">
                     <button class="complete-btn" onclick="loadFenOnBoard()">&#127937; Load on Board</button>
+                    <button class="copy-btn" onclick="flipBoard()">&#8635; Flip Board</button>
                     <button class="copy-btn" onclick="copyFenToClipboard()">&#128203; Copy FEN</button>
                     <button class="copy-btn" onclick="pasteFenFromClipboard()">&#128203; Paste FEN</button>
                 </div>
@@ -632,6 +658,8 @@
         let currentFen = '';
         let chess = null;           // Chess.js instance for move validation
         let startingFen = null;     // Starting FEN for PGN variant header
+        let fenPerspective = 'nonflipped'; // 'nonflipped' or 'flipped'
+        let imageSizeState = 'small'; // 'small', 'regular', 'large'
 
         // Initialize chessboard after DOM loads
         window.addEventListener('DOMContentLoaded', function() {
@@ -680,6 +708,12 @@
             // Load saved data after board is initialized
             loadFromLocalStorage();
             loadSavedSets();
+
+            // Add input event listener for auto-slash functionality
+            const fenDisplay = document.getElementById('fenDisplay');
+            fenDisplay.addEventListener('input', function() {
+                updateTallyAndAutoSlash();
+            });
         });
 
         // Theme toggle
@@ -1144,6 +1178,150 @@
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 2000);
+        }
+
+        // ============================================
+        // BOARD FLIPPING
+        // ============================================
+        function flipBoard() {
+            if (board) {
+                board.flip();
+                showToast('Board flipped!');
+            }
+        }
+
+        // ============================================
+        // FEN PERSPECTIVE SWITCHING
+        // ============================================
+        function switchFenPerspective(perspective) {
+            fenPerspective = perspective;
+            console.log('FEN perspective switched to:', perspective);
+
+            if (perspective === 'flipped') {
+                // Flip the board to show from black's perspective (HGFEDCBA at bottom)
+                if (board) {
+                    board.orientation('black');
+                }
+                showToast('Board flipped to Black\'s perspective');
+            } else {
+                // Reset to white's perspective (ABCDEFGH at bottom)
+                if (board) {
+                    board.orientation('white');
+                }
+                showToast('Board reset to White\'s perspective');
+            }
+        }
+
+        // Convert FEN between perspectives (flip ranks and files)
+        function convertFlippedFen(fenString) {
+            const positionPart = fenString.split(' ')[0];
+            if (!positionPart) return fenString;
+
+            const ranks = positionPart.split('/');
+            if (ranks.length !== 8) return fenString;
+
+            // Reverse the ranks and reverse each rank
+            const convertedRanks = ranks.reverse().map(rank => {
+                return rank.split('').reverse().join('');
+            });
+
+            const convertedPosition = convertedRanks.join('/');
+
+            // Reconstruct full FEN with converted position
+            const fenParts = fenString.split(' ');
+            fenParts[0] = convertedPosition;
+            return fenParts.join(' ');
+        }
+
+        // ============================================
+        // AUTO-SLASH INSERTION (after 8 characters)
+        // ============================================
+        function updateTallyAndAutoSlash() {
+            const fenDisplay = document.getElementById('fenDisplay');
+            const fen = fenDisplay.value;
+
+            // Split into ranks
+            const ranks = fen.split('/');
+            let justCompletedRank = false;
+
+            // Check if the last rank just completed (has 8 squares)
+            if (ranks.length > 0 && ranks.length < 8) {
+                const lastRank = ranks[ranks.length - 1];
+                let rankTally = 0;
+
+                // Calculate tally for the last rank
+                for (let i = 0; i < lastRank.length; i++) {
+                    const char = lastRank[i];
+                    if (!isNaN(char)) {
+                        rankTally += parseInt(char, 10);
+                    } else if ('rnbqkpRNBQKP'.includes(char)) {
+                        rankTally += 1;
+                    }
+                }
+
+                // If rank is complete (8 squares) and doesn't end with '/'
+                if (rankTally === 8 && !fen.endsWith('/')) {
+                    justCompletedRank = true;
+                }
+            }
+
+            // Auto-add "/" if we just completed a rank
+            if (justCompletedRank && ranks.length < 8) {
+                fenDisplay.value += '/';
+                showToast('Rank completed! / added');
+            }
+        }
+
+        // ============================================
+        // IMAGE LOADING FUNCTIONALITY
+        // ============================================
+        document.getElementById('imageFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                showToast('Please select an image file');
+                return;
+            }
+
+            const objectURL = URL.createObjectURL(file);
+            const imagePreview = document.getElementById('imagePreview');
+            const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+
+            imagePreview.src = objectURL;
+            imagePreviewContainer.style.display = 'block';
+
+            // Update button text with filename
+            document.getElementById('loadImageBtn').textContent = '🖼️ ' + file.name;
+
+            // Reset size state
+            imageSizeState = 'small';
+            imagePreview.style.maxHeight = '150px';
+
+            showToast('Image loaded!');
+        });
+
+        // Toggle image size: small -> regular -> large -> small
+        function toggleImageSize() {
+            const imagePreview = document.getElementById('imagePreview');
+
+            if (imageSizeState === 'small') {
+                imagePreview.style.maxHeight = '400px';
+                imageSizeState = 'regular';
+            } else if (imageSizeState === 'regular') {
+                imagePreview.style.maxHeight = '800px';
+                imageSizeState = 'large';
+            } else {
+                imagePreview.style.maxHeight = '150px';
+                imageSizeState = 'small';
+            }
+        }
+
+        // Close image preview
+        function closeImagePreview() {
+            const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+            imagePreviewContainer.style.display = 'none';
+            document.getElementById('loadImageBtn').textContent = '🖼️ Load Reference Image';
         }
     </script>
 </body>
