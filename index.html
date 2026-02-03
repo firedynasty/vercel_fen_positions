@@ -586,7 +586,8 @@
                     <button class="complete-btn" onclick="loadFenOnBoard()">&#127937; Load on Board</button>
                     <button class="copy-btn" onclick="flipBoard()">&#8635; Flip Board</button>
                     <button class="copy-btn" onclick="copyFenToClipboard()">&#128203; Copy FEN</button>
-                    <button class="copy-btn" onclick="pasteFenFromClipboard()">&#128203; Paste FEN</button>
+                    <button id="cycleBoardBtn" class="copy-btn" onclick="cycleBoard()" style="display: none; background-color: rgba(233, 30, 99, 0.3);">&#128260; Cycle Board</button>
+                    <button id="pasteFenBtn" class="copy-btn" onclick="pasteFenFromClipboard()">&#128203; Paste FEN</button>
                 </div>
             </div>
 
@@ -664,6 +665,9 @@
         let currentLoadedSet = null; // Track currently loaded set name
         let selectedSquare = null;   // For mobile click-to-move
         let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
+        let cyclePositions = [];     // Array of positions to cycle through
+        let cycleIndex = 0;          // Current position in cycle
+        let lastCycledFen = null;    // Last FEN that was cycled
 
         // Initialize chessboard after DOM loads
         window.addEventListener('DOMContentLoaded', function() {
@@ -800,6 +804,13 @@
 
                 // Update Lichess URLs
                 updateLichessUrls(completeFen);
+
+                // Reset cycling state (loading regular FEN)
+                cyclePositions = [];
+                cycleIndex = 0;
+                lastCycledFen = null;
+                document.getElementById('cycleBoardBtn').style.display = 'none';
+                document.getElementById('pasteFenBtn').style.display = 'inline-block';
 
                 showToast('Position loaded on board!');
             } catch (e) {
@@ -954,7 +965,7 @@
                 <tr>
                     <td>${index + 1}</td>
                     <td onclick="loadPositionByIndex(${index})" title="Click to load position">${escapeHtml(pos.name)}</td>
-                    <td onclick="copyCell('${escapeHtml(pos.fen)}')" title="Click to copy FEN">${escapeHtml(pos.fen)}</td>
+                    <td onclick="cycleThroughPosition(${index})" title="Click to cycle through positions" style="cursor: pointer;">${escapeHtml(pos.fen.length > 160 ? pos.fen.substring(0, 160) + '...' : pos.fen)}</td>
                     <td><button class="delete-position-btn" onclick="deletePosition(${index})">Delete</button></td>
                 </tr>
             `).join('');
@@ -973,6 +984,130 @@
             navigator.clipboard.writeText(text).then(() => {
                 showToast('Copied to clipboard!');
             });
+        }
+
+        // Load position from table and setup cycling
+        function cycleThroughPosition(index) {
+            const pos = savedPositions[index];
+            const fenText = pos.fen;
+
+            // Check if this is a FEN variant format (not full PGN or comma-separated)
+            if (!fenText.includes('[Variant "From Position"]') || fenText.includes(',')) {
+                // Not a variant format or has commas - just copy to clipboard
+                copyCell(fenText);
+                return;
+            }
+
+            // Parse and load starting position
+            lastCycledFen = fenText;
+            cyclePositions = parseFenVariantToPositions(fenText);
+            cycleIndex = 0;
+
+            if (cyclePositions.length > 0) {
+                loadPositionFromCycle();
+
+                // Show Cycle Board button, hide Paste FEN button
+                document.getElementById('cycleBoardBtn').style.display = 'inline-block';
+                document.getElementById('pasteFenBtn').style.display = 'none';
+
+                if (cyclePositions.length > 1) {
+                    showToast(`Loaded position 1/${cyclePositions.length}. Click "Cycle Board" for next.`);
+                } else {
+                    showToast('Position loaded (no moves to cycle)');
+                }
+            } else {
+                showToast('No valid positions found');
+            }
+        }
+
+        // Cycle to next position (triggered by Cycle Board button)
+        function cycleBoard() {
+            if (cyclePositions.length === 0) {
+                showToast('No positions to cycle. Click a table entry first.');
+                return;
+            }
+
+            cycleIndex = (cycleIndex + 1) % cyclePositions.length;
+            loadPositionFromCycle();
+        }
+
+        // Parse FEN variant format to extract all positions
+        function parseFenVariantToPositions(text) {
+            const positions = [];
+
+            try {
+                // Extract FEN from [FEN "..."] header
+                const fenMatch = text.match(/\[FEN\s+"([^"]+)"\]/);
+                if (!fenMatch) return positions;
+
+                const startFen = fenMatch[1];
+
+                // Extract moves (everything after the headers)
+                const movesMatch = text.match(/\]\s*\n\n(.+)/s);
+                if (!movesMatch) {
+                    // No moves, just return starting position
+                    positions.push(startFen);
+                    return positions;
+                }
+
+                const movesText = movesMatch[1].trim();
+                if (!movesText) {
+                    positions.push(startFen);
+                    return positions;
+                }
+
+                // Use chess.js to parse moves
+                const tempChess = new Chess(startFen);
+                positions.push(tempChess.fen()); // Add starting position
+
+                // Extract moves (remove move numbers and variations)
+                const moves = movesText
+                    .replace(/\d+\./g, '') // Remove move numbers
+                    .replace(/\([^)]*\)/g, '') // Remove variations in parentheses
+                    .split(/\s+/)
+                    .filter(m => m && !m.match(/^[.\s]*$/));
+
+                // Play each move and store positions
+                for (const moveStr of moves) {
+                    const move = tempChess.move(moveStr, { sloppy: true });
+                    if (move) {
+                        positions.push(tempChess.fen());
+                    }
+                }
+            } catch (error) {
+                console.error('Error parsing FEN variant:', error);
+            }
+
+            return positions;
+        }
+
+        // Load current position from cycle
+        function loadPositionFromCycle() {
+            if (cyclePositions.length === 0) return;
+
+            const fen = cyclePositions[cycleIndex];
+
+            // Update fenDisplay
+            document.getElementById('fenDisplay').value = fen;
+
+            // Load on board
+            try {
+                const positionPart = fen.split(' ')[0];
+                board.position(positionPart);
+
+                // Sync chess.js
+                chess = new Chess(fen);
+                startingFen = cyclePositions[0]; // Use first position as starting FEN
+
+                // Update display
+                currentFen = fen;
+                updateLichessUrls(fen);
+
+                showToast(`Position ${cycleIndex + 1}/${cyclePositions.length}`);
+            } catch (error) {
+                console.error('Error loading position:', error);
+                showToast('Error loading position');
+            }
         }
 
         // Delete position
