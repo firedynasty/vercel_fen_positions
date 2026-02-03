@@ -628,6 +628,7 @@
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                 <button class="copy-btn" onclick="downloadAsCSV()">⬇ Download as CSV</button>
                 <button id="saveChangesBtn" class="copy-btn" onclick="saveChangesToCurrentSet()" style="background-color: rgba(76, 175, 80, 0.3); display: none;">💾 Save Changes</button>
+                <button class="copy-btn" onclick="addRowFromClipboard()" style="background-color: rgba(33, 150, 243, 0.3);">📋 Add from Clipboard</button>
                 <button class="copy-btn" onclick="clearAllPositions()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear All</button>
             </div>
 
@@ -950,6 +951,33 @@
             document.getElementById('positionName').value = '';
 
             showToast('Position added!');
+        }
+
+        // Add row from clipboard (variant format with headers and moves) and position name input
+        async function addRowFromClipboard() {
+            const name = document.getElementById('positionName').value.trim();
+
+            if (!name) {
+                showToast('Please enter a position name first');
+                return;
+            }
+
+            try {
+                const clipboardText = await navigator.clipboard.readText();
+
+                // Add to saved positions (clipboard content goes directly to FEN column)
+                savedPositions.push({ name, fen: clipboardText.trim() });
+                renderPositionsTable();
+                saveToLocalStorage();
+
+                // Clear name input
+                document.getElementById('positionName').value = '';
+
+                showToast('Position added from clipboard!');
+            } catch (err) {
+                console.error('Clipboard error:', err);
+                showToast('Failed to read from clipboard');
+            }
         }
 
         // Render positions table
