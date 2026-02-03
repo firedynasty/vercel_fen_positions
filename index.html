@@ -295,6 +295,10 @@
             margin: 20px auto;
             border: 2px solid #8ca2ad;
             border-radius: 8px;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+            background: inherit;
         }
 
         /* Position Saver Table */
@@ -669,6 +673,7 @@
         let cyclePositions = [];     // Array of positions to cycle through
         let cycleIndex = 0;          // Current position in cycle
         let lastCycledFen = null;    // Last FEN that was cycled
+        let currentCyclingIndex = null; // Track which table row is currently being cycled
 
         // Initialize chessboard after DOM loads
         window.addEventListener('DOMContentLoaded', function() {
@@ -810,8 +815,7 @@
                 cyclePositions = [];
                 cycleIndex = 0;
                 lastCycledFen = null;
-                document.getElementById('cycleBoardBtn').style.display = 'none';
-                document.getElementById('pasteFenBtn').style.display = 'inline-block';
+                currentCyclingIndex = null;
 
                 showToast('Position loaded on board!');
             } catch (e) {
@@ -1004,6 +1008,7 @@
             const pos = savedPositions[index];
             document.getElementById('fenDisplay').value = pos.fen;
             loadFenOnBoard();
+            currentCyclingIndex = null; // Reset cycling when loading via name
             showToast(`Loaded: ${pos.name}`);
         }
 
@@ -1023,10 +1028,19 @@
             if (!fenText.includes('[Variant "From Position"]') || fenText.includes(',')) {
                 // Not a variant format or has commas - just copy to clipboard
                 copyCell(fenText);
+                currentCyclingIndex = null; // Reset cycling
                 return;
             }
 
-            // Parse and load starting position
+            // Check if clicking the same row again - if so, cycle to next position
+            if (currentCyclingIndex === index && cyclePositions.length > 0) {
+                cycleIndex = (cycleIndex + 1) % cyclePositions.length;
+                loadPositionFromCycle();
+                return;
+            }
+
+            // New row clicked - parse and load starting position
+            currentCyclingIndex = index;
             lastCycledFen = fenText;
             cyclePositions = parseFenVariantToPositions(fenText);
             cycleIndex = 0;
@@ -1034,17 +1048,14 @@
             if (cyclePositions.length > 0) {
                 loadPositionFromCycle();
 
-                // Show Cycle Board button, hide Paste FEN button
-                document.getElementById('cycleBoardBtn').style.display = 'inline-block';
-                document.getElementById('pasteFenBtn').style.display = 'none';
-
                 if (cyclePositions.length > 1) {
-                    showToast(`Loaded position 1/${cyclePositions.length}. Click "Cycle Board" for next.`);
+                    showToast(`Position 1/${cyclePositions.length}. Click row again for next.`);
                 } else {
                     showToast('Position loaded (no moves to cycle)');
                 }
             } else {
                 showToast('No valid positions found');
+                currentCyclingIndex = null;
             }
         }
 
