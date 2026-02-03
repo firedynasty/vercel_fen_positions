@@ -626,6 +626,7 @@
 
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                 <button class="copy-btn" onclick="downloadAsCSV()">⬇ Download as CSV</button>
+                <button id="saveChangesBtn" class="copy-btn" onclick="saveChangesToCurrentSet()" style="background-color: rgba(76, 175, 80, 0.3); display: none;">💾 Save Changes</button>
                 <button class="copy-btn" onclick="clearAllPositions()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear All</button>
             </div>
 
@@ -660,6 +661,9 @@
         let startingFen = null;     // Starting FEN for PGN variant header
         let fenPerspective = 'nonflipped'; // 'nonflipped' or 'flipped'
         let imageSizeState = 'small'; // 'small', 'regular', 'large'
+        let currentLoadedSet = null; // Track currently loaded set name
+        let selectedSquare = null;   // For mobile click-to-move
+        let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
 
         // Initialize chessboard after DOM loads
         window.addEventListener('DOMContentLoaded', function() {
@@ -679,11 +683,16 @@
             chess = new Chess();
             startingFen = chess.fen(); // Store starting position
 
-            board = Chessboard('myBoard', {
-                draggable: true,
+            // Configure board based on device type
+            const boardConfig = {
+                draggable: !isMobile, // Disable drag on mobile
                 dropOffBoard: 'snapback',
-                position: 'start',
-                onDrop: function(source, target, piece, newPos, oldPos, orientation) {
+                position: 'start'
+            };
+
+            // Add drag-and-drop handler for desktop
+            if (!isMobile) {
+                boardConfig.onDrop = function(source, target, piece, newPos, oldPos, orientation) {
                     console.log('onDrop:', source, '->', target, 'piece:', piece);
 
                     // Attempt the move using chess.js
@@ -702,8 +711,16 @@
                     // Valid move - update display
                     console.log('Valid move:', move);
                     updateBoardDisplay();
-                }
-            });
+                };
+            }
+
+            board = Chessboard('myBoard', boardConfig);
+
+            // Setup mobile click-to-move if on mobile device
+            if (isMobile) {
+                setupMobileClickToMove();
+                showToast('Mobile mode: Click piece, then click destination');
+            }
 
             // Load saved data after board is initialized
             loadFromLocalStorage();
@@ -972,6 +989,8 @@
         function clearAllPositions() {
             if (confirm('Delete all saved positions?')) {
                 savedPositions = [];
+                currentLoadedSet = null; // Clear loaded set tracking
+                document.getElementById('saveChangesBtn').style.display = 'none'; // Hide save button
                 renderPositionsTable();
                 saveToLocalStorage();
                 showToast('All positions cleared');
@@ -1052,6 +1071,12 @@
                     throw new Error(result.error || 'Failed to save');
                 }
 
+                // Track this as the currently loaded set
+                currentLoadedSet = filename;
+
+                // Show "Save Changes" button
+                document.getElementById('saveChangesBtn').style.display = 'inline-block';
+
                 showToast('Position set saved to cloud!');
                 loadSavedSets();
             } catch (error) {
@@ -1119,8 +1144,13 @@
 
                 const data = JSON.parse(result.files[filename]);
                 savedPositions = data.positions;
+                currentLoadedSet = filename; // Track loaded set
                 renderPositionsTable();
                 saveToLocalStorage();
+
+                // Show "Save Changes" button
+                document.getElementById('saveChangesBtn').style.display = 'inline-block';
+
                 showToast(`Loaded set: ${data.name}`);
                 toggleSidebar();
             } catch (error) {
@@ -1322,6 +1352,128 @@
             const imagePreviewContainer = document.getElementById('imagePreviewContainer');
             imagePreviewContainer.style.display = 'none';
             document.getElementById('loadImageBtn').textContent = '🖼️ Load Reference Image';
+        }
+
+        // ============================================
+        // SAVE CHANGES TO CURRENT SET
+        // ============================================
+        async function saveChangesToCurrentSet() {
+            if (!currentLoadedSet) {
+                showToast('No set loaded. Use "Save Position Set" to create new.');
+                return;
+            }
+
+            const accessCode = document.getElementById('accessCodeInput').value;
+            if (!accessCode) {
+                showToast('Please enter access code');
+                return;
+            }
+
+            try {
+                // Get the original set name
+                const response = await fetch('/api/files');
+                const result = await response.json();
+                const originalData = JSON.parse(result.files[currentLoadedSet]);
+
+                const content = JSON.stringify({
+                    name: originalData.name,
+                    timestamp: Date.now(),
+                    positions: savedPositions
+                });
+
+                const saveResponse = await fetch('/api/files', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename: currentLoadedSet,
+                        content: content,
+                        accessCode: accessCode
+                    })
+                });
+
+                const saveResult = await saveResponse.json();
+
+                if (!saveResponse.ok) {
+                    throw new Error(saveResult.error || 'Failed to save');
+                }
+
+                saveToLocalStorage();
+                showToast(`✅ Changes saved to "${originalData.name}"`);
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('Error: ' + error.message);
+            }
+        }
+
+        // ============================================
+        // MOBILE CLICK-TO-MOVE FUNCTIONALITY
+        // ============================================
+        function setupMobileClickToMove() {
+            const boardElement = document.getElementById('myBoard');
+
+            boardElement.addEventListener('click', function(e) {
+                // Find the clicked square
+                const square = e.target.closest('.square-55d63');
+                if (!square) return;
+
+                // Get the square ID (e.g., 'e4')
+                const squareId = square.getAttribute('data-square');
+                if (!squareId) return;
+
+                const currentPos = board.position();
+
+                // First click - select piece
+                if (!selectedSquare) {
+                    // Check if there's a piece on this square
+                    if (currentPos[squareId]) {
+                        selectedSquare = squareId;
+
+                        // Add visual highlight
+                        square.style.boxShadow = 'inset 0 0 0 4px rgba(255, 255, 0, 0.8)';
+                        showToast(`Selected ${currentPos[squareId]} on ${squareId}`);
+                    }
+                } else {
+                    // Second click - move piece
+                    const sourceSquare = selectedSquare;
+                    const targetSquare = squareId;
+
+                    // Clear highlight
+                    document.querySelectorAll('.square-55d63').forEach(sq => {
+                        sq.style.boxShadow = '';
+                    });
+
+                    // If clicking same square, deselect
+                    if (sourceSquare === targetSquare) {
+                        selectedSquare = null;
+                        showToast('Move cancelled');
+                        return;
+                    }
+
+                    // Attempt the move using chess.js
+                    const move = chess.move({
+                        from: sourceSquare,
+                        to: targetSquare,
+                        promotion: 'q'
+                    });
+
+                    if (move === null) {
+                        showToast('Invalid move!');
+                        selectedSquare = null;
+                        return;
+                    }
+
+                    // Update board position
+                    board.position(chess.fen());
+
+                    // Update display
+                    updateBoardDisplay();
+
+                    // Reset selection
+                    selectedSquare = null;
+
+                    showToast(`Moved: ${move.san}`);
+                }
+            });
         }
     </script>
 </body>
