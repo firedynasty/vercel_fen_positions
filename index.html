@@ -625,10 +625,13 @@
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script>
         let board;
         let savedPositions = [];
         let currentFen = '';
+        let chess = null;           // Chess.js instance for move validation
+        let startingFen = null;     // Starting FEN for PGN variant header
 
         // Initialize chessboard after DOM loads
         window.addEventListener('DOMContentLoaded', function() {
@@ -638,12 +641,39 @@
                 return;
             }
 
+            if (typeof Chess === 'undefined') {
+                console.error('Chess.js library failed to load');
+                showToast('Error: Chess.js library not loaded. Please refresh.');
+                return;
+            }
+
+            // Initialize chess.js for move validation
+            chess = new Chess();
+            startingFen = chess.fen(); // Store starting position
+
             board = Chessboard('myBoard', {
                 draggable: true,
                 dropOffBoard: 'snapback',
                 position: 'start',
                 onDrop: function(source, target, piece, newPos, oldPos, orientation) {
-                    updateFenFromBoard();
+                    console.log('onDrop:', source, '->', target, 'piece:', piece);
+
+                    // Attempt the move using chess.js
+                    const move = chess.move({
+                        from: source,
+                        to: target,
+                        promotion: 'q' // auto-promote to queen
+                    });
+
+                    if (move === null) {
+                        // Invalid move - snap piece back
+                        console.log('Invalid move - snapping back');
+                        return 'snapback';
+                    }
+
+                    // Valid move - update display
+                    console.log('Valid move:', move);
+                    updateBoardDisplay();
                 }
             });
 
@@ -702,11 +732,20 @@
                     return;
                 }
 
+                // Load position on chessboard.js
                 board.position(positionPart);
                 currentFen = completeFen;
 
-                // Auto-fill the position FEN input
-                document.getElementById('positionFen').value = completeFen;
+                // Reset and sync chess.js with the new position
+                chess = new Chess(completeFen);
+                startingFen = completeFen; // Store as starting position
+
+                // Update fenDisplay
+                document.getElementById('fenDisplay').value = completeFen;
+
+                // Auto-fill the positionFen input with variant format
+                const variantFormat = '[Variant "From Position"]\n[FEN "' + startingFen + '"]';
+                document.getElementById('positionFen').value = variantFormat;
 
                 // Update Lichess URLs
                 updateLichessUrls(completeFen);
@@ -726,6 +765,32 @@
             document.getElementById('fenDisplay').value = fen;
             document.getElementById('positionFen').value = fen;
             updateLichessUrls(fen);
+        }
+
+        // Update board display after a move (for chess.js integration)
+        function updateBoardDisplay() {
+            // Get current FEN and PGN from chess.js
+            const currentFen = chess.fen();
+
+            // Get moves from chess.js (includes move numbers: 1. e4 e5 2. Nf3)
+            let pgnMoves = chess.pgn();
+            // Remove any existing headers from PGN
+            pgnMoves = pgnMoves.replace(/\[[^\]]*\]\s*/g, '').trim();
+
+            // Build formatted output with Variant header
+            const variantFormat = '[Variant "From Position"]\n[FEN "' + startingFen + '"]' +
+                                  (pgnMoves ? '\n\n' + pgnMoves : '');
+
+            // Update the positionFen input with formatted output
+            document.getElementById('positionFen').value = variantFormat;
+
+            // Update fenDisplay with just the current FEN
+            document.getElementById('fenDisplay').value = currentFen;
+
+            // Update Lichess URLs
+            updateLichessUrls(currentFen);
+
+            console.log('Updated display:', variantFormat);
         }
 
         // Convert board position object to FEN
