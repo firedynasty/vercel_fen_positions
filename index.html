@@ -527,6 +527,116 @@
         body.light-mode .lichess-black-section {
             background-color: #fff !important;
         }
+
+        /* Sheet Picker Modal */
+        .sheet-picker-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .sheet-picker-overlay.open {
+            display: flex;
+        }
+
+        .sheet-picker-modal {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            width: 360px;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .sheet-picker-header {
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #a8d8ea;
+        }
+
+        .sheet-picker-header button {
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .sheet-picker-header button:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .sheet-picker-list {
+            padding: 10px;
+            overflow-y: auto;
+            max-height: calc(80vh - 60px);
+        }
+
+        .sheet-picker-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            color: #fff;
+            transition: background-color 0.15s;
+        }
+
+        .sheet-picker-item:hover {
+            background: rgba(59, 130, 246, 0.3);
+        }
+
+        .sheet-picker-item:active {
+            background: #3B82F6;
+        }
+
+        body.light-mode .sheet-picker-modal {
+            background: #fff;
+            border-color: #ddd;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        }
+
+        body.light-mode .sheet-picker-header {
+            border-bottom-color: #ddd;
+            color: #1e40af;
+        }
+
+        body.light-mode .sheet-picker-header button {
+            color: #999;
+        }
+
+        body.light-mode .sheet-picker-header button:hover {
+            color: #333;
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        body.light-mode .sheet-picker-item {
+            color: #333;
+        }
+
+        body.light-mode .sheet-picker-item:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        body.light-mode .sheet-picker-item:active {
+            background: #3B82F6;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -636,10 +746,10 @@
                 <button class="complete-btn" onclick="addPosition()">+ Add Position</button>
             </div>
 
-            <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+            <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls" style="display: none;">
 
             <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-                <button class="copy-btn" onclick="document.getElementById('csvFileInput').click()" style="background-color: rgba(255, 152, 0, 0.3);">⬆ Load CSV</button>
+                <button class="copy-btn" onclick="document.getElementById('csvFileInput').click()" style="background-color: rgba(255, 152, 0, 0.3);">⬆ Load CSV/Excel</button>
                 <button class="copy-btn" onclick="downloadAsCSV()">⬇ Download as CSV</button>
                 <button id="saveChangesBtn" class="copy-btn" onclick="saveChangesToCurrentSet()" style="background-color: rgba(76, 175, 80, 0.3); display: none;">💾 Save Changes</button>
                 <button class="copy-btn" onclick="addRowFromClipboard()" style="background-color: rgba(33, 150, 243, 0.3);">📋 Add from Clipboard</button>
@@ -664,12 +774,24 @@
         </div>
     </div>
 
+    <!-- Sheet Picker Modal -->
+    <div id="sheetPickerOverlay" class="sheet-picker-overlay" onclick="closeSheetPicker()">
+        <div class="sheet-picker-modal" onclick="event.stopPropagation()">
+            <div class="sheet-picker-header">
+                <span>Select a Sheet</span>
+                <button onclick="closeSheetPicker()">&#10005;</button>
+            </div>
+            <div class="sheet-picker-list" id="sheetPickerList"></div>
+        </div>
+    </div>
+
     <div id="toast" class="toast-notification">Copied!</div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         let board;
         let savedPositions = [];
@@ -1208,47 +1330,140 @@
             showToast('CSV downloaded!');
         }
 
-        // Load CSV file into table
+        // Load CSV/Excel file into table
+        let pendingWorkbook = null;
+
         document.getElementById('csvFileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    if (!results.data || results.data.length === 0) {
-                        showToast('CSV file is empty');
-                        return;
+            const ext = file.name.split('.').pop().toLowerCase();
+
+            if (ext === 'xlsx' || ext === 'xls') {
+                // Handle Excel files
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    try {
+                        const data = new Uint8Array(ev.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetNames = workbook.SheetNames;
+
+                        if (sheetNames.length === 1) {
+                            loadExcelSheet(workbook, sheetNames[0]);
+                        } else {
+                            pendingWorkbook = workbook;
+                            showSheetPicker(sheetNames);
+                        }
+                    } catch (err) {
+                        console.error('Excel parse error:', err);
+                        showToast('Error parsing Excel file');
                     }
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                // Handle CSV files
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        if (!results.data || results.data.length === 0) {
+                            showToast('CSV file is empty');
+                            return;
+                        }
 
-                    // Map CSV rows to positions (expects Name and FEN columns)
-                    const loaded = results.data
-                        .filter(row => row.Name || row.FEN)
-                        .map(row => ({
-                            name: (row.Name || '').trim(),
-                            fen: (row.FEN || '').trim()
-                        }));
+                        // Map CSV rows to positions (expects Name and FEN columns)
+                        const loaded = results.data
+                            .filter(row => row.Name || row.FEN)
+                            .map(row => ({
+                                name: (row.Name || '').trim(),
+                                fen: (row.FEN || '').trim()
+                            }));
 
-                    if (loaded.length === 0) {
-                        showToast('No valid rows found. CSV needs Name and FEN columns.');
-                        return;
+                        if (loaded.length === 0) {
+                            showToast('No valid rows found. CSV needs Name and FEN columns.');
+                            return;
+                        }
+
+                        savedPositions = loaded;
+                        renderPositionsTable();
+                        saveToLocalStorage();
+                        showToast(`Loaded ${loaded.length} positions from CSV`);
+                    },
+                    error: function(err) {
+                        console.error('CSV parse error:', err);
+                        showToast('Error parsing CSV file');
                     }
-
-                    savedPositions = loaded;
-                    renderPositionsTable();
-                    saveToLocalStorage();
-                    showToast(`Loaded ${loaded.length} positions from CSV`);
-                },
-                error: function(err) {
-                    console.error('CSV parse error:', err);
-                    showToast('Error parsing CSV file');
-                }
-            });
+                });
+            }
 
             // Reset file input so the same file can be loaded again
             e.target.value = '';
         });
+
+        // Load a sheet from an Excel workbook into savedPositions
+        function loadExcelSheet(workbook, sheetName) {
+            const ws = workbook.Sheets[sheetName];
+            const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+            if (!data || data.length < 2) {
+                showToast('Sheet is empty or has no data rows');
+                return;
+            }
+
+            // First row is headers - find Name and FEN columns
+            const headers = data[0].map(h => String(h).trim());
+            let nameCol = headers.findIndex(h => h.toLowerCase() === 'name');
+            let fenCol = headers.findIndex(h => h.toLowerCase() === 'fen');
+
+            // Fallback: use first two columns if headers not found
+            if (nameCol === -1 && fenCol === -1) {
+                nameCol = 0;
+                fenCol = headers.length > 1 ? 1 : -1;
+            } else if (nameCol === -1) {
+                nameCol = fenCol === 0 ? 1 : 0;
+            } else if (fenCol === -1) {
+                fenCol = nameCol === 0 ? 1 : 0;
+            }
+
+            const loaded = data.slice(1)
+                .filter(row => row[nameCol] || row[fenCol])
+                .map(row => ({
+                    name: String(row[nameCol] || '').trim(),
+                    fen: String(row[fenCol] !== undefined ? row[fenCol] : '').trim()
+                }));
+
+            if (loaded.length === 0) {
+                showToast('No valid rows found in sheet');
+                return;
+            }
+
+            savedPositions = loaded;
+            renderPositionsTable();
+            saveToLocalStorage();
+            showToast(`Loaded ${loaded.length} positions from Excel (${sheetName})`);
+        }
+
+        // Sheet picker modal functions
+        function showSheetPicker(sheetNames) {
+            const listEl = document.getElementById('sheetPickerList');
+            listEl.innerHTML = sheetNames.map(function(name) {
+                return '<div class="sheet-picker-item" onclick="pickSheet(\'' + name.replace(/'/g, "\\'") + '\')">' +
+                    escapeHtml(name) + '</div>';
+            }).join('');
+            document.getElementById('sheetPickerOverlay').classList.add('open');
+        }
+
+        function closeSheetPicker() {
+            document.getElementById('sheetPickerOverlay').classList.remove('open');
+            pendingWorkbook = null;
+        }
+
+        function pickSheet(sheetName) {
+            if (pendingWorkbook) {
+                loadExcelSheet(pendingWorkbook, sheetName);
+                closeSheetPicker();
+            }
+        }
 
         // Save to localStorage
         function saveToLocalStorage() {
