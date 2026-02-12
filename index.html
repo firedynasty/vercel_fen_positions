@@ -790,7 +790,7 @@
                 <div class="button-grid">
                     <button class="complete-btn" onclick="loadFenOnBoard()">&#127937; Load on Board</button>
                     <button class="copy-btn" onclick="flipBoard()">&#8635; Flip Board</button>
-                    <button class="copy-btn" onclick="copyFenToClipboard()">&#128203; Copy FEN</button>
+                    <button class="copy-btn" onclick="clearFenDisplay()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear FEN</button>
                     <button id="cycleBoardBtn" class="copy-btn" onclick="cycleBoard()" style="display: none; background-color: rgba(233, 30, 99, 0.3);">&#128260; Cycle Board</button>
                     <button id="pasteFenBtn" class="copy-btn" onclick="pasteFenFromClipboard()">&#128203; Paste FEN</button>
                 </div>
@@ -1175,6 +1175,12 @@
             navigator.clipboard.writeText(fen).then(() => {
                 showToast('FEN copied to clipboard!');
             });
+        }
+
+        // Clear FEN display textarea
+        function clearFenDisplay() {
+            document.getElementById('fenDisplay').value = '';
+            showToast('FEN cleared');
         }
 
         // Paste FEN from clipboard
