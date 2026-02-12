@@ -637,6 +637,93 @@
             background: #3B82F6;
             color: #fff;
         }
+
+        /* Turn Toggle Slider */
+        .turn-toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 12px 0;
+            justify-content: center;
+        }
+
+        .turn-toggle-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: #a8d8ea;
+        }
+
+        .turn-toggle-switch {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            cursor: pointer;
+        }
+
+        .turn-toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .turn-toggle-slider {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #f0f0f0;
+            border-radius: 28px;
+            transition: background-color 0.3s;
+        }
+
+        .turn-toggle-slider::before {
+            content: "";
+            position: absolute;
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s, background-color 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .turn-toggle-switch input:checked + .turn-toggle-slider {
+            background-color: #333;
+        }
+
+        .turn-toggle-switch input:checked + .turn-toggle-slider::before {
+            transform: translateX(24px);
+            background-color: #222;
+        }
+
+        /* Move History Textarea */
+        #moveHistoryTextArea {
+            width: 100%;
+            min-height: 80px;
+            font-size: 14px;
+            font-family: monospace;
+            border: 2px solid #555;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            resize: vertical;
+        }
+
+        #moveHistoryTextArea:focus {
+            outline: none;
+            border-color: #4285f4;
+        }
+
+        body.light-mode #moveHistoryTextArea {
+            background-color: #fff;
+            color: #333;
+            border-color: #ccc;
+        }
+
+        body.light-mode .turn-toggle-label {
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -713,6 +800,21 @@
             <div class="board-sticky-wrapper">
                 <div id="myBoard" class="board"></div>
                 <button id="cycleBoardStickyBtn" class="copy-btn" onclick="cycleBoard()" style="width: 100%; margin-top: 8px; background-color: rgba(233, 30, 99, 0.3); font-size: 15px;">&#128260; Cycle Board</button>
+            </div>
+
+            <!-- Turn Toggle Slider -->
+            <div class="turn-toggle-container">
+                <span class="turn-toggle-label" id="turnToggleLabel">♔ White to Move</span>
+                <label class="turn-toggle-switch">
+                    <input type="checkbox" id="turnToggleCheckbox" onchange="toggleTurn()">
+                    <span class="turn-toggle-slider"></span>
+                </label>
+            </div>
+
+            <!-- Move History Textarea -->
+            <div style="margin: 12px 0;">
+                <textarea id="moveHistoryTextArea" readonly placeholder="Move history will appear here after loading a FEN..."></textarea>
+                <button class="copy-btn" onclick="copyMoveHistory()" style="width: 100%; margin-top: 6px; padding: 8px; font-size: 13px;">📋 Copy Move History</button>
             </div>
 
             <!-- Lichess Analysis URL Display -->
@@ -944,6 +1046,17 @@
                 // Update Lichess URLs
                 updateLichessUrls(completeFen);
 
+                // Populate move history textarea
+                const variantHeader = '[Variant "From Position"]\n[FEN "' + completeFen + '"]';
+                document.getElementById('moveHistoryTextArea').value = variantHeader;
+
+                // Sync turn toggle to match FEN turn field
+                const turnField = completeFen.split(' ')[1];
+                const toggleCheckbox = document.getElementById('turnToggleCheckbox');
+                toggleCheckbox.checked = (turnField === 'b');
+                document.getElementById('turnToggleLabel').textContent =
+                    turnField === 'b' ? '♚ Black to Move' : '♔ White to Move';
+
                 // Reset cycling state (loading regular FEN)
                 cyclePositions = [];
                 cycleIndex = 0;
@@ -984,11 +1097,21 @@
             // Update the positionFen input with formatted output
             document.getElementById('positionFen').value = variantFormat;
 
+            // Update move history textarea
+            document.getElementById('moveHistoryTextArea').value = variantFormat;
+
             // Update fenDisplay with just the current FEN
             document.getElementById('fenDisplay').value = currentFen;
 
             // Update Lichess URLs
             updateLichessUrls(currentFen);
+
+            // Sync turn toggle with current position
+            const turnField = currentFen.split(' ')[1];
+            const toggleCheckbox = document.getElementById('turnToggleCheckbox');
+            toggleCheckbox.checked = (turnField === 'b');
+            document.getElementById('turnToggleLabel').textContent =
+                turnField === 'b' ? '♚ Black to Move' : '♔ White to Move';
 
             console.log('Updated display:', variantFormat);
         }
@@ -1653,6 +1776,50 @@
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 2000);
+        }
+
+        // ============================================
+        // TURN TOGGLE
+        // ============================================
+        function toggleTurn() {
+            if (!chess) return;
+
+            // Get current FEN and flip the turn field
+            const currentFenStr = chess.fen();
+            const parts = currentFenStr.split(' ');
+            parts[1] = parts[1] === 'w' ? 'b' : 'w';
+            const newFen = parts.join(' ');
+
+            // Reload chess.js with the new FEN
+            chess = new Chess(newFen);
+            startingFen = newFen;
+
+            // Update displays
+            document.getElementById('fenDisplay').value = newFen;
+            const variantFormat = '[Variant "From Position"]\n[FEN "' + newFen + '"]';
+            document.getElementById('positionFen').value = variantFormat;
+            document.getElementById('moveHistoryTextArea').value = variantFormat;
+            updateLichessUrls(newFen);
+
+            // Update toggle label
+            const turnField = parts[1];
+            document.getElementById('turnToggleLabel').textContent =
+                turnField === 'b' ? '♚ Black to Move' : '♔ White to Move';
+
+            showToast(turnField === 'b' ? 'Black to move' : 'White to move');
+        }
+
+        // Copy move history textarea to clipboard
+        function copyMoveHistory() {
+            const textarea = document.getElementById('moveHistoryTextArea');
+            const text = textarea.value;
+            if (!text) {
+                showToast('No move history to copy');
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Move history copied!');
+            });
         }
 
         // ============================================
