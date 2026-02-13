@@ -25,151 +25,6 @@
         table.chess tr td { background: #F2E0CB; }
         table.chess tr:nth-child(odd) td:nth-child(even), table.chess tr:nth-child(even) td:nth-child(odd) { background: #C4AA8B; }
 
-        /* Sidebar Styles */
-        .sidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 280px;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #333;
-            z-index: 1001;
-            background: #1a1a2e;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-        }
-
-        .sidebar.open {
-            transform: translateX(0);
-        }
-
-        .sidebar-header {
-            padding: 15px 10px;
-            font-size: 14px;
-            font-weight: bold;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #0d0d1a;
-            color: #4da6ff;
-        }
-
-        .sidebar-header button {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 5px;
-            border-radius: 50%;
-            color: inherit;
-            font-size: 16px;
-        }
-
-        .sidebar-access-code {
-            padding: 10px;
-            border-bottom: 1px solid #333;
-        }
-
-        .sidebar-new-file-btn {
-            margin: 10px;
-            padding: 12px 16px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .sidebar-new-file-btn:hover {
-            background: #45a049;
-        }
-
-        .sidebar-file-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-        }
-
-        .sidebar-file-item {
-            margin-bottom: 8px;
-            padding: 10px;
-            background: #2c2c3e;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: white;
-        }
-
-        .sidebar-file-item.selected {
-            background: #3B82F6;
-        }
-
-        .sidebar-file-item:hover {
-            background: #3d3d52;
-        }
-
-        .sidebar-file-name {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-size: 13px;
-        }
-
-        .sidebar-file-actions button {
-            padding: 4px 8px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            margin-left: 4px;
-        }
-
-        .sidebar-delete-btn {
-            background: #f44336;
-            color: white;
-        }
-
-        .sidebar-refresh-btn {
-            margin: 10px;
-            padding: 10px 16px;
-            background: #2196F3;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 13px;
-            cursor: pointer;
-        }
-
-        .sidebar-no-files {
-            padding: 20px;
-            color: #888;
-        }
-
-        .sidebar-toggle-btn {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            z-index: 1000;
-            padding: 8px 16px;
-            background: #2196F3;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .sidebar.open ~ .sidebar-toggle-btn {
-            left: 290px;
-        }
-
         /* Theme Toggle Button */
         .theme-toggle-btn {
             position: fixed;
@@ -472,36 +327,6 @@
             color: #fff;
         }
 
-        body.light-mode .sidebar {
-            background: #fff;
-            border-right: 1px solid #ddd;
-        }
-
-        body.light-mode .sidebar-header {
-            background: #f5f5f5;
-            color: #333;
-        }
-
-        body.light-mode .sidebar-file-item {
-            background: #f9f9f9;
-            color: #333;
-        }
-
-        body.light-mode .sidebar-file-item.selected {
-            background: #3B82F6;
-            color: #fff;
-        }
-
-        body.light-mode .sidebar-file-item:hover {
-            background: #e9e9e9;
-        }
-
-        body.light-mode .sidebar-access-code input {
-            background: #fff;
-            color: #333;
-            border-color: #ff9800;
-        }
-
         body.light-mode .section-title {
             color: #333;
             border-bottom-color: #ddd;
@@ -727,26 +552,6 @@
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <span>SAVED POSITIONS</span>
-            <button onclick="toggleSidebar()">&#10005;</button>
-        </div>
-        <div class="sidebar-access-code">
-            <input type="text" id="accessCodeInput" placeholder="123" autocomplete="off" style="width: 80px; padding: 8px 12px; font-size: 14px; border: 2px solid #ff9800; border-radius: 6px; background: #2a2a2a; color: #fff; outline: none;">
-            <span style="margin-left: 8px; font-size: 12px; color: #888;">Access code</span>
-        </div>
-        <button class="sidebar-new-file-btn" onclick="saveCurrentPositionSet()">&#128190; Save Position Set</button>
-        <div class="sidebar-file-list" id="fileList">
-            <div class="sidebar-no-files">No position sets saved yet</div>
-        </div>
-        <button class="sidebar-refresh-btn" onclick="loadSavedSets()">Refresh</button>
-    </div>
-
-    <!-- Sidebar Toggle Button -->
-    <button class="sidebar-toggle-btn" id="sidebarToggle" onclick="toggleSidebar()">&#9776; Sets</button>
-
     <!-- Theme Toggle Button -->
     <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()">&#9788; Light</button>
 
@@ -850,17 +655,23 @@
 
             <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls" style="display: none;">
 
+            <!-- Vercel Blob buttons -->
             <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                <button id="dbFilesBtn" onclick="toggleSidebar()" style="background: rgb(0, 97, 254); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">DB Files</button>
+                <button onclick="loadFromBlob()" style="background: rgba(76, 175, 80, 0.3); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; color: white;">📂 Load</button>
+                <button onclick="saveToBlob()" style="background: rgba(76, 175, 80, 0.3); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; color: white;">💾 Save</button>
+
+                <!-- Dropbox buttons -->
+                <button id="dbLoginBtn" onclick="dropboxSignIn()" style="background: #0061fe; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">DB Login</button>
+                <button id="dbFilesBtn" onclick="openDropboxSidebar()" style="display: none; background: #0061fe; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">DB Files</button>
+                <button id="dbLogoutBtn" onclick="dropboxSignOut()" style="display: none; background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;">DB Logout</button>
+            </div>
+
+            <!-- Local file buttons -->
+            <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
                 <button class="copy-btn" onclick="document.getElementById('csvFileInput').click()" style="background-color: rgba(255, 152, 0, 0.3);">⬆ Load CSV/Excel</button>
                 <button class="copy-btn" onclick="downloadAsCSV()">⬇ Download as CSV</button>
                 <button class="copy-btn" onclick="addRowFromClipboard()" style="background-color: rgba(33, 150, 243, 0.3);">📋 Add from Clipboard</button>
                 <button class="copy-btn" onclick="clearAllPositions()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear All</button>
-            </div>
-
-            <div id="dbSaveRow" style="display: flex; gap: 8px; margin-bottom: 15px; align-items: center;">
-                <input type="text" id="dbSaveFilenameInput" placeholder="filename.csv" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #333; background: rgba(255,255,255,0.1); color: white; font-size: 13px;">
-                <button id="dbSaveBtn" onclick="dbSaveCurrentTable()" style="background: rgb(0, 97, 254); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; white-space: nowrap;">DB Save</button>
             </div>
 
             <table id="savedPositionsTable">
@@ -879,6 +690,33 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <!-- Dropbox Sidebar (right side) -->
+    <div id="dropboxSidebar" style="display: none; position: fixed; top: 0; right: 0; width: 380px; height: 100%; background: #0d1b2a; border-left: 2px solid #0061fe; z-index: 1001; box-shadow: -4px 0 20px rgba(0,0,0,0.5); overflow-y: auto;">
+      <div style="padding: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 style="margin: 0; color: #0061fe; font-size: 16px;">Dropbox Files</h3>
+          <button id="closeDropboxSidebar" onclick="closeDropboxSidebar()" style="background: #dc3545; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 14px;">&times;</button>
+        </div>
+        <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+          <input type="text" id="dropboxSearchInput" placeholder="Search folders..." style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #333; background: #1a1a2e; color: white; font-size: 13px;" onkeydown="if(event.key==='Enter')dropboxSearch(this.value)">
+          <button id="dropboxSearchBtn" onclick="dropboxSearch(document.getElementById('dropboxSearchInput').value)" style="background: #0061fe; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;">Search</button>
+        </div>
+        <div id="dropboxSaveRow" style="display: block; margin-bottom: 12px; padding: 10px; background: #1a2744; border-radius: 6px; border: 1px solid #0061fe;">
+          <div style="color: #0061fe; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Save Table As CSV:</div>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="dropboxSaveInput" placeholder="filename.csv" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #333; background: #1a1a2e; color: white; font-size: 13px;" onkeydown="if(event.key==='Enter')dropboxConfirmSave()">
+            <button id="dropboxSaveConfirmBtn" onclick="dropboxConfirmSave()" style="background: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;">Save</button>
+          </div>
+        </div>
+        <div id="dropboxNavBar" style="display: none; margin-bottom: 10px;">
+          <button id="dropboxBackBtn" onclick="dropboxGoBack()" style="background: none; color: #00d4ff; border: none; cursor: pointer; font-size: 13px; padding: 0;">&larr; Back</button>
+          <div id="dropboxFolderPath" style="color: #888; font-size: 11px; margin-top: 4px; word-break: break-all;"></div>
+        </div>
+        <div id="dropboxStatus" style="color: #51cf66; font-size: 12px; margin-bottom: 8px;"></div>
+        <div id="dropboxFileList" style="color: #eee;"></div>
+      </div>
     </div>
 
     <!-- Sheet Picker Modal -->
@@ -974,7 +812,9 @@
 
             // Load saved data after board is initialized
             loadFromLocalStorage();
-            loadSavedSets();
+
+            // Handle Dropbox OAuth redirect if returning from Dropbox
+            handleDropboxOAuthRedirect();
 
             // Add input event listener for auto-slash functionality
             const fenDisplay = document.getElementById('fenDisplay');
@@ -1000,11 +840,6 @@
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light-mode');
             document.getElementById('themeToggle').innerHTML = '&#9788; Dark';
-        }
-
-        // Sidebar toggle
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
         }
 
         // Load FEN on board
@@ -1433,8 +1268,7 @@
         function clearAllPositions() {
             if (confirm('Delete all saved positions?')) {
                 savedPositions = [];
-                currentLoadedSet = null; // Clear loaded set tracking
-                document.getElementById('dbSaveFilenameInput').value = ''; // Clear save filename
+                currentLoadedSet = null;
                 renderPositionsTable();
                 saveToLocalStorage();
                 showToast('All positions cleared');
@@ -1634,174 +1468,444 @@
                 }));
         }
 
-        // Save current position set to Vercel Blob as CSV
-        async function saveCurrentPositionSet() {
+        // ============================================
+        // VERCEL BLOB - Simple Load/Save (single file: positions.csv)
+        // ============================================
+        async function saveToBlob() {
             if (savedPositions.length === 0) {
                 showToast('No positions to save');
                 return;
             }
 
-            const name = prompt('Enter a name for this position set:');
-            if (!name) return;
-
-            const accessCode = document.getElementById('accessCodeInput').value || '123';
-
-            const csvContent = positionsToCSV(savedPositions);
-            const filename = `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.csv`;
-
+            const csv = positionsToCSV(savedPositions);
             try {
                 const response = await fetch('/api/files', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        filename: filename,
-                        content: csvContent,
-                        accessCode: accessCode
+                        filename: 'positions.csv',
+                        content: csv,
+                        accessCode: '123'
                     })
                 });
 
                 const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Failed to save');
 
-                if (!response.ok) {
-                    throw new Error(result.error || 'Failed to save');
-                }
-
-                // Track this as the currently loaded set
-                currentLoadedSet = filename;
-
-                // Populate the DB Save filename input
-                document.getElementById('dbSaveFilenameInput').value = filename;
-
-                showToast('Position set saved to cloud!');
-                loadSavedSets();
+                showToast('Saved to cloud!');
             } catch (error) {
                 console.error('Save error:', error);
                 showToast('Error: ' + error.message);
             }
         }
 
-        // Load saved sets from Vercel Blob
-        async function loadSavedSets() {
-            const fileList = document.getElementById('fileList');
-            fileList.innerHTML = '<div class="sidebar-no-files">Loading...</div>';
-
+        async function loadFromBlob() {
             try {
                 const response = await fetch('/api/files');
                 const result = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(result.error || 'Failed to load');
-                }
+                if (!response.ok) throw new Error(result.error || 'Failed to load');
 
-                const files = result.files;
-                const fileNames = Object.keys(files);
-
-                if (fileNames.length === 0) {
-                    fileList.innerHTML = '<div class="sidebar-no-files">No position sets saved yet</div>';
+                const content = result.files['positions.csv'];
+                if (!content) {
+                    showToast('No saved positions found in cloud');
                     return;
                 }
 
-                const sets = fileNames.map(filename => {
-                    try {
-                        const content = files[filename];
-                        let displayName, rowCount;
-
-                        if (filename.endsWith('.csv')) {
-                            const positions = csvToPositions(content);
-                            displayName = filename.replace(/\.csv$/i, '');
-                            rowCount = positions.length;
-                        } else {
-                            // Legacy JSON support
-                            const data = JSON.parse(content);
-                            displayName = data.name || filename;
-                            rowCount = data.positions ? data.positions.length : 0;
-                        }
-
-                        return { filename, displayName, rowCount };
-                    } catch (e) {
-                        console.error('Error parsing', filename, e);
-                        return null;
-                    }
-                }).filter(s => s !== null);
-
-                fileList.innerHTML = sets.map(set => `
-                    <div class="sidebar-file-item">
-                        <div class="sidebar-file-name" onclick="loadPositionSet('${escapeHtml(set.filename)}')">${escapeHtml(set.displayName)} (${set.rowCount})</div>
-                        <div class="sidebar-file-actions">
-                            <button class="sidebar-delete-btn" onclick="deletePositionSet('${escapeHtml(set.filename)}')">Delete</button>
-                        </div>
-                    </div>
-                `).join('');
+                savedPositions = csvToPositions(content);
+                renderPositionsTable();
+                saveToLocalStorage();
+                showToast(`Loaded ${savedPositions.length} positions from cloud`);
             } catch (error) {
                 console.error('Load error:', error);
-                fileList.innerHTML = '<div class="sidebar-no-files">Error loading sets</div>';
+                showToast('Error: ' + error.message);
             }
         }
 
-        // Load position set from cloud
-        async function loadPositionSet(filename) {
+        // ============================================
+        // DROPBOX INTEGRATION (OAuth PKCE + File Operations)
+        // ============================================
+        window.dropboxAccessToken = null;
+        window.dropboxAppKey = null;
+        window.dropboxCurrentFilePath = null;
+        window.dropboxFolderPath = '';
+        window.dropboxFolderFiles = [];
+        window.dropboxSearchResults = [];
+
+        // PKCE helpers
+        function generateCodeVerifier() {
+            const array = new Uint8Array(64);
+            crypto.getRandomValues(array);
+            return btoa(String.fromCharCode(...array))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
+        }
+
+        async function generateCodeChallenge(verifier) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(verifier);
+            const digest = await crypto.subtle.digest('SHA-256', data);
+            return btoa(String.fromCharCode(...new Uint8Array(digest)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
+        }
+
+        // Fetch APP_KEY from serverless endpoint
+        async function dropboxFetchAppKey() {
+            if (window.dropboxAppKey) return window.dropboxAppKey;
             try {
-                const response = await fetch('/api/files');
-                const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.error || 'Failed to load');
+                const res = await fetch('/api/dropbox-config');
+                const data = await res.json();
+                if (data.appKey) {
+                    window.dropboxAppKey = data.appKey;
+                    return data.appKey;
                 }
+                throw new Error(data.error || 'No app key returned');
+            } catch (err) {
+                showToast('Failed to fetch Dropbox config: ' + err.message);
+                return null;
+            }
+        }
 
-                const content = result.files[filename];
-                let displayName;
+        // Initiate OAuth PKCE redirect
+        async function dropboxSignIn() {
+            const appKey = await dropboxFetchAppKey();
+            if (!appKey) return;
+            const verifier = generateCodeVerifier();
+            const challenge = await generateCodeChallenge(verifier);
+            sessionStorage.setItem('dropbox_code_verifier', verifier);
+            const redirectUri = window.location.origin;
+            const authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&response_type=code&code_challenge=${challenge}&code_challenge_method=S256&redirect_uri=${encodeURIComponent(redirectUri)}&token_access_type=online`;
+            window.location.href = authUrl;
+        }
 
-                if (filename.endsWith('.csv')) {
-                    savedPositions = csvToPositions(content);
-                    displayName = filename.replace(/\.csv$/i, '');
+        // Handle OAuth redirect on page load
+        async function handleDropboxOAuthRedirect() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            if (!code) return;
+
+            const verifier = sessionStorage.getItem('dropbox_code_verifier');
+            if (!verifier) return;
+
+            const appKey = await dropboxFetchAppKey();
+            if (!appKey) return;
+
+            const redirectUri = window.location.origin;
+            const body = new URLSearchParams({
+                code,
+                grant_type: 'authorization_code',
+                client_id: appKey,
+                redirect_uri: redirectUri,
+                code_verifier: verifier,
+            });
+
+            try {
+                const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: body.toString(),
+                });
+                const data = await res.json();
+                if (data.access_token) {
+                    window.dropboxAccessToken = data.access_token;
+                    sessionStorage.removeItem('dropbox_code_verifier');
+                    window.history.replaceState({}, document.title, redirectUri);
+                    updateDropboxButtons();
+                    showToast('Dropbox connected!');
                 } else {
-                    // Legacy JSON support
-                    const data = JSON.parse(content);
-                    savedPositions = data.positions;
-                    displayName = data.name || filename;
+                    console.error('Dropbox auth failed:', data.error_description || data.error);
                 }
+            } catch (err) {
+                console.error('Dropbox auth error:', err.message);
+            }
+        }
 
-                currentLoadedSet = filename;
+        // Sign out
+        async function dropboxSignOut() {
+            if (window.dropboxAccessToken) {
+                try {
+                    await fetch('https://api.dropboxapi.com/2/auth/token/revoke', {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${window.dropboxAccessToken}` },
+                    });
+                } catch { /* ignore */ }
+            }
+            window.dropboxAccessToken = null;
+            window.dropboxCurrentFilePath = null;
+            window.dropboxFolderPath = '';
+            window.dropboxFolderFiles = [];
+            window.dropboxSearchResults = [];
+            updateDropboxButtons();
+            closeDropboxSidebar();
+            showToast('Dropbox disconnected');
+        }
+
+        // Update button visibility based on login state
+        function updateDropboxButtons() {
+            const loginBtn = document.getElementById('dbLoginBtn');
+            const filesBtn = document.getElementById('dbFilesBtn');
+            const logoutBtn = document.getElementById('dbLogoutBtn');
+            if (window.dropboxAccessToken) {
+                loginBtn.style.display = 'none';
+                filesBtn.style.display = '';
+                logoutBtn.style.display = '';
+            } else {
+                loginBtn.style.display = '';
+                filesBtn.style.display = 'none';
+                logoutBtn.style.display = 'none';
+            }
+        }
+
+        // Search folders
+        async function dropboxSearch(query) {
+            if (!query || !query.trim() || !window.dropboxAccessToken) return;
+            const q = query.trim();
+            if (q.startsWith('/')) {
+                dropboxLoadFolder(q.replace(/\/+$/, '') || '');
+                return;
+            }
+            setDropboxStatus('Searching...');
+            try {
+                const res = await fetch('https://api.dropboxapi.com/2/files/search_v2', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${window.dropboxAccessToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: q,
+                        options: {
+                            max_results: 20,
+                            file_categories: [{ '.tag': 'folder' }],
+                        },
+                    }),
+                });
+                if (!res.ok) throw new Error('Search failed');
+                const data = await res.json();
+                const matches = (data.matches || [])
+                    .map(m => {
+                        const meta = m.metadata?.metadata || m.metadata;
+                        return {
+                            name: meta.name,
+                            path: meta.path_lower || meta.path_display,
+                            isFolder: meta['.tag'] === 'folder',
+                        };
+                    })
+                    .filter(m => m.isFolder);
+                window.dropboxSearchResults = matches;
+                window.dropboxFolderPath = '';
+                window.dropboxFolderFiles = [];
+                setDropboxStatus(`Found ${matches.length} folders`);
+                renderDropboxSidebar(matches, false);
+            } catch (err) {
+                setDropboxStatus('Error: ' + err.message);
+            }
+        }
+
+        // List folder contents
+        async function dropboxLoadFolder(path) {
+            if (!window.dropboxAccessToken) return;
+            setDropboxStatus('Loading folder...');
+            try {
+                const res = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${window.dropboxAccessToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ path }),
+                });
+                if (!res.ok) throw new Error('Failed to list folder');
+                const data = await res.json();
+                const entries = (data.entries || []).map(entry => ({
+                    name: entry.name,
+                    path: entry.path_lower || entry.path_display,
+                    isFolder: entry['.tag'] === 'folder',
+                }));
+                entries.sort((a, b) => {
+                    if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+                    return a.name.localeCompare(b.name);
+                });
+                window.dropboxFolderPath = path;
+                window.dropboxFolderFiles = entries;
+                setDropboxStatus(`${entries.length} items in ${path || '/'}`);
+                renderDropboxSidebar(entries, true);
+            } catch (err) {
+                setDropboxStatus('Error: ' + err.message);
+            }
+        }
+
+        // Download and load a CSV file from Dropbox into the table
+        async function dropboxLoadFile(path, fileName) {
+            if (!window.dropboxAccessToken) return;
+            setDropboxStatus(`Loading ${fileName}...`);
+            try {
+                const res = await fetch('https://content.dropboxapi.com/2/files/download', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${window.dropboxAccessToken}`,
+                        'Dropbox-API-Arg': JSON.stringify({ path }),
+                    },
+                });
+                if (!res.ok) throw new Error('Download failed');
+                const content = await res.text();
+                window.dropboxCurrentFilePath = path;
+
+                // Parse CSV into table
+                savedPositions = csvToPositions(content);
                 renderPositionsTable();
                 saveToLocalStorage();
 
-                // Populate the DB Save filename input
-                document.getElementById('dbSaveFilenameInput').value = filename;
-
-                showToast(`Loaded set: ${displayName}`);
-                toggleSidebar();
-            } catch (error) {
-                console.error('Load error:', error);
-                showToast('Error loading position set');
+                setDropboxStatus(`Loaded ${fileName}`);
+                closeDropboxSidebar();
+                showToast(`Loaded ${savedPositions.length} positions from Dropbox`);
+            } catch (err) {
+                setDropboxStatus('Error: ' + err.message);
             }
         }
 
-        // Delete position set from cloud
-        async function deletePositionSet(filename) {
-            if (!confirm('Delete this position set from cloud storage?')) {
+        // Upload table as CSV to Dropbox
+        async function dropboxConfirmSave() {
+            const saveInput = document.getElementById('dropboxSaveInput');
+            let filename = saveInput.value.trim();
+            if (!filename) {
+                setDropboxStatus('Enter a filename to save.');
+                return;
+            }
+            if (!filename.endsWith('.csv')) filename += '.csv';
+
+            if (savedPositions.length === 0) {
+                setDropboxStatus('No positions to save.');
                 return;
             }
 
-            const accessCode = document.getElementById('accessCodeInput').value || '123';
+            const folder = window.dropboxFolderPath || '';
+            const savePath = folder + '/' + filename;
+            const csvContent = positionsToCSV(savedPositions);
 
+            setDropboxStatus(`Saving to ${savePath}...`);
             try {
-                const response = await fetch(`/api/files?filename=${encodeURIComponent(filename)}`, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ accessCode: accessCode })
+                const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${window.dropboxAccessToken}`,
+                        'Dropbox-API-Arg': JSON.stringify({
+                            path: savePath,
+                            mode: 'overwrite',
+                            mute: true,
+                        }),
+                        'Content-Type': 'application/octet-stream',
+                    },
+                    body: csvContent,
                 });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.error || 'Failed to delete');
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error_summary || `HTTP ${res.status}`);
                 }
+                window.dropboxCurrentFilePath = savePath;
+                setDropboxStatus(`Saved to ${savePath}`);
+                showToast(`Saved to Dropbox: ${savePath}`);
+                if (window.dropboxFolderPath) {
+                    await dropboxLoadFolder(window.dropboxFolderPath);
+                }
+            } catch (err) {
+                setDropboxStatus('Save error: ' + err.message);
+            }
+        }
 
-                showToast('Position set deleted');
-                loadSavedSets();
-            } catch (error) {
-                console.error('Delete error:', error);
-                showToast('Error: ' + error.message);
+        // Sidebar helpers
+        function openDropboxSidebar() {
+            document.getElementById('dropboxSidebar').style.display = 'block';
+            if (window.dropboxFolderPath) {
+                renderDropboxSidebar(window.dropboxFolderFiles, true);
+            } else if (window.dropboxSearchResults.length > 0) {
+                renderDropboxSidebar(window.dropboxSearchResults, false);
+            } else {
+                dropboxLoadFolder('');
+            }
+        }
+
+        function closeDropboxSidebar() {
+            document.getElementById('dropboxSidebar').style.display = 'none';
+        }
+
+        function setDropboxStatus(msg) {
+            const el = document.getElementById('dropboxStatus');
+            if (el) el.textContent = msg;
+        }
+
+        function renderDropboxSidebar(items, isFolder) {
+            const list = document.getElementById('dropboxFileList');
+            const navBar = document.getElementById('dropboxNavBar');
+            const folderPathEl = document.getElementById('dropboxFolderPath');
+
+            if (isFolder && window.dropboxFolderPath) {
+                navBar.style.display = 'block';
+                folderPathEl.textContent = window.dropboxFolderPath;
+            } else {
+                navBar.style.display = 'none';
+                folderPathEl.textContent = '';
+            }
+
+            list.innerHTML = '';
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.style.cssText = 'padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #1a1a2e; display: flex; align-items: center; gap: 8px; font-size: 13px;';
+                div.onmouseenter = () => div.style.background = '#16213e';
+                div.onmouseleave = () => div.style.background = '';
+                const icon = document.createElement('span');
+                icon.textContent = item.isFolder ? '\uD83D\uDCC1' : '\uD83D\uDCC4';
+                const textWrap = document.createElement('div');
+                textWrap.style.cssText = 'overflow: hidden; min-width: 0;';
+                const name = document.createElement('div');
+                name.textContent = item.name;
+                name.style.cssText = 'overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+                textWrap.appendChild(name);
+                if (item.isFolder && !isFolder) {
+                    const pathLine = document.createElement('div');
+                    pathLine.textContent = item.path;
+                    pathLine.style.cssText = 'font-size: 11px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+                    textWrap.appendChild(pathLine);
+                }
+                div.appendChild(icon);
+                div.appendChild(textWrap);
+
+                div.addEventListener('click', () => {
+                    if (item.isFolder) {
+                        dropboxLoadFolder(item.path);
+                    } else if (item.name.endsWith('.csv')) {
+                        dropboxLoadFile(item.path, item.name);
+                    } else {
+                        setDropboxStatus(`Cannot open "${item.name}" — only .csv files supported`);
+                    }
+                });
+                list.appendChild(div);
+            });
+
+            if (items.length === 0) {
+                list.innerHTML = '<div style="color: #888; padding: 10px; font-size: 13px;">No items found</div>';
+            }
+        }
+
+        // Go back one folder level
+        function dropboxGoBack() {
+            if (window.dropboxFolderPath) {
+                const parentPath = window.dropboxFolderPath.substring(0, window.dropboxFolderPath.lastIndexOf('/'));
+                if (parentPath) {
+                    dropboxLoadFolder(parentPath);
+                } else {
+                    window.dropboxFolderPath = '';
+                    window.dropboxFolderFiles = [];
+                    if (window.dropboxSearchResults.length > 0) {
+                        renderDropboxSidebar(window.dropboxSearchResults, false);
+                        setDropboxStatus(`${window.dropboxSearchResults.length} search results`);
+                    } else {
+                        dropboxLoadFolder('');
+                    }
+                }
             }
         }
 
@@ -2013,56 +2117,6 @@
             const imagePreviewContainer = document.getElementById('imagePreviewContainer');
             imagePreviewContainer.style.display = 'none';
             document.getElementById('loadImageBtn').textContent = '🖼️ Load Reference Image';
-        }
-
-        // ============================================
-        // DB SAVE - Save table to cloud as CSV
-        // ============================================
-        async function dbSaveCurrentTable() {
-            if (savedPositions.length === 0) {
-                showToast('No positions to save');
-                return;
-            }
-
-            let filename = document.getElementById('dbSaveFilenameInput').value.trim();
-            if (!filename) {
-                showToast('Please enter a filename');
-                return;
-            }
-
-            // Ensure .csv extension
-            if (!filename.endsWith('.csv')) {
-                filename += '.csv';
-            }
-
-            const accessCode = document.getElementById('accessCodeInput').value || '123';
-            const csvContent = positionsToCSV(savedPositions);
-
-            try {
-                const response = await fetch('/api/files', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: filename,
-                        content: csvContent,
-                        accessCode: accessCode
-                    })
-                });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.error || 'Failed to save');
-                }
-
-                currentLoadedSet = filename;
-                saveToLocalStorage();
-                showToast(`Saved as "${filename}"`);
-                loadSavedSets();
-            } catch (error) {
-                console.error('Save error:', error);
-                showToast('Error: ' + error.message);
-            }
         }
 
         // ============================================
