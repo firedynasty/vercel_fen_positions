@@ -1329,39 +1329,26 @@
                 };
                 reader.readAsArrayBuffer(file);
             } else {
-                // Handle CSV files
-                Papa.parse(file, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        if (!results.data || results.data.length === 0) {
-                            showToast('CSV file is empty');
-                            return;
-                        }
+                // Handle CSV files - read as text then use csvToPositions
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    const text = ev.target.result;
+                    const loaded = csvToPositions(text);
 
-                        // Map CSV rows to positions (expects Name and FEN columns)
-                        const loaded = results.data
-                            .filter(row => row.Name || row.FEN)
-                            .map(row => ({
-                                name: (row.Name || '').trim(),
-                                fen: (row.FEN || '').trim()
-                            }));
-
-                        if (loaded.length === 0) {
-                            showToast('No valid rows found. CSV needs Name and FEN columns.');
-                            return;
-                        }
-
-                        savedPositions = loaded;
-                        renderPositionsTable();
-                        saveToLocalStorage();
-                        showToast(`Loaded ${loaded.length} positions from CSV`);
-                    },
-                    error: function(err) {
-                        console.error('CSV parse error:', err);
-                        showToast('Error parsing CSV file');
+                    if (loaded.length === 0) {
+                        showToast('No valid rows found in CSV');
+                        return;
                     }
-                });
+
+                    savedPositions = loaded;
+                    renderPositionsTable();
+                    saveToLocalStorage();
+                    showToast(`Loaded ${loaded.length} positions from CSV`);
+                };
+                reader.onerror = function() {
+                    showToast('Error reading CSV file');
+                };
+                reader.readAsText(file);
             }
 
             // Reset file input so the same file can be loaded again
@@ -1456,16 +1443,49 @@
             return csv;
         }
 
-        // Parse CSV string to positions array
+        // Parse CSV string to positions array (handles multiple formats)
         function csvToPositions(csvString) {
-            const result = Papa.parse(csvString, { header: true, skipEmptyLines: true });
-            if (!result.data || result.data.length === 0) return [];
-            return result.data
-                .filter(row => row.Name || row.FEN)
-                .map(row => ({
-                    name: (row.Name || '').trim(),
-                    fen: (row.FEN || '').trim()
-                }));
+            // Try with headers first (Name,FEN format)
+            const withHeaders = Papa.parse(csvString, { header: true, skipEmptyLines: true });
+            if (withHeaders.data && withHeaders.data.length > 0) {
+                const cols = Object.keys(withHeaders.data[0]);
+                const hasNameCol = cols.some(c => c.toLowerCase() === 'name');
+                const hasFenCol = cols.some(c => c.toLowerCase() === 'fen');
+
+                if (hasNameCol || hasFenCol) {
+                    // Find actual column names (case-insensitive)
+                    const nameKey = cols.find(c => c.toLowerCase() === 'name') || '';
+                    const fenKey = cols.find(c => c.toLowerCase() === 'fen') || '';
+                    return withHeaders.data
+                        .filter(row => (nameKey && row[nameKey]) || (fenKey && row[fenKey]))
+                        .map(row => ({
+                            name: (nameKey ? row[nameKey] || '' : '').trim(),
+                            fen: (fenKey ? row[fenKey] || '' : '').trim()
+                        }));
+                }
+            }
+
+            // Fallback: parse without headers (auto-detect columns)
+            const noHeaders = Papa.parse(csvString, { header: false, skipEmptyLines: true });
+            if (!noHeaders.data || noHeaders.data.length === 0) return [];
+
+            const numCols = noHeaders.data[0].length;
+
+            // 2 columns: name, fen
+            if (numCols === 2) {
+                return noHeaders.data
+                    .filter(row => row[0] || row[1])
+                    .map(row => ({ name: String(row[0] || '').trim(), fen: String(row[1] || '').trim() }));
+            }
+
+            // 3+ columns: first col is index/number, col 1 = name, col 2 = fen
+            if (numCols >= 3) {
+                return noHeaders.data
+                    .filter(row => row[1] || row[2])
+                    .map(row => ({ name: String(row[1] || '').trim(), fen: String(row[2] || '').trim() }));
+            }
+
+            return [];
         }
 
         // ============================================
