@@ -850,12 +850,17 @@
 
             <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls" style="display: none;">
 
-            <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+            <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                <button id="dbFilesBtn" onclick="toggleSidebar()" style="background: rgb(0, 97, 254); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">DB Files</button>
                 <button class="copy-btn" onclick="document.getElementById('csvFileInput').click()" style="background-color: rgba(255, 152, 0, 0.3);">⬆ Load CSV/Excel</button>
                 <button class="copy-btn" onclick="downloadAsCSV()">⬇ Download as CSV</button>
-                <button id="saveChangesBtn" class="copy-btn" onclick="saveChangesToCurrentSet()" style="background-color: rgba(76, 175, 80, 0.3); display: none;">💾 Save Changes</button>
                 <button class="copy-btn" onclick="addRowFromClipboard()" style="background-color: rgba(33, 150, 243, 0.3);">📋 Add from Clipboard</button>
                 <button class="copy-btn" onclick="clearAllPositions()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear All</button>
+            </div>
+
+            <div id="dbSaveRow" style="display: flex; gap: 8px; margin-bottom: 15px; align-items: center;">
+                <input type="text" id="dbSaveFilenameInput" placeholder="filename.csv" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #333; background: rgba(255,255,255,0.1); color: white; font-size: 13px;">
+                <button id="dbSaveBtn" onclick="dbSaveCurrentTable()" style="background: rgb(0, 97, 254); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; white-space: nowrap;">DB Save</button>
             </div>
 
             <table id="savedPositionsTable">
@@ -1429,7 +1434,7 @@
             if (confirm('Delete all saved positions?')) {
                 savedPositions = [];
                 currentLoadedSet = null; // Clear loaded set tracking
-                document.getElementById('saveChangesBtn').style.display = 'none'; // Hide save button
+                document.getElementById('dbSaveFilenameInput').value = ''; // Clear save filename
                 renderPositionsTable();
                 saveToLocalStorage();
                 showToast('All positions cleared');
@@ -1608,7 +1613,28 @@
             }
         }
 
-        // Save current position set to Vercel Blob
+        // Convert savedPositions array to CSV string
+        function positionsToCSV(positions) {
+            let csv = 'Name,FEN\n';
+            positions.forEach(pos => {
+                csv += `"${pos.name.replace(/"/g, '""')}","${pos.fen.replace(/"/g, '""')}"\n`;
+            });
+            return csv;
+        }
+
+        // Parse CSV string to positions array
+        function csvToPositions(csvString) {
+            const result = Papa.parse(csvString, { header: true, skipEmptyLines: true });
+            if (!result.data || result.data.length === 0) return [];
+            return result.data
+                .filter(row => row.Name || row.FEN)
+                .map(row => ({
+                    name: (row.Name || '').trim(),
+                    fen: (row.FEN || '').trim()
+                }));
+        }
+
+        // Save current position set to Vercel Blob as CSV
         async function saveCurrentPositionSet() {
             if (savedPositions.length === 0) {
                 showToast('No positions to save');
@@ -1620,13 +1646,8 @@
 
             const accessCode = document.getElementById('accessCodeInput').value || '123';
 
-            const data = {
-                name: name,
-                timestamp: Date.now(),
-                positions: savedPositions
-            };
-
-            const filename = `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}.json`;
+            const csvContent = positionsToCSV(savedPositions);
+            const filename = `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.csv`;
 
             try {
                 const response = await fetch('/api/files', {
@@ -1634,7 +1655,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         filename: filename,
-                        content: JSON.stringify(data),
+                        content: csvContent,
                         accessCode: accessCode
                     })
                 });
@@ -1648,8 +1669,8 @@
                 // Track this as the currently loaded set
                 currentLoadedSet = filename;
 
-                // Show "Save Changes" button
-                document.getElementById('saveChangesBtn').style.display = 'inline-block';
+                // Populate the DB Save filename input
+                document.getElementById('dbSaveFilenameInput').value = filename;
 
                 showToast('Position set saved to cloud!');
                 loadSavedSets();
@@ -1682,19 +1703,30 @@
 
                 const sets = fileNames.map(filename => {
                     try {
-                        return {
-                            filename: filename,
-                            data: JSON.parse(files[filename])
-                        };
+                        const content = files[filename];
+                        let displayName, rowCount;
+
+                        if (filename.endsWith('.csv')) {
+                            const positions = csvToPositions(content);
+                            displayName = filename.replace(/\.csv$/i, '');
+                            rowCount = positions.length;
+                        } else {
+                            // Legacy JSON support
+                            const data = JSON.parse(content);
+                            displayName = data.name || filename;
+                            rowCount = data.positions ? data.positions.length : 0;
+                        }
+
+                        return { filename, displayName, rowCount };
                     } catch (e) {
                         console.error('Error parsing', filename, e);
                         return null;
                     }
                 }).filter(s => s !== null);
 
-                fileList.innerHTML = sets.map((set, index) => `
+                fileList.innerHTML = sets.map(set => `
                     <div class="sidebar-file-item">
-                        <div class="sidebar-file-name" onclick="loadPositionSet('${escapeHtml(set.filename)}')">${escapeHtml(set.data.name)} (${set.data.positions.length})</div>
+                        <div class="sidebar-file-name" onclick="loadPositionSet('${escapeHtml(set.filename)}')">${escapeHtml(set.displayName)} (${set.rowCount})</div>
                         <div class="sidebar-file-actions">
                             <button class="sidebar-delete-btn" onclick="deletePositionSet('${escapeHtml(set.filename)}')">Delete</button>
                         </div>
@@ -1716,16 +1748,27 @@
                     throw new Error(result.error || 'Failed to load');
                 }
 
-                const data = JSON.parse(result.files[filename]);
-                savedPositions = data.positions;
-                currentLoadedSet = filename; // Track loaded set
+                const content = result.files[filename];
+                let displayName;
+
+                if (filename.endsWith('.csv')) {
+                    savedPositions = csvToPositions(content);
+                    displayName = filename.replace(/\.csv$/i, '');
+                } else {
+                    // Legacy JSON support
+                    const data = JSON.parse(content);
+                    savedPositions = data.positions;
+                    displayName = data.name || filename;
+                }
+
+                currentLoadedSet = filename;
                 renderPositionsTable();
                 saveToLocalStorage();
 
-                // Show "Save Changes" button
-                document.getElementById('saveChangesBtn').style.display = 'inline-block';
+                // Populate the DB Save filename input
+                document.getElementById('dbSaveFilenameInput').value = filename;
 
-                showToast(`Loaded set: ${data.name}`);
+                showToast(`Loaded set: ${displayName}`);
                 toggleSidebar();
             } catch (error) {
                 console.error('Load error:', error);
@@ -1973,50 +2016,49 @@
         }
 
         // ============================================
-        // SAVE CHANGES TO CURRENT SET
+        // DB SAVE - Save table to cloud as CSV
         // ============================================
-        async function saveChangesToCurrentSet() {
-            if (!currentLoadedSet) {
-                showToast('No set loaded. Use "Save Position Set" to create new.');
+        async function dbSaveCurrentTable() {
+            if (savedPositions.length === 0) {
+                showToast('No positions to save');
                 return;
             }
 
-            const accessCode = document.getElementById('accessCodeInput').value;
-            if (!accessCode) {
-                showToast('Please enter access code');
+            let filename = document.getElementById('dbSaveFilenameInput').value.trim();
+            if (!filename) {
+                showToast('Please enter a filename');
                 return;
             }
+
+            // Ensure .csv extension
+            if (!filename.endsWith('.csv')) {
+                filename += '.csv';
+            }
+
+            const accessCode = document.getElementById('accessCodeInput').value || '123';
+            const csvContent = positionsToCSV(savedPositions);
 
             try {
-                // Get the original set name
-                const response = await fetch('/api/files');
-                const result = await response.json();
-                const originalData = JSON.parse(result.files[currentLoadedSet]);
-
-                const content = JSON.stringify({
-                    name: originalData.name,
-                    timestamp: Date.now(),
-                    positions: savedPositions
-                });
-
-                const saveResponse = await fetch('/api/files', {
+                const response = await fetch('/api/files', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        filename: currentLoadedSet,
-                        content: content,
+                        filename: filename,
+                        content: csvContent,
                         accessCode: accessCode
                     })
                 });
 
-                const saveResult = await saveResponse.json();
+                const result = await response.json();
 
-                if (!saveResponse.ok) {
-                    throw new Error(saveResult.error || 'Failed to save');
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to save');
                 }
 
+                currentLoadedSet = filename;
                 saveToLocalStorage();
-                showToast(`✅ Changes saved to "${originalData.name}"`);
+                showToast(`Saved as "${filename}"`);
+                loadSavedSets();
             } catch (error) {
                 console.error('Save error:', error);
                 showToast('Error: ' + error.message);
