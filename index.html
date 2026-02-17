@@ -752,6 +752,7 @@
         let cycleIndex = 0;          // Current position in cycle
         let lastCycledFen = null;    // Last FEN that was cycled
         let currentCyclingIndex = null; // Track which table row is currently being cycled
+        let lastSelectedRow = null; // Track last selected/added row for highlighting
 
         // Initialize chessboard after DOM loads
         window.addEventListener('DOMContentLoaded', function() {
@@ -1073,6 +1074,7 @@
 
                 // Add to saved positions (clipboard content goes directly to FEN column)
                 savedPositions.push({ name, fen: clipboardText.trim() });
+                lastSelectedRow = savedPositions.length - 1;
                 renderPositionsTable();
                 saveToLocalStorage();
 
@@ -1096,7 +1098,7 @@
             }
 
             tbody.innerHTML = savedPositions.map((pos, index) => `
-                <tr onclick="cycleThroughPosition(${index})" style="cursor: pointer;" title="Click to cycle through positions">
+                <tr onclick="cycleThroughPosition(${index})" style="cursor: pointer;${lastSelectedRow === index ? ' background: rgba(255,183,77,0.15);' : ''}" title="Click to cycle through positions">
                     <td>${index + 1}</td>
                     <td>${escapeHtml(pos.name)}</td>
                     <td>${escapeHtml(pos.fen.length > 160 ? pos.fen.substring(0, 160) + '...' : pos.fen)}</td>
@@ -1125,6 +1127,10 @@
         function cycleThroughPosition(index) {
             const pos = savedPositions[index];
             const fenText = pos.fen;
+
+            // Highlight selected row
+            lastSelectedRow = index;
+            renderPositionsTable();
 
             // Always copy FEN to clipboard on click
             navigator.clipboard.writeText(fenText).catch(() => {});
