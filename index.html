@@ -1780,6 +1780,7 @@
                 saveToLocalStorage();
 
                 setDropboxStatus(`Loaded ${fileName}`);
+                document.getElementById('dropboxSaveInput').value = fileName;
                 closeDropboxSidebar();
                 showToast(`Loaded ${savedPositions.length} positions from Dropbox`);
             } catch (err) {
