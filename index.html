@@ -655,11 +655,7 @@
 
             <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls" style="display: none;">
 
-            <!-- Vercel Blob buttons -->
             <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                <button onclick="loadFromBlob()" style="background: rgba(76, 175, 80, 0.3); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; color: white;">📂 Load</button>
-                <button onclick="saveToBlob()" style="background: rgba(76, 175, 80, 0.3); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; color: white;">💾 Save</button>
-
                 <!-- Dropbox buttons -->
                 <button id="dbLoginBtn" onclick="dropboxSignIn()" style="background: #0061fe; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">DB Login</button>
                 <button id="dbFilesBtn" onclick="openDropboxSidebar()" style="display: none; background: #0061fe; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">DB Files</button>
@@ -1492,60 +1488,6 @@
             }
 
             return [];
-        }
-
-        // ============================================
-        // VERCEL BLOB - Simple Load/Save (single file: positions.csv)
-        // ============================================
-        async function saveToBlob() {
-            if (savedPositions.length === 0) {
-                showToast('No positions to save');
-                return;
-            }
-
-            const csv = positionsToCSV(savedPositions);
-            try {
-                const response = await fetch('/api/files', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'positions.csv',
-                        content: csv,
-                        accessCode: '123'
-                    })
-                });
-
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error || 'Failed to save');
-
-                showToast('Saved to cloud!');
-            } catch (error) {
-                console.error('Save error:', error);
-                showToast('Error: ' + error.message);
-            }
-        }
-
-        async function loadFromBlob() {
-            try {
-                const response = await fetch('/api/files');
-                const result = await response.json();
-
-                if (!response.ok) throw new Error(result.error || 'Failed to load');
-
-                const content = result.files['positions.csv'];
-                if (!content) {
-                    showToast('No saved positions found in cloud');
-                    return;
-                }
-
-                savedPositions = csvToPositions(content);
-                renderPositionsTable();
-                saveToLocalStorage();
-                showToast(`Loaded ${savedPositions.length} positions from cloud`);
-            } catch (error) {
-                console.error('Load error:', error);
-                showToast('Error: ' + error.message);
-            }
         }
 
         // ============================================
