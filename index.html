@@ -847,13 +847,20 @@
                 return;
             }
 
+            // Apply flip conversion if reading from flipped perspective
+            let processedFen = fenInput;
+            if (fenPerspective === 'flipped' && fenInput.includes('/')) {
+                processedFen = convertFlippedFen(fenInput);
+                console.log('Converted flipped FEN:', processedFen);
+            }
+
             // Auto-complete FEN if only position part is provided
-            let completeFen = fenInput;
-            const fenParts = fenInput.split(' ');
+            let completeFen = processedFen;
+            const fenParts = processedFen.split(' ');
 
             // If only position part provided, add default values
             if (fenParts.length === 1) {
-                completeFen = fenInput + ' w KQkq - 0 1';
+                completeFen = processedFen + ' w KQkq - 0 1';
             }
 
             // Extract just the position part (first section of FEN)
