@@ -675,8 +675,8 @@
             </div>
         </div>
 
-        <!-- Position Saver Section -->
-        <div class="position-saver">
+        <!-- Position Saver Section (hidden — replaced by Google Sheets Puzzles) -->
+        <div class="position-saver" style="display: none;">
             <div class="section-title">Save Positions</div>
             <p class="lead" style="margin-bottom: 15px;">Add positions to your collection. FEN auto-fills when you load a position on the board.</p>
 
@@ -736,7 +736,7 @@
                     <input type="text" id="gdrive-puzzle-name" style="width: 100%;" placeholder="Puzzle name...">
                 </div>
                 <div>
-                    <label style="color: #888; font-size: 11px;">FEN (empty = use current board)</label>
+                    <label style="color: #888; font-size: 11px;">FEN / Comment (empty = use board FEN with move history)</label>
                     <input type="text" id="gdrive-puzzle-fen" style="width: 100%;" placeholder="Auto-fills from board if empty...">
                 </div>
             </div>
@@ -2453,10 +2453,15 @@
             var name = document.getElementById('gdrive-puzzle-name').value;
             var fenInput = document.getElementById('gdrive-puzzle-fen').value.trim();
 
-            // If FEN input is empty, use current board FEN in variant format
+            // If FEN input is empty, use move history (includes variant header + moves) or board FEN
             if (!fenInput) {
-                var boardFen = currentFen || chess.fen();
-                fenInput = '[Variant "From Position"]\n[FEN "' + boardFen + '"]';
+                var moveHistory = document.getElementById('moveHistoryTextArea').value.trim();
+                if (moveHistory) {
+                    fenInput = moveHistory;
+                } else {
+                    var boardFen = currentFen || chess.fen();
+                    fenInput = '[Variant "From Position"]\n[FEN "' + boardFen + '"]';
+                }
             }
 
             if (!name && !fenInput) { gdriveSetStatus('Error: nothing to save'); return; }
