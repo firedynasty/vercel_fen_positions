@@ -2403,8 +2403,10 @@
                 tr.addEventListener('click', function() {
                     var ri = parseInt(tr.dataset.rowIndex);
                     var dataRows = rows.slice(1);
-                    var name = (dataRows[ri] && dataRows[ri][0]) || '';
-                    var fen = (dataRows[ri] && dataRows[ri][1]) || '';
+                    var row = dataRows[ri] || [];
+                    // 3-column layout: Index | Name | FEN
+                    var name = row[1] || '';
+                    var fenRaw = row[2] || '';
 
                     // Highlight row
                     document.querySelectorAll('.gdrive-csv-table tbody tr').forEach(function(r) { r.classList.remove('gdrive-selected-row'); });
@@ -2412,11 +2414,18 @@
 
                     // Populate inputs
                     document.getElementById('gdrive-puzzle-name').value = name;
-                    document.getElementById('gdrive-puzzle-fen').value = fen;
+                    document.getElementById('gdrive-puzzle-fen').value = fenRaw;
+
+                    // Extract bare FEN from [FEN "..."] format or use as-is for plain FEN
+                    var fenForBoard = fenRaw.trim();
+                    var fenMatch = fenForBoard.match(/\[FEN\s+"([^"]+)"\]/);
+                    if (fenMatch) {
+                        fenForBoard = fenMatch[1];
+                    }
 
                     // Load FEN onto the board
-                    if (fen.trim()) {
-                        document.getElementById('fenDisplay').value = fen;
+                    if (fenForBoard) {
+                        document.getElementById('fenDisplay').value = fenForBoard;
                         loadFenOnBoard();
                         gdriveSetStatus('Loaded puzzle: "' + (name.length > 50 ? name.substring(0, 50) + '...' : name) + '"');
                     } else {
@@ -2434,7 +2443,7 @@
             else document.getElementById('gdrive-table-area').innerHTML = '';
         });
 
-        // Save puzzle — append [name, fen] to current sheet
+        // Save puzzle — append [index, name, fen] to current sheet
         window.gdriveSavePuzzle = async function() {
             if (!gdriveAccessToken) { gdriveSetStatus('Error: not signed in'); return; }
             if (!gdriveFileId) { gdriveSetStatus('Error: no spreadsheet loaded'); return; }
@@ -2444,12 +2453,19 @@
             var name = document.getElementById('gdrive-puzzle-name').value;
             var fenInput = document.getElementById('gdrive-puzzle-fen').value.trim();
 
-            // If FEN input is empty, use current board FEN
+            // If FEN input is empty, use current board FEN in variant format
             if (!fenInput) {
-                fenInput = currentFen || chess.fen();
+                var boardFen = currentFen || chess.fen();
+                fenInput = '[Variant "From Position"]\n[FEN "' + boardFen + '"]';
             }
 
             if (!name && !fenInput) { gdriveSetStatus('Error: nothing to save'); return; }
+
+            // Auto-increment index: count existing data rows
+            var sheet = gdriveWorkbook.Sheets[sheetName];
+            var csv = XLSX.utils.sheet_to_csv(sheet);
+            var existingRows = gdriveParseCsv(csv);
+            var nextIndex = Math.max(existingRows.length - 1, 0) + 1; // subtract header row
 
             gdriveSetStatus('Saving puzzle...');
             try {
@@ -2461,7 +2477,7 @@
                         Authorization: 'Bearer ' + gdriveAccessToken,
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ values: [[name, fenInput]] }),
+                    body: JSON.stringify({ values: [[nextIndex, name, fenInput]] }),
                 });
                 if (!resp.ok) {
                     var errData = await resp.json().catch(function() { return {}; });
