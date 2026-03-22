@@ -1003,6 +1003,10 @@
             // Update move history textarea
             document.getElementById('moveHistoryTextArea').value = variantFormat;
 
+            // Update cycling positions from the new move history
+            cyclePositions = parseFenVariantToPositions(variantFormat);
+            cycleIndex = cyclePositions.length - 1; // Point to current (latest) position
+
             // Update fenDisplay with just the current FEN
             document.getElementById('fenDisplay').value = currentFen;
 
@@ -2423,7 +2427,16 @@
                     if (fenForBoard) {
                         document.getElementById('fenDisplay').value = fenForBoard;
                         loadFenOnBoard();
-                        gdriveSetStatus('Loaded puzzle: "' + (name.length > 50 ? name.substring(0, 50) + '...' : name) + '"');
+                        // Set up cycling from the full variant format (includes moves)
+                        if (fenRaw.trim()) {
+                            cyclePositions = parseFenVariantToPositions(fenRaw);
+                            cycleIndex = 0;
+                            if (cyclePositions.length > 1) {
+                                gdriveSetStatus('Loaded puzzle: "' + (name.length > 50 ? name.substring(0, 50) + '...' : name) + '" — ' + cyclePositions.length + ' positions, use Cycle Board');
+                            } else {
+                                gdriveSetStatus('Loaded puzzle: "' + (name.length > 50 ? name.substring(0, 50) + '...' : name) + '"');
+                            }
+                        }
                     } else {
                         gdriveSetStatus('Selected: "' + (name.length > 50 ? name.substring(0, 50) + '...' : name) + '" (no FEN)');
                     }
