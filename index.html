@@ -2412,10 +2412,6 @@
                     document.querySelectorAll('.gdrive-csv-table tbody tr').forEach(function(r) { r.classList.remove('gdrive-selected-row'); });
                     tr.classList.add('gdrive-selected-row');
 
-                    // Populate inputs
-                    document.getElementById('gdrive-puzzle-name').value = name;
-                    document.getElementById('gdrive-puzzle-fen').value = fenRaw;
-
                     // Extract bare FEN from [FEN "..."] format or use as-is for plain FEN
                     var fenForBoard = fenRaw.trim();
                     var fenMatch = fenForBoard.match(/\[FEN\s+"([^"]+)"\]/);
