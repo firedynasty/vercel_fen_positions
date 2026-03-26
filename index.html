@@ -797,7 +797,14 @@
                 <button id="gdrive-auth-btn" onclick="gdriveSignIn()" style="padding: 6px 14px; background: #333; color: #eee; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; margin-left: auto;">Sign In</button>
             </div>
             <div id="gdrive-status" style="margin-top: 6px; color: #888; font-size: 12px;"></div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+            <!-- Toggle: 2-input vs 3-input mode -->
+            <div style="margin-top: 10px; display: flex; gap: 12px; align-items: center;">
+                <span style="color: #888; font-size: 11px;">Inputs:</span>
+                <label style="color: #ccc; font-size: 12px; cursor: pointer;"><input type="radio" name="gdriveInputMode" value="2" checked onchange="toggleGdriveInputMode()"> 2 columns</label>
+                <label style="color: #ccc; font-size: 12px; cursor: pointer;"><input type="radio" name="gdriveInputMode" value="3" onchange="toggleGdriveInputMode()"> 3 columns</label>
+            </div>
+            <!-- 2-input mode (default) -->
+            <div id="gdrive-inputs-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                 <div>
                     <label style="color: #888; font-size: 11px;">Name</label>
                     <input type="text" id="gdrive-puzzle-name" style="width: 100%;" placeholder="Puzzle name...">
@@ -807,8 +814,27 @@
                     <input type="text" id="gdrive-puzzle-fen" style="width: 100%;" placeholder="Auto-fills from board if empty...">
                 </div>
             </div>
-            <div style="margin-top: 10px; display: flex; gap: 10px;">
+            <!-- 3-input mode (hidden by default) -->
+            <div id="gdrive-inputs-3col" style="display: none; margin-top: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="color: #888; font-size: 11px;">Column 1</label>
+                        <input type="text" id="gdrive-cell1-input" style="width: 100%; padding: 6px 8px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 4px; font-size: 12px;" placeholder="Row title...">
+                    </div>
+                    <div>
+                        <label style="color: #888; font-size: 11px;">Column 2 (Name/Description)</label>
+                        <input type="text" id="gdrive-cell2-input" style="width: 100%; padding: 6px 8px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 4px; font-size: 12px;" placeholder="Puzzle name...">
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <label style="color: #888; font-size: 11px;">Column 3 (FEN/PGN — auto-filled from board if empty)</label>
+                    <input type="text" id="gdrive-cell3-input" style="width: 100%; padding: 6px 8px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 4px; font-size: 12px;" placeholder="Auto-fills from board if empty...">
+                </div>
+            </div>
+            <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
                 <button onclick="gdriveSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">Save Puzzle</button>
+                <button onclick="gdriveReplaceRow()" style="padding: 8px 18px; background: #e67e22; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">Replace Row</button>
+                <button onclick="gdriveClearInputs()" style="padding: 8px 18px; background: #dc3545; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">Clear Inputs</button>
             </div>
             <div id="gdrive-table-area"></div>
         </div>
@@ -2322,6 +2348,39 @@
         let gdriveTokenClient = null;
         let gdriveWorkbook = null;
         let gdriveFileId = null;
+        let gdriveSelectedRow = null;
+
+        // Toggle between 2-input and 3-input mode
+        window.toggleGdriveInputMode = function() {
+            var mode = document.querySelector('input[name="gdriveInputMode"]:checked').value;
+            document.getElementById('gdrive-inputs-2col').style.display = mode === '2' ? 'grid' : 'none';
+            document.getElementById('gdrive-inputs-3col').style.display = mode === '3' ? 'block' : 'none';
+        };
+
+        // Clear all inputs
+        window.gdriveClearInputs = function() {
+            document.getElementById('gdrive-puzzle-name').value = '';
+            document.getElementById('gdrive-puzzle-fen').value = '';
+            document.getElementById('gdrive-cell1-input').value = '';
+            document.getElementById('gdrive-cell2-input').value = '';
+            document.getElementById('gdrive-cell3-input').value = '';
+            gdriveSelectedRow = null;
+            document.querySelectorAll('.gdrive-csv-table tbody tr').forEach(function(r) { r.classList.remove('gdrive-selected-row'); });
+        };
+
+        // Helper: get current input mode
+        function gdriveGetInputMode() {
+            var radio = document.querySelector('input[name="gdriveInputMode"]:checked');
+            return radio ? radio.value : '2';
+        }
+
+        // Helper: auto-fill FEN from moveHistoryTextArea or board
+        function gdriveAutoFillFen() {
+            var moveHistory = document.getElementById('moveHistoryTextArea').value.trim();
+            if (moveHistory) return moveHistory;
+            var boardFen = currentFen || chess.fen();
+            return '[Variant "From Position"]\n[FEN "' + boardFen + '"]';
+        }
 
         function gdriveSetStatus(msg) {
             document.getElementById('gdrive-status').textContent = msg;
@@ -2484,18 +2543,26 @@
             document.getElementById('gdrive-table-area').innerHTML = html;
 
             // Row click — populate inputs and load FEN on board
+            gdriveSelectedRow = null;
             document.querySelectorAll('.gdrive-csv-table tbody tr').forEach(function(tr) {
                 tr.addEventListener('click', function() {
                     var ri = parseInt(tr.dataset.rowIndex);
                     var dataRows = rows.slice(1);
                     var row = dataRows[ri] || [];
                     // 3-column layout: Index | Name | FEN
+                    var col0 = row[0] || '';
                     var name = row[1] || '';
                     var fenRaw = row[2] || '';
 
-                    // Highlight row
+                    // Highlight row and track selection
                     document.querySelectorAll('.gdrive-csv-table tbody tr').forEach(function(r) { r.classList.remove('gdrive-selected-row'); });
                     tr.classList.add('gdrive-selected-row');
+                    gdriveSelectedRow = ri;
+
+                    // Populate 3-input fields
+                    document.getElementById('gdrive-cell1-input').value = col0;
+                    document.getElementById('gdrive-cell2-input').value = name;
+                    document.getElementById('gdrive-cell3-input').value = fenRaw;
 
                     // Check if fenRaw contains a FEN (has [FEN "..."] or looks like a FEN string with / separators)
                     var fenForBoard = '';
@@ -2547,34 +2614,37 @@
             document.getElementById('gdrive-comment-font-label').textContent = gdriveCommentFontSizeVal + 'px';
         };
 
-        // Save puzzle — append [index, name, fen] to current sheet
+        // Save puzzle — append row to current sheet (handles both 2-input and 3-input modes)
         window.gdriveSavePuzzle = async function() {
             if (!gdriveAccessToken) { gdriveSetStatus('Error: not signed in'); return; }
             if (!gdriveFileId) { gdriveSetStatus('Error: no spreadsheet loaded'); return; }
             var sheetName = document.getElementById('gdrive-sheet-select').value;
             if (!sheetName) { gdriveSetStatus('Error: select a sheet first'); return; }
 
-            var name = document.getElementById('gdrive-puzzle-name').value;
-            var fenInput = document.getElementById('gdrive-puzzle-fen').value.trim();
+            var mode = gdriveGetInputMode();
+            var rowValues;
 
-            // If FEN input is empty, use move history (includes variant header + moves) or board FEN
-            if (!fenInput) {
-                var moveHistory = document.getElementById('moveHistoryTextArea').value.trim();
-                if (moveHistory) {
-                    fenInput = moveHistory;
-                } else {
-                    var boardFen = currentFen || chess.fen();
-                    fenInput = '[Variant "From Position"]\n[FEN "' + boardFen + '"]';
-                }
+            if (mode === '3') {
+                // 3-column mode: [col1, col2, col3]
+                var col1 = document.getElementById('gdrive-cell1-input').value;
+                var col2 = document.getElementById('gdrive-cell2-input').value;
+                var col3 = document.getElementById('gdrive-cell3-input').value.trim();
+                if (!col3) col3 = gdriveAutoFillFen();
+                if (!col1 && !col2 && !col3) { gdriveSetStatus('Error: nothing to save'); return; }
+                rowValues = [col1, col2, col3];
+            } else {
+                // 2-column mode: [index, name, fen]
+                var name = document.getElementById('gdrive-puzzle-name').value;
+                var fenInput = document.getElementById('gdrive-puzzle-fen').value.trim();
+                if (!fenInput) fenInput = gdriveAutoFillFen();
+                if (!name && !fenInput) { gdriveSetStatus('Error: nothing to save'); return; }
+
+                var sheet = gdriveWorkbook.Sheets[sheetName];
+                var csv = XLSX.utils.sheet_to_csv(sheet);
+                var existingRows = gdriveParseCsv(csv);
+                var nextIndex = Math.max(existingRows.length - 1, 0) + 1;
+                rowValues = [nextIndex, name, fenInput];
             }
-
-            if (!name && !fenInput) { gdriveSetStatus('Error: nothing to save'); return; }
-
-            // Auto-increment index: count existing data rows
-            var sheet = gdriveWorkbook.Sheets[sheetName];
-            var csv = XLSX.utils.sheet_to_csv(sheet);
-            var existingRows = gdriveParseCsv(csv);
-            var nextIndex = Math.max(existingRows.length - 1, 0) + 1; // subtract header row
 
             gdriveSetStatus('Saving puzzle...');
             try {
@@ -2586,19 +2656,75 @@
                         Authorization: 'Bearer ' + gdriveAccessToken,
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ values: [[nextIndex, name, fenInput]] }),
+                    body: JSON.stringify({ values: [rowValues] }),
                 });
                 if (!resp.ok) {
                     var errData = await resp.json().catch(function() { return {}; });
                     throw new Error(errData.error?.message || 'HTTP ' + resp.status);
                 }
                 gdriveSetStatus('Puzzle saved to "' + sheetName + '"!');
-                // Reload sheet to show new row
                 await gdriveLoadSpreadsheet(gdriveFileId, '');
                 gdriveRenderSheet(sheetName);
                 document.getElementById('gdrive-sheet-select').value = sheetName;
             } catch (err) {
                 gdriveSetStatus('Error saving: ' + err.message);
+            }
+        };
+
+        // Replace row — overwrite the currently selected row with input values
+        window.gdriveReplaceRow = async function() {
+            if (!gdriveAccessToken) { gdriveSetStatus('Error: not signed in'); return; }
+            if (!gdriveFileId) { gdriveSetStatus('Error: no spreadsheet loaded'); return; }
+            var sheetName = document.getElementById('gdrive-sheet-select').value;
+            if (!sheetName) { gdriveSetStatus('Error: select a sheet first'); return; }
+            if (gdriveSelectedRow === null || gdriveSelectedRow === undefined) {
+                gdriveSetStatus('Error: click a row in the table first to select it');
+                return;
+            }
+
+            var mode = gdriveGetInputMode();
+            var rowValues;
+
+            if (mode === '3') {
+                var col1 = document.getElementById('gdrive-cell1-input').value;
+                var col2 = document.getElementById('gdrive-cell2-input').value;
+                var col3 = document.getElementById('gdrive-cell3-input').value.trim();
+                if (!col3) col3 = gdriveAutoFillFen();
+                if (!col1 && !col2 && !col3) { gdriveSetStatus('Error: nothing to save'); return; }
+                rowValues = [col1, col2, col3];
+            } else {
+                var name = document.getElementById('gdrive-puzzle-name').value;
+                var fenInput = document.getElementById('gdrive-puzzle-fen').value.trim();
+                if (!fenInput) fenInput = gdriveAutoFillFen();
+                if (!name && !fenInput) { gdriveSetStatus('Error: nothing to save'); return; }
+                rowValues = [gdriveSelectedRow + 1, name, fenInput];
+            }
+
+            var sheetRowNum = gdriveSelectedRow + 2; // +2: row 1 is header, data starts at row 2
+
+            gdriveSetStatus('Replacing row ' + sheetRowNum + '...');
+            try {
+                var encodedSheet = encodeURIComponent(sheetName);
+                var range = encodedSheet + '!A' + sheetRowNum + ':C' + sheetRowNum;
+                var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + gdriveFileId + '/values/' + range + '?valueInputOption=RAW';
+                var resp = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: 'Bearer ' + gdriveAccessToken,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ values: [rowValues] }),
+                });
+                if (!resp.ok) {
+                    var errData = await resp.json().catch(function() { return {}; });
+                    throw new Error(errData.error?.message || 'HTTP ' + resp.status);
+                }
+                gdriveSetStatus('Row ' + sheetRowNum + ' replaced in "' + sheetName + '" successfully!');
+                await gdriveLoadSpreadsheet(gdriveFileId, '');
+                gdriveRenderSheet(sheetName);
+                document.getElementById('gdrive-sheet-select').value = sheetName;
+            } catch (err) {
+                gdriveSetStatus('Error replacing: ' + err.message);
             }
         };
     })();
