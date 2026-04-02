@@ -546,6 +546,14 @@
             border-color: #ccc;
         }
 
+        .move-number { color: #888; margin-right: 2px; }
+        .move-san { color: #eee; cursor: pointer; padding: 2px 5px; border-radius: 3px; margin-right: 2px; }
+        .move-san:hover { background: #17a2b8; color: #fff; }
+        .move-san.current { background: #00d4ff; color: #1a1a2e; font-weight: bold; }
+        body.light-mode .move-san { color: #333; }
+        body.light-mode .move-san.current { background: #0088cc; color: #fff; }
+        body.light-mode #moveListContainer { background: rgba(0,0,0,0.05); }
+
         body.light-mode .turn-toggle-label {
             color: #333;
         }
@@ -698,11 +706,12 @@
                     <button class="copy-btn" onclick="clearFenDisplay()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear FEN</button>
                     <button id="cycleBoardBtn" class="copy-btn" onclick="cycleBoard()" style="display: none; background-color: rgba(233, 30, 99, 0.3);">&#128260; Cycle Board</button>
                     <button id="pasteFenBtn" class="copy-btn" onclick="pasteFenFromClipboard()">&#128203; Paste FEN</button>
+                    <button class="copy-btn" onclick="toggleStickyBoard()" id="toggleBoardBtn" style="background-color: rgba(156, 39, 176, 0.3);">🙈 Hide Board</button>
                 </div>
             </div>
 
             <!-- Interactive Chess Board -->
-            <div class="board-sticky-wrapper">
+            <div class="board-sticky-wrapper" id="boardStickyWrapper">
                 <div id="myBoard" class="board"></div>
                 <button id="cycleBoardStickyBtn" class="copy-btn" onclick="cycleBoard()" style="width: 100%; margin-top: 8px; background-color: rgba(233, 30, 99, 0.3); font-size: 15px;">&#128260; Cycle Board</button>
             </div>
@@ -716,10 +725,57 @@
                 </label>
             </div>
 
-            <!-- Move History Textarea -->
+            <!-- Move History Textarea (hidden, still used for data) -->
+            <textarea id="moveHistoryTextArea" readonly style="display:none;"></textarea>
+
+            <!-- Move History Display -->
             <div style="margin: 12px 0;">
-                <textarea id="moveHistoryTextArea" readonly placeholder="Move history will appear here after loading a FEN..."></textarea>
-                <button class="copy-btn" onclick="copyMoveHistory()" style="width: 100%; margin-top: 6px; padding: 8px; font-size: 13px;">📋 Copy Move History</button>
+                <div id="moveListContainer" style="min-height: 40px; max-height: 200px; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; line-height: 1.8; margin-bottom: 8px;">
+                    <span style="color: #888;">Move history will appear here...</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 6px;">
+                    <button class="copy-btn" onclick="moveNavPrev()" style="padding: 8px 18px; font-size: 14px;">← Back</button>
+                    <span id="moveNavIndicator" style="font-weight: bold; min-width: 60px; text-align: center; color: #eee; font-size: 13px;">Start</span>
+                    <button class="copy-btn" onclick="moveNavNext()" style="padding: 8px 18px; font-size: 14px;">Next →</button>
+                </div>
+                <button class="copy-btn" onclick="copyMoveHistory()" style="width: 100%; padding: 8px; font-size: 13px;">📋 Copy Move History</button>
+            </div>
+
+            <!-- Dictate PGN Section -->
+            <div style="margin: 12px 0;">
+                <div class="section-title">Dictate PGN</div>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; align-items: center;">
+                    <button class="copy-btn" onclick="dictateCleanBoard()" style="background-color: rgba(76, 175, 80, 0.3); padding: 10px 20px; font-size: 15px;">♟ Clean Board</button>
+                    <button class="copy-btn" onclick="undoDictatedMove()" style="background-color: rgba(255, 152, 0, 0.3); padding: 10px 20px; font-size: 15px;">↩ Undo</button>
+                    <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;">
+                        <input type="radio" name="dictateMode" value="spoken" checked onchange="dictateModeChange()"> 🎤 Spoken
+                    </label>
+                    <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;">
+                        <input type="radio" name="dictateMode" value="typed" onchange="dictateModeChange()"> ⌨️ Typed
+                    </label>
+                </div>
+                <textarea id="dictateInput" placeholder="F3 → speak → paste here" style="width: 100%; height: 60px; font-size: 14px; font-family: monospace; border: 2px solid #555; border-radius: 5px; padding: 10px; background-color: rgba(255, 255, 255, 0.1); color: #fff; resize: vertical; margin-bottom: 6px;"></textarea>
+                <button class="copy-btn" onclick="dictateApplyMoves()" style="width: 100%; margin-bottom: 6px; padding: 10px; font-size: 15px; background-color: rgba(33, 150, 243, 0.3);">+= Apply Moves</button>
+                <div id="dictateStatus" style="font-size: 13px; color: #888; text-align: center;"></div>
+                <pre id="dictateDebug" style="font-size: 11px; color: #aaa; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; margin-top: 6px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; display: none;"></pre>
+
+                <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; font-size: 12px; color: #aaa; line-height: 1.9;">
+                    <div style="font-weight: bold; color: #a8d8ea; margin-bottom: 6px;">How to use</div>
+                    <div style="margin-bottom: 8px;">
+                        <span style="color: #eee;">🎤 Spoken</span> — F3, speak, F3, paste, += Apply<br>
+                        <span style="color: #eee;">⌨️ Typed</span> — type SAN directly, += Apply
+                    </div>
+                    <div style="margin-bottom: 4px; color: #888;">🎤 Spoken samples (whisper-friendly):</div>
+                    <code style="display:block; color:#ccc;">D4, Knight F6, Knight F3, G6, E3</code>
+                    <code style="display:block; color:#ccc;">Bishop G7, Bishop E2, Castles, Castles</code>
+                    <code style="display:block; color:#ccc;">D takes E5, Queen takes D1, Rook E8</code>
+                    <code style="display:block; color:#ccc;">casos / casuals / costing → castles</code>
+                    <code style="display:block; color:#ccc;">9 to F6 → Nf6 &nbsp; text D1 → takes D1</code>
+                    <div style="margin-top: 8px; margin-bottom: 4px; color: #888;">⌨️ Typed samples (fill-in gaps):</div>
+                    <code style="display:block; color:#ccc;">Qxd1,Rxd1,Re8,Nc3,c6</code>
+                    <code style="display:block; color:#ccc;">1.e4 e5 2.Nf3 Nc6 3.Bb5</code>
+                    <code style="display:block; color:#ccc;">O-O &nbsp; O-O-O &nbsp; dxe5 &nbsp; Bxf7+</code>
+                </div>
             </div>
 
             <!-- Lichess Analysis URL Display -->
@@ -2131,6 +2187,18 @@
             }
         }
 
+        function toggleStickyBoard() {
+            var wrapper = document.getElementById('boardStickyWrapper');
+            var btn = document.getElementById('toggleBoardBtn');
+            if (wrapper.style.display === 'none') {
+                wrapper.style.display = '';
+                btn.textContent = '🙈 Hide Board';
+            } else {
+                wrapper.style.display = 'none';
+                btn.textContent = '♟ Show Board';
+            }
+        }
+
         // ============================================
         // FEN PERSPECTIVE SWITCHING
         // ============================================
@@ -2725,6 +2793,467 @@
                 document.getElementById('gdrive-sheet-select').value = sheetName;
             } catch (err) {
                 gdriveSetStatus('Error replacing: ' + err.message);
+            }
+        };
+    })();
+    </script>
+
+    <!-- Move Nav + Dictate PGN Script -->
+    <script>
+    (function() {
+        // ===== MOVE NAVIGATION =====
+        var moveNavPositions = []; // array of { fen, san, moveNum }
+        var moveNavIndex = -1;     // -1 = start position
+
+        // Render clickable move list from chess.js history
+        function renderMoveList() {
+            var container = document.getElementById('moveListContainer');
+            if (!container) return;
+
+            // Build positions array from chess.js history
+            moveNavPositions = [];
+            var tempChess = new Chess(startingFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+            var history = chess.history();
+
+            for (var h = 0; h < history.length; h++) {
+                var san = history[h];
+                tempChess.move(san);
+                moveNavPositions.push({
+                    fen: tempChess.fen(),
+                    san: san,
+                    moveNum: Math.floor(h / 2) + 1,
+                    isBlack: h % 2 === 1
+                });
+            }
+
+            if (moveNavPositions.length === 0) {
+                container.innerHTML = '<span style="color: #888;">Move history will appear here...</span>';
+                moveNavIndex = -1;
+                updateMoveNavIndicator();
+                return;
+            }
+
+            container.innerHTML = '';
+            for (var m = 0; m < moveNavPositions.length; m++) {
+                var p = moveNavPositions[m];
+
+                // Add move number before white moves
+                if (!p.isBlack) {
+                    var numSpan = document.createElement('span');
+                    numSpan.className = 'move-number';
+                    numSpan.textContent = p.moveNum + '.';
+                    container.appendChild(numSpan);
+                }
+
+                var moveSpan = document.createElement('span');
+                moveSpan.className = 'move-san';
+                moveSpan.textContent = p.san;
+                moveSpan.dataset.idx = m;
+                moveSpan.onclick = function() { moveNavJump(parseInt(this.dataset.idx)); };
+                container.appendChild(moveSpan);
+            }
+
+            // Default to last move
+            moveNavIndex = moveNavPositions.length - 1;
+            highlightCurrentMove();
+            updateMoveNavIndicator();
+        }
+
+        function highlightCurrentMove() {
+            var spans = document.querySelectorAll('#moveListContainer .move-san');
+            for (var s = 0; s < spans.length; s++) {
+                spans[s].classList.toggle('current', parseInt(spans[s].dataset.idx) === moveNavIndex);
+            }
+            // Scroll current into view
+            var current = document.querySelector('#moveListContainer .move-san.current');
+            if (current) current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function updateMoveNavIndicator() {
+            var el = document.getElementById('moveNavIndicator');
+            if (!el) return;
+            if (moveNavIndex < 0) {
+                el.textContent = 'Start';
+            } else {
+                var p = moveNavPositions[moveNavIndex];
+                el.textContent = p.moveNum + (p.isBlack ? '...' : '.') + ' ' + p.san;
+            }
+        }
+
+        function moveNavJump(idx) {
+            moveNavIndex = idx;
+            var fen;
+            if (idx < 0) {
+                fen = startingFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+            } else {
+                fen = moveNavPositions[idx].fen;
+            }
+            board.position(fen, false);
+            document.getElementById('fenDisplay').value = fen;
+            updateLichessUrls(fen);
+            highlightCurrentMove();
+            updateMoveNavIndicator();
+        }
+
+        window.moveNavNext = function() {
+            if (moveNavPositions.length === 0) return;
+            if (moveNavIndex < moveNavPositions.length - 1) {
+                moveNavJump(moveNavIndex + 1);
+            }
+        };
+
+        window.moveNavPrev = function() {
+            if (moveNavPositions.length === 0) return;
+            if (moveNavIndex >= 0) {
+                moveNavJump(moveNavIndex - 1);
+            }
+        };
+
+        // Arrow key navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft') { window.moveNavPrev(); e.preventDefault(); }
+            if (e.key === 'ArrowRight') { window.moveNavNext(); e.preventDefault(); }
+        });
+
+        // Hook into updateBoardDisplay to re-render move list
+        if (typeof window.updateBoardDisplay === 'function') {
+            var _origUpdate = window.updateBoardDisplay;
+            window.updateBoardDisplay = function() {
+                _origUpdate.apply(this, arguments);
+                renderMoveList();
+            };
+        }
+
+        // ===== DICTATION =====
+        var dictateChess = null;
+        var debugLines = [];
+
+        function getDictateMode() {
+            var r = document.querySelector('input[name="dictateMode"]:checked');
+            return r ? r.value : 'spoken';
+        }
+
+        window.dictateModeChange = function() {
+            var mode = getDictateMode();
+            document.getElementById('dictateInput').placeholder =
+                mode === 'typed'
+                ? 'Type SAN moves: e4,Nf3,O-O,Qxd1 or 1.e4 e5 2.Nf3'
+                : 'F3 → speak → paste here';
+        };
+
+        var pieceMap = {
+            'king': 'K', 'kings': 'K', 'k': 'K',
+            'queen': 'Q', 'queens': 'Q', 'q': 'Q',
+            'rook': 'R', 'rooks': 'R', 'rock': 'R', 'roux': 'R', 'r': 'R',
+            'bishop': 'B', 'bishops': 'B', // no 'b' — conflicts with file b (e.g. b3 pawn move)
+            'knight': 'N', 'knights': 'N', 'night': 'N', 'nights': 'N', 'horse': 'N', 'nite': 'N', 'n': 'N',
+            '9': 'N', // whisper mishears "knight" as "9"
+            'pawn': '', 'pawns': ''
+        };
+
+        var fileMap = {
+            'a': 'a', 'ay': 'a', 'eh': 'a', 'alpha': 'a', 'alfa': 'a',
+            'b': 'b', 'be': 'b', 'bee': 'b', 'bravo': 'b',
+            'c': 'c', 'see': 'c', 'sea': 'c', 'charlie': 'c',
+            'd': 'd', 'dee': 'd', 'delta': 'd',
+            'e': 'e', 'ee': 'e', 'echo': 'e',
+            'f': 'f', 'ef': 'f', 'foxtrot': 'f',
+            'g': 'g', 'gee': 'g', 'golf': 'g',
+            'h': 'h', 'aitch': 'h', 'hotel': 'h', 'age': 'h', 'each': 'h'
+        };
+
+        function setDictateStatus(msg) {
+            document.getElementById('dictateStatus').textContent = msg;
+        }
+
+        function addDebug(line) {
+            debugLines.push(line);
+            var el = document.getElementById('dictateDebug');
+            el.style.display = 'block';
+            el.textContent = debugLines.join('\n');
+            el.scrollTop = el.scrollHeight;
+        }
+
+        function getDictatePgn() {
+            if (!dictateChess) return '';
+            return dictateChess.pgn().replace(/\[[^\]]*\]\s*/g, '').trim();
+        }
+
+        function updateDictateDisplay() {
+            if (!dictateChess) return;
+            // Replay all moves into main chess instance so history() is populated
+            var moves = dictateChess.history();
+            chess.reset();
+            for (var m = 0; m < moves.length; m++) chess.move(moves[m]);
+            board.position(dictateChess.fen(), false);
+            startingFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+            updateBoardDisplay();
+        }
+
+        function parseTypedMoves(raw) {
+            // Typed mode: treat input as standard SAN, just split by comma/space
+            var text = raw.trim();
+            text = text.replace(/\b\d+\./g, ' '); // strip move numbers
+            text = text.replace(/[,]+/g, ' ');
+            text = text.replace(/\s+/g, ' ').trim();
+            addDebug('Typed input: "' + text + '"');
+            // Split into tokens and return as-is — tryApplyMove handles SAN directly
+            return text.split(' ').filter(function(t) { return t.length > 0; });
+        }
+
+        function parseSpokenMoves(raw) {
+            if (getDictateMode() === 'typed') return parseTypedMoves(raw);
+            var text = raw.toLowerCase().trim();
+
+            // --- Normalize spoken/whisper artifacts ---
+            text = text.replace(/captures?/g, 'takes');
+            text = text.replace(/\btext\b/g, 'takes');       // "text" → "takes"
+            // Handle O-O / O-O-O BEFORE dash stripping
+            text = text.replace(/\bo-o-o\b/gi, 'castles queenside');
+            text = text.replace(/\bo-o\b/gi, 'castles');
+            // Strip PGN move numbers: "1." "12." etc.
+            text = text.replace(/\b\d+\./g, ' ');
+            // Commas as move delimiters → space (do before castle detection)
+            text = text.replace(/,/g, ' ');
+            // Any word starting with "c" that isn't a square (c1-c8) or "capture/check/charlie" → castles
+            text = text.replace(/\bc(?![1-8]\b)(?!heck(?:mate)?|harlie|apture)[a-z]+\b/g, 'castles');
+            text = text.replace(/[-–—]/g, ' ');
+            text = text.replace(/[.]/g, ' ');
+            text = text.replace(/\s+/g, ' ').trim();
+
+            // --- Expand SAN tokens whisper outputs directly (must run before split/tokenizing) ---
+            // whisper mishears "x" as "h": qhd1 → qxd1, nhf6 → nxf6
+            text = text.replace(/\b([nbrqk])h([a-h][1-8])\b/g, '$1x$2');
+            text = text.replace(/\b([a-h])h([a-h][1-8])\b/g, '$1x$2'); // pawn: bhe6 → bxe6
+            // Piece captures: nxe5, bxe5, rxd1, qxd1 → piece takes square
+            text = text.replace(/\bnx([a-h][1-8])\b/g, 'knight takes $1');
+            text = text.replace(/\bbx([a-h][1-8])\b/g, 'bishop takes $1');
+            text = text.replace(/\brx([a-h][1-8])\b/g, 'rook takes $1');
+            text = text.replace(/\bqx([a-h][1-8])\b/g, 'queen takes $1');
+            text = text.replace(/\bkx([a-h][1-8])\b/g, 'king takes $1');
+            // Pawn captures: dxe5 → d takes e5
+            text = text.replace(/\b([a-h])x([a-h][1-8])\b/g, '$1 takes $2');
+            // Piece moves as single SAN tokens: nf6 → knight f6, bg7 → bishop g7
+            text = text.replace(/\bn([a-h][1-8])\b/g, 'knight $1');
+            text = text.replace(/\bb([a-h][1-8])\b/g, 'bishop $1');
+            text = text.replace(/\br([a-h][1-8])\b/g, 'rook $1');
+            text = text.replace(/\bq([a-h][1-8])\b/g, 'queen $1');
+            text = text.replace(/\bk([a-h][1-8])\b/g, 'king $1');
+            // whisper concatenates "dxe5" as "dte5" — [file]t[square]
+            text = text.replace(/\b([a-h])t([a-h][1-8])\b/g, '$1 takes $2');
+            // Standalone "x" or "h" before square → takes
+            text = text.replace(/\bx([a-h][1-8])\b/g, 'takes $1');
+            text = text.replace(/\b x \b/g, ' takes ');
+
+            // --- Split concatenated tokens whisper merges ---
+            // piece+square+square: nc3c6 → nc3 c6 (must run AFTER SAN expansion above)
+            text = text.replace(/\b((?:knight|bishop|rook|queen|king) [a-h][1-8])([a-h][1-8])\b/g, '$1 $2');
+            // [piece-letter][square][square]: nc3c6 raw (if SAN expansion didn't catch it)
+            text = text.replace(/\b([nbrqk][a-h][1-8])([a-h][1-8])\b/g, '$1 $2');
+            // square+square: g6e3 → g6 e3
+            text = text.replace(/\b([a-h][1-8])([a-h][1-8])\b/g, '$1 $2');
+            // square+piece+square: g6nf3 → g6 nf3
+            text = text.replace(/\b([a-h][1-8])([nbrqk][a-h][1-8])\b/g, '$1 $2');
+
+            // --- "b takes e6": standalone file "b" before "takes" → merge into pawn capture ---
+            // After all expansion, a bare file letter + "takes" + square = pawn capture
+            text = text.replace(/\b([a-h]) takes ([a-h][1-8])\b/g, '$1 takes $2'); // already fine, just ensure spacing
+
+            text = text.replace(/\s+/g, ' ').trim();
+
+            addDebug('Normalized: "' + text + '"');
+
+            var moves = [];
+            var tokens = text.split(' ').filter(function(t) { return t.length > 0; });
+            addDebug('Tokens: [' + tokens.join(', ') + ']');
+            var i = 0;
+
+            while (i < tokens.length) {
+                var token = tokens[i];
+
+                // Castle
+                if (token === 'castle' || token === 'castles' || token === 'castling') {
+                    var next = (tokens[i+1] || '').toLowerCase();
+                    if (next === 'queenside' || next === 'queen' || next === 'long') {
+                        addDebug('  Token[' + i + '] "' + token + ' ' + next + '" → O-O-O');
+                        moves.push('O-O-O'); i += 2; continue;
+                    } else {
+                        var skip = (next === 'kingside' || next === 'king' || next === 'short') ? 2 : 1;
+                        addDebug('  Token[' + i + '] "' + token + (skip===2 ? ' '+next : '') + '" → O-O');
+                        moves.push('O-O'); i += skip; continue;
+                    }
+                }
+                if (token === 'short' && (tokens[i+1] || '') === 'castle') { addDebug('  Token[' + i + '] "short castle" → O-O'); moves.push('O-O'); i += 2; continue; }
+                if (token === 'long' && (tokens[i+1] || '') === 'castle') { addDebug('  Token[' + i + '] "long castle" → O-O-O'); moves.push('O-O-O'); i += 2; continue; }
+
+                // Piece + optional "to"/"takes" + square
+                if (pieceMap.hasOwnProperty(token)) {
+                    var piece = pieceMap[token];
+                    var j = i + 1;
+                    var takes = false;
+                    if (j < tokens.length && (tokens[j] === 'to' || tokens[j] === 'two' || tokens[j] === 'too')) j++;
+                    if (j < tokens.length && tokens[j] === 'takes') { takes = true; j++; }
+                    var sq = tryReadSquare(tokens, j);
+                    if (sq) {
+                        var san = piece + (takes ? 'x' : '') + sq.square;
+                        addDebug('  Token[' + i + '] "' + tokens.slice(i, sq.nextIndex).join(' ') + '" → ' + san);
+                        moves.push(san);
+                        i = sq.nextIndex; continue;
+                    } else {
+                        addDebug('  Token[' + i + '] "' + token + '" = piece but no square found after it, skipping');
+                    }
+                }
+
+                // Bare file letter + "takes" + square = pawn capture (e.g. "b takes e6" → bxe6)
+                if (/^[a-h]$/.test(token) && (tokens[i+1] || '') === 'takes') {
+                    var sq2b = tryReadSquare(tokens, i + 2);
+                    if (sq2b) {
+                        addDebug('  Token[' + i + '] "' + token + ' takes ' + sq2b.square + '" → ' + token + 'x' + sq2b.square);
+                        moves.push(token + 'x' + sq2b.square);
+                        i = sq2b.nextIndex; continue;
+                    }
+                }
+
+                // "takes" without piece prefix
+                if (token === 'takes') {
+                    var sq2 = tryReadSquare(tokens, i + 1);
+                    if (sq2) {
+                        addDebug('  Token[' + i + '] "takes ' + sq2.square + '" → x' + sq2.square);
+                        moves.push('x' + sq2.square);
+                        i = sq2.nextIndex; continue;
+                    }
+                }
+
+                // Bare square (pawn move)
+                var sq3 = tryReadSquare(tokens, i);
+                if (sq3) {
+                    addDebug('  Token[' + i + '] "' + tokens.slice(i, sq3.nextIndex).join(' ') + '" → ' + sq3.square);
+                    moves.push(sq3.square);
+                    i = sq3.nextIndex; continue;
+                }
+
+                addDebug('  Token[' + i + '] "' + token + '" → SKIP (unrecognized)');
+                i++;
+            }
+
+            addDebug('Parsed candidates: [' + moves.join(', ') + ']');
+            return moves;
+        }
+
+        function tryReadSquare(tokens, idx) {
+            if (idx >= tokens.length) return null;
+            var t = tokens[idx];
+            if (/^[a-h][1-8]$/.test(t)) return { square: t, nextIndex: idx + 1 };
+            var file = fileMap[t];
+            if (file && idx + 1 < tokens.length) {
+                var rankNum = parseRank(tokens[idx + 1]);
+                if (rankNum) return { square: file + rankNum, nextIndex: idx + 2 };
+            }
+            if (file && t.length === 1 && idx + 1 < tokens.length && /^[1-8]$/.test(tokens[idx + 1])) {
+                return { square: file + tokens[idx + 1], nextIndex: idx + 2 };
+            }
+            return null;
+        }
+
+        function parseRank(s) {
+            if (/^[1-8]$/.test(s)) return s;
+            var wordRanks = { 'one': '1', 'two': '2', 'three': '3', 'four': '4',
+                              'five': '5', 'six': '6', 'seven': '7', 'eight': '8',
+                              'won': '1', 'for': '4', 'ate': '8' };
+            return wordRanks[s] || null;
+        }
+
+        function tryApplyMove(san) {
+            var move = dictateChess.move(san);
+            if (move) { addDebug('  APPLY "' + san + '" → ' + move.san + ' ✓'); return move; }
+
+            // Pawn capture without file prefix
+            if (san.startsWith('x')) {
+                for (var f = 0; f < 8; f++) {
+                    move = dictateChess.move('abcdefgh'[f] + san);
+                    if (move) { addDebug('  APPLY "' + san + '" → tried ' + 'abcdefgh'[f] + san + ' → ' + move.san + ' ✓'); return move; }
+                }
+            }
+
+            // Piece move failed → try as pawn
+            if (/^[KQRBN]/.test(san)) {
+                var pawnSan = san.substring(1).replace('x', '');
+                move = dictateChess.move(pawnSan);
+                if (move) { addDebug('  APPLY "' + san + '" → fallback pawn "' + pawnSan + '" → ' + move.san + ' ✓'); return move; }
+            }
+
+            // Remove capture marker
+            var noCapture = san.replace('x', '');
+            if (noCapture !== san) {
+                move = dictateChess.move(noCapture);
+                if (move) { addDebug('  APPLY "' + san + '" → no-capture "' + noCapture + '" → ' + move.san + ' ✓'); return move; }
+            }
+
+            addDebug('  APPLY "' + san + '" → FAILED ✗ (position: ' + dictateChess.fen().split(' ')[0] + ')');
+            return null;
+        }
+
+        window.dictateCleanBoard = function() {
+            dictateChess = new Chess();
+            chess.reset();
+            board.start(false);
+            startingFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+            updateBoardDisplay();
+            document.getElementById('dictateInput').value = '';
+            debugLines = [];
+            document.getElementById('dictateDebug').style.display = 'none';
+            document.getElementById('dictateDebug').textContent = '';
+            setDictateStatus('Board reset — ready for dictation');
+        };
+
+        window.dictateApplyMoves = function() {
+            var input = document.getElementById('dictateInput').value.trim();
+            if (!input) { setDictateStatus('Paste spoken moves first'); return; }
+            if (!dictateChess) dictateChess = new Chess();
+
+            addDebug('--- INPUT: "' + input + '"');
+
+            var candidates = parseSpokenMoves(input);
+            var applied = [];
+            var failed = [];
+
+            addDebug('Applying ' + candidates.length + ' candidates...');
+            var stoppedAt = null;
+            for (var c = 0; c < candidates.length; c++) {
+                var move = tryApplyMove(candidates[c]);
+                if (move) {
+                    applied.push(move.san);
+                } else {
+                    failed.push(candidates[c]);
+                    stoppedAt = candidates[c];
+                    addDebug('STOPPED at "' + candidates[c] + '" — fix and retry');
+                    break; // stop on first failure
+                }
+            }
+
+            updateDictateDisplay();
+            // Don't clear input if we stopped early — leave it for editing
+            if (!stoppedAt) document.getElementById('dictateInput').value = '';
+
+            var pgn = getDictatePgn();
+            var status = '+' + applied.length + ' moves (' + applied.join(' ') + ')';
+            if (stoppedAt) status += '\n⛔ Stopped at: "' + stoppedAt + '" — edit input and retry';
+            status += '\nPGN: ' + pgn;
+            setDictateStatus(status);
+            addDebug('Result: +' + applied.length + ' applied, ' + failed.length + ' failed');
+            addDebug('PGN: ' + pgn);
+        };
+
+        window.undoDictatedMove = function() {
+            if (!dictateChess) return;
+            var undone = dictateChess.undo();
+            if (undone) {
+                updateDictateDisplay();
+                setDictateStatus('Undone: ' + undone.san + ' | PGN: ' + getDictatePgn());
+                addDebug('UNDO: ' + undone.san);
+            } else {
+                setDictateStatus('Nothing to undo');
             }
         };
     })();
