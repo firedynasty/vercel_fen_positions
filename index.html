@@ -753,7 +753,9 @@
                     <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;">
                         <input type="radio" name="dictateMode" value="typed" onchange="dictateModeChange()"> ⌨️ Typed
                     </label>
+                    <button class="copy-btn" onclick="toggleImgToDictate()" id="toggleImgBtn" style="background-color: rgba(23, 162, 184, 0.3); padding: 6px 12px; font-size: 13px;">🖼️ Img</button>
                 </div>
+                <div id="dictateImgSlot"></div>
                 <textarea id="dictateInput" placeholder="F3 → speak → paste here" style="width: 100%; height: 60px; font-size: 14px; font-family: monospace; border: 2px solid #555; border-radius: 5px; padding: 10px; background-color: rgba(255, 255, 255, 0.1); color: #fff; resize: vertical; margin-bottom: 6px;"></textarea>
                 <button class="copy-btn" onclick="dictateApplyMoves()" style="width: 100%; margin-bottom: 6px; padding: 10px; font-size: 15px; background-color: rgba(33, 150, 243, 0.3);">+= Apply Moves</button>
                 <div id="dictateStatus" style="font-size: 13px; color: #888; text-align: center;"></div>
@@ -2933,6 +2935,28 @@
             var r = document.querySelector('input[name="dictateMode"]:checked');
             return r ? r.value : 'spoken';
         }
+
+        var imgMoved = false;
+        window.toggleImgToDictate = function() {
+            var img = document.getElementById('imagePreviewContainer');
+            var slot = document.getElementById('dictateImgSlot');
+            var btn = document.getElementById('toggleImgBtn');
+            if (!img) return;
+            if (!imgMoved) {
+                // Move image to above dictateInput
+                slot.appendChild(img);
+                img.style.display = 'block'; // show when moved down
+                btn.textContent = '🖼️ Img ↑';
+                imgMoved = true;
+            } else {
+                // Move back to original location in FEN section
+                var original = document.getElementById('imagePreviewContainer');
+                var fenControls = document.querySelector('.fen-controls');
+                fenControls.parentNode.insertBefore(original, fenControls.nextSibling);
+                btn.textContent = '🖼️ Img';
+                imgMoved = false;
+            }
+        };
 
         window.dictateModeChange = function() {
             var mode = getDictateMode();
