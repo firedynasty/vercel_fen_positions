@@ -756,6 +756,11 @@
                     <button class="copy-btn" onclick="toggleImgToDictate()" id="toggleImgBtn" style="background-color: rgba(23, 162, 184, 0.3); padding: 6px 12px; font-size: 13px;">🖼️ Img</button>
                     <button class="copy-btn" onclick="document.getElementById('imageFileInput').click()" style="background-color: rgba(23, 162, 184, 0.3); padding: 6px 12px; font-size: 13px;">📂🖼️</button>
                 </div>
+                <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; align-items: center;">
+                    <input id="dictateGoToMove" type="number" min="1" placeholder="Move #" style="width: 70px; padding: 6px 8px; font-size: 13px; font-family: monospace; border: 2px solid #555; border-radius: 4px; background-color: rgba(255,255,255,0.1); color: #fff;">
+                    <button class="copy-btn" onclick="dictateGoToMove()" style="background-color: rgba(156, 39, 176, 0.3); padding: 6px 12px; font-size: 13px;">Go to move</button>
+                    <button class="copy-btn" onclick="dictateLoadPgn()" style="background-color: rgba(0, 150, 136, 0.3); padding: 6px 12px; font-size: 13px;">Load PGN from input</button>
+                </div>
                 <div id="dictateImgSlot"></div>
                 <textarea id="dictateInput" placeholder="F3 → speak → paste here" style="width: 100%; height: 60px; font-size: 14px; font-family: monospace; border: 2px solid #555; border-radius: 5px; padding: 10px; background-color: rgba(255, 255, 255, 0.1); color: #fff; resize: vertical; margin-bottom: 6px;"></textarea>
                 <button class="copy-btn" onclick="dictateApplyMoves()" style="width: 100%; margin-bottom: 6px; padding: 10px; font-size: 15px; background-color: rgba(33, 150, 243, 0.3);">+= Apply Moves</button>
@@ -3193,6 +3198,13 @@
             var move = dictateChess.move(san);
             if (move) { addDebug('  APPLY "' + san + '" → ' + move.san + ' ✓'); return move; }
 
+            // Try with first letter uppercased (handles typed lowercase like bc4→Bc4, nce4→Nce4, rad1→Rad1)
+            if (/^[a-z]/.test(san) && san.length > 2) {
+                var ucSan = san.charAt(0).toUpperCase() + san.substring(1);
+                move = dictateChess.move(ucSan);
+                if (move) { addDebug('  APPLY "' + san + '" → uppercase "' + ucSan + '" → ' + move.san + ' ✓'); return move; }
+            }
+
             // Pawn capture without file prefix
             if (san.startsWith('x')) {
                 for (var f = 0; f < 8; f++) {
@@ -3280,6 +3292,66 @@
             } else {
                 setDictateStatus('Nothing to undo');
             }
+        };
+
+        window.dictateGoToMove = function() {
+            if (!dictateChess) { setDictateStatus('No game in progress'); return; }
+            var moveNum = parseInt(document.getElementById('dictateGoToMove').value);
+            if (!moveNum || moveNum < 1) { setDictateStatus('Enter a valid move number'); return; }
+            var history = dictateChess.history();
+            // Move number N means keep moves up to: N plies = moveNum * 2 (both sides)
+            // But user likely means "go to after move N completed" = 2*N half-moves
+            var targetPly = moveNum * 2;
+            if (targetPly >= history.length) {
+                setDictateStatus('Already at or past move ' + moveNum + ' (total: ' + Math.ceil(history.length/2) + ' moves)');
+                return;
+            }
+            var keepMoves = history.slice(0, targetPly);
+            var removedMoves = history.slice(targetPly);
+            dictateChess = new Chess();
+            for (var i = 0; i < keepMoves.length; i++) dictateChess.move(keepMoves[i]);
+            updateDictateDisplay();
+            var pgn = getDictatePgn();
+            setDictateStatus('Went back to move ' + moveNum + ' (removed: ' + removedMoves.join(' ') + ')\nPGN: ' + pgn);
+            addDebug('GO TO MOVE ' + moveNum + ': kept ' + keepMoves.length + ' plies, removed ' + removedMoves.length);
+            addDebug('PGN: ' + pgn);
+            document.getElementById('dictateGoToMove').value = '';
+        };
+
+        window.dictateLoadPgn = function() {
+            var input = document.getElementById('dictateInput').value.trim();
+            if (!input) { setDictateStatus('Paste a PGN into the input box first'); return; }
+            // Strip move numbers, extra whitespace, result markers
+            var cleaned = input.replace(/\[[^\]]*\]\s*/g, ''); // strip headers
+            cleaned = cleaned.replace(/\b(1-0|0-1|1\/2-1\/2|\*)\s*$/g, ''); // strip result
+            cleaned = cleaned.replace(/\b\d+\.\s*/g, ' '); // strip move numbers
+            cleaned = cleaned.replace(/\.\.\./g, ' '); // strip ellipsis
+            cleaned = cleaned.replace(/[,]+/g, ' ');
+            cleaned = cleaned.replace(/\s+/g, ' ').trim();
+            var moves = cleaned.split(' ').filter(function(t) { return t.length > 0; });
+
+            dictateChess = new Chess();
+            addDebug('--- LOAD PGN: "' + input.substring(0, 100) + (input.length > 100 ? '...' : '') + '"');
+            addDebug('Parsed moves: [' + moves.join(', ') + ']');
+
+            var applied = [];
+            for (var i = 0; i < moves.length; i++) {
+                var m = dictateChess.move(moves[i]);
+                if (m) {
+                    applied.push(m.san);
+                    addDebug('  LOAD "' + moves[i] + '" → ' + m.san + ' ✓');
+                } else {
+                    addDebug('  LOAD "' + moves[i] + '" → FAILED ✗');
+                    setDictateStatus('Loaded ' + applied.length + ' moves, failed at "' + moves[i] + '"\nPGN: ' + getDictatePgn());
+                    updateDictateDisplay();
+                    return;
+                }
+            }
+            updateDictateDisplay();
+            document.getElementById('dictateInput').value = '';
+            var pgn = getDictatePgn();
+            setDictateStatus('Loaded ' + applied.length + ' moves successfully\nPGN: ' + pgn);
+            addDebug('PGN: ' + pgn);
         };
     })();
     </script>
