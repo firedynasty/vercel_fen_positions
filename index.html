@@ -696,6 +696,9 @@
             <div id="imagePreviewContainer" style="display: none; margin-top: 15px; text-align: center; position: relative;">
                 <img id="imagePreview" style="max-width: 100%; max-height: 400px; border-radius: 5px; cursor: pointer;" onclick="toggleImageSize()">
                 <button onclick="closeImagePreview()" style="position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 18px; line-height: 1;">×</button>
+                <div style="margin-top: 8px;">
+                    <button id="imageToFenBtn" style="background: #6f42c1; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;" onclick="readFenFromImage()">🤖 Read FEN from image</button>
+                </div>
             </div>
 
             <div class="button-section">
@@ -2368,6 +2371,48 @@
 
             showToast('Image loaded!');
         });
+
+        // Downscale to keep the request under Vercel's 4.5 MB body limit
+        function imageToDataUrl(img, maxDim) {
+            const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.naturalWidth * scale);
+            canvas.height = Math.round(img.naturalHeight * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg', 0.9);
+        }
+
+        // Send the loaded image to OpenAI (via /api/image-to-fen) and load the FEN it returns
+        async function readFenFromImage() {
+            const img = document.getElementById('imagePreview');
+            const btn = document.getElementById('imageToFenBtn');
+            if (!img.src || !img.naturalWidth) {
+                showToast('Load an image first');
+                return;
+            }
+
+            const label = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ Reading board...';
+            try {
+                const res = await fetch('/api/image-to-fen', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageToDataUrl(img, 1536) })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Request failed');
+
+                document.getElementById('fenDisplay').value = data.fen;
+                loadFenOnBoard();
+                showToast('FEN read (' + data.confidence + ' confidence)' + (data.notes ? ': ' + data.notes : ''));
+            } catch (err) {
+                showToast('Image to FEN failed: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = label;
+            }
+        }
 
         // Toggle image size: small -> regular -> large -> small
         function toggleImageSize() {
