@@ -1,28 +1,17 @@
-const PROMPT = `You are a chess board recognizer. The image shows a chess position (a screenshot, diagram, or photo of a board).
-Return the piece placement as a FEN string.
+const PROMPT = `Transcribe this chess board image literally, exactly as drawn on screen: do not re-orient, rotate or flip it, and ignore any rank/file labels.
+Go row by row from the TOP row to the BOTTOM row, and within each row from the LEFT column to the RIGHT column.
+Return JSON: {"rows": [8 strings, each exactly 8 characters]}.
+Use "." for an empty square, uppercase KQRBNP for white pieces and lowercase kqrbnp for black pieces. Do not invent pieces.`;
 
-Rules:
-- Read the board carefully square by square, rank by rank.
-- Use standard FEN piece letters: uppercase = white (KQRBNP), lowercase = black (kqrbnp).
-- Output ranks from 8 down to 1, from White's point of view. If the board is shown from Black's side
-  (e.g. coordinates or context indicate it is flipped), re-orient it so the FEN is still rank 8 first, file a first.
-- Do not invent pieces. Empty squares are counted as digits.
-- If side to move, castling or en passant are not visible, use "w", "-" and "-" with "0 1".
-Reply with JSON only: {"fen": "<full 6-field FEN>", "confidence": "high|medium|low", "notes": "<short note on anything uncertain>"}`;
-
-function isValidPlacement(placement) {
-  const ranks = placement.split('/');
-  if (ranks.length !== 8) return false;
-  for (const rank of ranks) {
-    let count = 0;
-    for (const ch of rank) {
-      if (/[1-8]/.test(ch)) count += Number(ch);
-      else if (/[pnbrqkPNBRQK]/.test(ch)) count += 1;
-      else return false;
-    }
-    if (count !== 8) return false;
+// Build the FEN in code from the 64-square grid; models miscount FEN digits
+function rowsToPlacement(rows) {
+  if (!Array.isArray(rows) || rows.length !== 8) return null;
+  const ranks = [];
+  for (const row of rows) {
+    if (typeof row !== 'string' || !/^[.pnbrqkPNBRQK]{8}$/.test(row)) return null;
+    ranks.push(row.replace(/\.+/g, (m) => m.length));
   }
-  return true;
+  return ranks.join('/');
 }
 
 export default async function handler(req, res) {
@@ -49,8 +38,7 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || 'gpt-4o',
-        temperature: 0,
+        model: process.env.OPENAI_MODEL || 'gpt-5.4',
         response_format: { type: 'json_object' },
         messages: [
           {
@@ -70,16 +58,12 @@ export default async function handler(req, res) {
     }
 
     const parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
-    const fen = String(parsed.fen || '').trim();
-    if (!isValidPlacement(fen.split(' ')[0])) {
-      return res.status(422).json({ error: 'Model returned an invalid FEN', raw: fen });
+    const placement = rowsToPlacement(parsed.rows);
+    if (!placement) {
+      return res.status(422).json({ error: 'Model returned an invalid board', raw: parsed.rows });
     }
 
-    return res.status(200).json({
-      fen,
-      confidence: parsed.confidence || 'unknown',
-      notes: parsed.notes || ''
-    });
+    return res.status(200).json({ fen: placement + ' w - - 0 1', confidence: 'n/a', notes: '' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

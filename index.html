@@ -2436,9 +2436,12 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Request failed');
 
+                // Show the pieces exactly as read: straight onto chessboard.js,
+                // no chess.js validation, castling logic or perspective conversion
+                board.position(data.fen.split(' ')[0]);
+                currentFen = data.fen;
                 document.getElementById('fenDisplay').value = data.fen;
-                loadFenOnBoard();
-                showToast('FEN read (' + data.confidence + ' confidence)' + (data.notes ? ': ' + data.notes : ''));
+                showToast('FEN read from image');
             } catch (err) {
                 showToast('Image to FEN failed: ' + err.message);
             } finally {
