@@ -262,6 +262,7 @@
             padding: 12px 24px;
             border-radius: 8px;
             opacity: 0;
+            pointer-events: none;
             transition: opacity 0.3s;
             z-index: 1000;
             font-weight: 500;
@@ -906,6 +907,36 @@
         </div>
     </div>
 
+    <!-- Supabase Puzzle Saver -->
+    <div class="gdrive-section" id="sbPuzzleSection" style="border-color: rgba(62,207,142,0.35); background: rgba(62,207,142,0.08);">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <strong style="color: #3ecf8e; font-size: 14px;">Supabase Puzzles</strong>
+        </div>
+
+        <!-- Browse: category -> puzzle -> load to board -> reveal note -->
+        <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+            <select id="sbCategorySelect" onchange="sbLoadPuzzlesForCategory()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 6px; font-size: 14px; min-width: 160px;">
+                <option value="">Loading categories…</option>
+            </select>
+            <select id="sbPuzzleSelect" disabled onchange="sbLoadSelectedPuzzle()" style="flex: 1; min-width: 220px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 6px; font-size: 14px;">
+                <option value="">— pick a category first —</option>
+            </select>
+            <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
+        </div>
+        <div id="sbNoteDisplay" style="display: none; margin-top: 8px; padding: 10px 12px; background: #0f3460; border-radius: 6px; color: #eee; font-size: 14px;"></div>
+
+        <!-- Save: current board FEN -> category (existing or new) + note -->
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(62,207,142,0.25); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+            <select id="sbSaveCategorySelect" onchange="sbToggleNewCategoryInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 6px; font-size: 14px; min-width: 160px;">
+                <option value="__new__">+ New category…</option>
+            </select>
+            <input type="text" id="sbNewCategoryInput" placeholder="New category name (e.g. mate_in_5)..." style="min-width: 180px; padding: 8px 10px;">
+            <input type="text" id="sbNoteInput" placeholder="Note (e.g. win a pawn)..." style="flex: 1; min-width: 200px; padding: 8px 10px;">
+            <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">💾 Save Board FEN to Supabase</button>
+        </div>
+        <div id="sbPuzzleStatus" style="margin-top: 6px; font-size: 12px; color: #888;"></div>
+    </div>
+
     <!-- Comment Modal -->
     <div id="gdrive-comment-modal-overlay" class="gdrive-comment-modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
         <div class="gdrive-comment-modal">
@@ -983,6 +1014,10 @@
         let lastSelectedRow = null; // Track last selected/added row for highlighting
 
         // Initialize chessboard after DOM loads
+        window.addEventListener('DOMContentLoaded', function() {
+            sbLoadCategories();
+        });
+
         window.addEventListener('DOMContentLoaded', function() {
             if (typeof Chessboard === 'undefined') {
                 console.error('Chessboard library failed to load');
@@ -2411,6 +2446,153 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = label;
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // Supabase Puzzles — category dropdown -> puzzle dropdown -> board,
+        // plus a save form that posts the board's current FEN back to it.
+        // ---------------------------------------------------------------
+
+        window.sbPuzzlesByCategory = {}; // category -> [{id, category, note, fen}]
+
+        async function sbLoadCategories() {
+            const browseSel = document.getElementById('sbCategorySelect');
+            const saveSel = document.getElementById('sbSaveCategorySelect');
+            try {
+                const res = await fetch('/api/puzzles?action=categories');
+                const categories = await res.json();
+                if (!res.ok) throw new Error(categories.error || 'Request failed');
+
+                browseSel.innerHTML = categories.length
+                    ? categories.map(c => `<option value="${c}">${c}</option>`).join('')
+                    : '<option value="">No categories yet</option>';
+
+                const saveOptions = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+                saveSel.innerHTML = saveOptions + '<option value="__new__">+ New category…</option>';
+                if (categories.length) saveSel.value = categories[0];
+                sbToggleNewCategoryInput();
+
+                if (categories.length) sbLoadPuzzlesForCategory();
+            } catch (err) {
+                browseSel.innerHTML = '<option value="">Failed to load</option>';
+                showToast('Loading puzzle categories failed: ' + err.message);
+            }
+        }
+
+        async function sbLoadPuzzlesForCategory() {
+            const category = document.getElementById('sbCategorySelect').value;
+            const puzzleSel = document.getElementById('sbPuzzleSelect');
+            const revealBtn = document.getElementById('sbRevealNoteBtn');
+            sbHideNote();
+            if (!category) {
+                puzzleSel.innerHTML = '<option value="">— pick a category first —</option>';
+                puzzleSel.disabled = true;
+                revealBtn.disabled = true;
+                return;
+            }
+            puzzleSel.innerHTML = '<option value="">Loading…</option>';
+            puzzleSel.disabled = true;
+            revealBtn.disabled = true;
+            try {
+                const res = await fetch('/api/puzzles?action=list&category=' + encodeURIComponent(category));
+                const puzzles = await res.json();
+                if (!res.ok) throw new Error(puzzles.error || 'Request failed');
+
+                window.sbPuzzlesByCategory[category] = puzzles;
+                if (!puzzles.length) {
+                    puzzleSel.innerHTML = '<option value="">No puzzles in this category</option>';
+                    return;
+                }
+                puzzleSel.innerHTML = puzzles.map((p, i) => {
+                    const preview = (p.fen || '').slice(0, 24);
+                    return `<option value="${p.id}">${i + 1} — ${preview}${p.fen && p.fen.length > 24 ? '…' : ''}</option>`;
+                }).join('');
+                puzzleSel.disabled = false;
+                sbLoadSelectedPuzzle();
+            } catch (err) {
+                puzzleSel.innerHTML = '<option value="">Failed to load</option>';
+                showToast('Loading puzzles failed: ' + err.message);
+            }
+        }
+
+        function sbCurrentPuzzle() {
+            const category = document.getElementById('sbCategorySelect').value;
+            const id = document.getElementById('sbPuzzleSelect').value;
+            const puzzles = window.sbPuzzlesByCategory[category] || [];
+            return puzzles.find(p => String(p.id) === String(id)) || null;
+        }
+
+        function sbLoadSelectedPuzzle() {
+            const puzzle = sbCurrentPuzzle();
+            const revealBtn = document.getElementById('sbRevealNoteBtn');
+            sbHideNote();
+            if (!puzzle) {
+                revealBtn.disabled = true;
+                return;
+            }
+            document.getElementById('fenDisplay').value = puzzle.fen;
+            loadFenOnBoard();
+            revealBtn.disabled = false;
+        }
+
+        function sbHideNote() {
+            const noteEl = document.getElementById('sbNoteDisplay');
+            noteEl.style.display = 'none';
+            noteEl.textContent = '';
+        }
+
+        function sbToggleNote() {
+            const noteEl = document.getElementById('sbNoteDisplay');
+            if (noteEl.style.display !== 'none') {
+                sbHideNote();
+                return;
+            }
+            const puzzle = sbCurrentPuzzle();
+            noteEl.textContent = (puzzle && puzzle.note) ? puzzle.note : 'No note for this puzzle.';
+            noteEl.style.display = 'block';
+        }
+
+        function sbToggleNewCategoryInput() {
+            const sel = document.getElementById('sbSaveCategorySelect');
+            const input = document.getElementById('sbNewCategoryInput');
+            input.style.display = sel.value === '__new__' ? '' : 'none';
+        }
+
+        async function sbSavePuzzle() {
+            const statusEl = document.getElementById('sbPuzzleStatus');
+            const sel = document.getElementById('sbSaveCategorySelect');
+            const category = sel.value === '__new__'
+                ? document.getElementById('sbNewCategoryInput').value.trim()
+                : sel.value;
+            const note = document.getElementById('sbNoteInput').value.trim();
+            const fen = document.getElementById('fenDisplay').value.trim();
+
+            if (!category) { showToast('Enter a category name'); return; }
+            if (!fen) { showToast('No FEN on the board to save'); return; }
+
+            statusEl.textContent = 'Saving…';
+            try {
+                const res = await fetch('/api/puzzles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'save', category, note, fen })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Save failed');
+
+                statusEl.textContent = 'Saved to "' + category + '".';
+                document.getElementById('sbNoteInput').value = '';
+                showToast('Puzzle saved!');
+
+                await sbLoadCategories();
+                document.getElementById('sbCategorySelect').value = category;
+                await sbLoadPuzzlesForCategory();
+                document.getElementById('sbSaveCategorySelect').value = category;
+                sbToggleNewCategoryInput();
+            } catch (err) {
+                statusEl.textContent = '';
+                showToast('Save failed: ' + err.message);
             }
         }
 

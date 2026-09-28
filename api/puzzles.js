@@ -1,0 +1,91 @@
+// Vercel Serverless Function — Supabase `puzzles` table proxy
+// Keeps SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY server-side. service_role
+// is required (not the anon key) because RLS on `puzzles` has no
+// anon/authenticated policies — same pattern as react-chess-analysis_vercel's
+// api/games.js.
+//
+// Set in Vercel dashboard -> Settings -> Environment Variables:
+//   SUPABASE_URL = https://xxxx.supabase.co
+//   SUPABASE_SERVICE_ROLE_KEY = your-service-role-key
+//
+// Endpoints:
+//   GET  /api/puzzles?action=categories
+//   GET  /api/puzzles?action=list&category=X
+//   GET  /api/puzzles?action=get&id=123
+//   POST /api/puzzles   { action: "save", category, note, fen }
+
+const LIST_COLUMNS = 'id,category,note,fen,created_at';
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    return res.status(500).json({ error: 'Supabase env vars not set on server.' });
+  }
+  const headers = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+
+  try {
+    if (req.method === 'GET') {
+      const { action, category, id } = req.query;
+
+      if (action === 'categories') {
+        // No native DISTINCT over REST — pull just the column and de-dupe here.
+        const params = new URLSearchParams({ select: 'category', order: 'category.asc' });
+        const r = await fetch(`${url}/rest/v1/puzzles?${params}`, { headers });
+        const rows = await r.json();
+        if (!r.ok) return res.status(r.status).json(rows);
+        const categories = [...new Set(rows.map((row) => row.category))];
+        return res.status(200).json(categories);
+      }
+
+      if (action === 'list') {
+        const params = new URLSearchParams({ select: LIST_COLUMNS, order: 'id.asc' });
+        if (category) params.set('category', `eq.${category}`);
+        const r = await fetch(`${url}/rest/v1/puzzles?${params}`, { headers });
+        const rows = await r.json();
+        return res.status(r.ok ? 200 : r.status).json(rows);
+      }
+
+      if (action === 'get') {
+        if (!id) return res.status(400).json({ error: 'id required' });
+        const params = new URLSearchParams({ select: '*', id: `eq.${id}`, limit: '1' });
+        const r = await fetch(`${url}/rest/v1/puzzles?${params}`, { headers });
+        const rows = await r.json();
+        if (!r.ok) return res.status(r.status).json(rows);
+        if (!rows.length) return res.status(404).json({ error: 'Puzzle not found' });
+        return res.status(200).json(rows[0]);
+      }
+
+      return res.status(400).json({ error: 'Unknown action. Use action=categories, action=list, or action=get' });
+    }
+
+    if (req.method === 'POST') {
+      const { action, category, note, fen } = req.body || {};
+      if (action !== 'save') return res.status(400).json({ error: 'Unknown action. Use action=save' });
+      if (!category || !fen) {
+        return res.status(400).json({ error: 'category and fen are required' });
+      }
+
+      const r = await fetch(`${url}/rest/v1/puzzles`, {
+        method: 'POST',
+        headers: { ...headers, Prefer: 'return=representation' },
+        body: JSON.stringify([{ category, note: note || null, fen }]),
+      });
+      const created = await r.json();
+      if (!r.ok) return res.status(r.status).json(created);
+      return res.status(200).json({ success: true, puzzle: created[0] });
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+}
