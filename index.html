@@ -746,6 +746,7 @@
                     <select id="sbPuzzleSelect" disabled onchange="sbLoadSelectedPuzzle()" style="flex: 1; min-width: 220px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
                         <option value="">— pick a category first —</option>
                     </select>
+                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
                     <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
                 </div>
                 <div id="sbNoteDisplay" style="display: none; margin-top: 8px; padding: 10px; background: #0f3460; border-radius: 5px; color: #eee; font-size: 14px;"></div>
@@ -1063,36 +1064,21 @@
             chess = new Chess();
             startingFen = chess.fen(); // Store starting position
 
-            // Configure board based on device type
+            // Free-edit board: spare white/black pieces above and below the board can be
+            // dragged on, and pieces dragged off the board are deleted. (chessboard.js
+            // forces dragging on whenever sparePieces is enabled, including on mobile.)
             const boardConfig = {
-                draggable: !isMobile, // Disable drag on mobile
-                dropOffBoard: 'snapback',
-                position: 'start'
+                draggable: true,
+                sparePieces: true,
+                dropOffBoard: 'trash',
+                position: 'start',
+                // No move-legality check: pieces can be placed and moved anywhere
+                onDrop: function(source, target, piece, newPos) {
+                    if (source === target) return;
+                    if (source === 'spare' && target === 'offboard') return;
+                    syncFromBoardEdit(Chessboard.objToFen(newPos));
+                }
             };
-
-            // Add drag-and-drop handler for desktop
-            if (!isMobile) {
-                boardConfig.onDrop = function(source, target, piece, newPos, oldPos, orientation) {
-                    console.log('onDrop:', source, '->', target, 'piece:', piece);
-
-                    // Attempt the move using chess.js
-                    const move = chess.move({
-                        from: source,
-                        to: target,
-                        promotion: 'q' // auto-promote to queen
-                    });
-
-                    if (move === null) {
-                        // Invalid move - snap piece back
-                        console.log('Invalid move - snapping back');
-                        return 'snapback';
-                    }
-
-                    // Valid move - update display
-                    console.log('Valid move:', move);
-                    updateBoardDisplay();
-                };
-            }
 
             board = Chessboard('myBoard', boardConfig);
 
@@ -1217,14 +1203,26 @@
             }
         }
 
-        // Update FEN from board position
-        function updateFenFromBoard() {
-            const position = board.position();
-            const fen = boardPositionToFen(position);
+        // Sync the FEN box and dependent state after a freely edited board
+        // (pieces moved without legality checks). Turn comes from the toggle.
+        function syncFromBoardEdit(placement) {
+            const turn = document.getElementById('turnToggleCheckbox').checked ? 'b' : 'w';
+            const fen = placement + ' ' + turn + ' ' + deriveCastlingFromPosition(placement) + ' - 0 1';
+
             currentFen = fen;
+            startingFen = fen;
+            try { chess = new Chess(fen); } catch (e) { /* chess.js rejects odd positions; the board itself is unaffected */ }
+
             document.getElementById('fenDisplay').value = fen;
-            document.getElementById('positionFen').value = fen;
+            const variantFormat = '[Variant "From Position"]\n[FEN "' + fen + '"]';
+            document.getElementById('positionFen').value = variantFormat;
+            document.getElementById('moveHistoryTextArea').value = variantFormat;
             updateLichessUrls(fen);
+
+            cyclePositions = [];
+            cycleIndex = 0;
+            lastCycledFen = null;
+            currentCyclingIndex = null;
         }
 
         // Update board display after a move (for chess.js integration)
@@ -2554,11 +2552,13 @@
             if (!category) {
                 puzzleSel.innerHTML = '<option value="">— pick a category first —</option>';
                 puzzleSel.disabled = true;
+                document.getElementById('sbNextPuzzleBtn').disabled = true;
                 revealBtn.disabled = true;
                 return;
             }
             puzzleSel.innerHTML = '<option value="">Loading…</option>';
             puzzleSel.disabled = true;
+                document.getElementById('sbNextPuzzleBtn').disabled = true;
             revealBtn.disabled = true;
             try {
                 const res = await fetch('/api/puzzles?action=list&category=' + encodeURIComponent(category));
@@ -2575,6 +2575,7 @@
                     return `<option value="${p.id}">${i + 1} — ${preview}${p.fen && p.fen.length > 24 ? '…' : ''}</option>`;
                 }).join('');
                 puzzleSel.disabled = false;
+                document.getElementById('sbNextPuzzleBtn').disabled = false;
                 sbLoadSelectedPuzzle();
             } catch (err) {
                 puzzleSel.innerHTML = '<option value="">Failed to load</option>';
@@ -2600,6 +2601,14 @@
             document.getElementById('fenDisplay').value = puzzle.fen;
             loadFenOnBoard();
             revealBtn.disabled = false;
+        }
+
+        // Load the next puzzle in the current category (wraps to the first after the last)
+        function sbNextPuzzle() {
+            const puzzleSel = document.getElementById('sbPuzzleSelect');
+            if (puzzleSel.disabled || !puzzleSel.options.length) return;
+            puzzleSel.selectedIndex = (puzzleSel.selectedIndex + 1) % puzzleSel.options.length;
+            sbLoadSelectedPuzzle();
         }
 
         function sbHideNote() {
@@ -2729,29 +2738,14 @@
                         return;
                     }
 
-                    // Attempt the move using chess.js
-                    const move = chess.move({
-                        from: sourceSquare,
-                        to: targetSquare,
-                        promotion: 'q'
-                    });
-
-                    if (move === null) {
-                        showToast('Invalid move!');
-                        selectedSquare = null;
-                        return;
-                    }
-
-                    // Update board position
-                    board.position(chess.fen());
-
-                    // Update display
-                    updateBoardDisplay();
+                    // Free placement: move the piece with no legality check
+                    board.move(sourceSquare + '-' + targetSquare);
+                    syncFromBoardEdit(board.fen());
 
                     // Reset selection
                     selectedSquare = null;
 
-                    showToast(`Moved: ${move.san}`);
+                    showToast(`Moved ${sourceSquare} to ${targetSquare}`);
                 }
             });
         }
