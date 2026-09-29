@@ -13,12 +13,13 @@
 //   GET  /api/puzzles?action=list&category=X
 //   GET  /api/puzzles?action=get&id=123
 //   POST /api/puzzles   { action: "save", category, note, fen }
+//   DELETE /api/puzzles?id=123
 
 const LIST_COLUMNS = 'id,category,note,fen,created_at';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -82,6 +83,20 @@ export default async function handler(req, res) {
       const created = await r.json();
       if (!r.ok) return res.status(r.status).json(created);
       return res.status(200).json({ success: true, puzzle: created[0] });
+    }
+
+    if (req.method === 'DELETE') {
+      const id = String(req.query.id || '');
+      if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'A numeric id is required' });
+
+      const r = await fetch(`${url}/rest/v1/puzzles?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: { ...headers, Prefer: 'return=representation' },
+      });
+      const deleted = await r.json();
+      if (!r.ok) return res.status(r.status).json(deleted);
+      if (!deleted.length) return res.status(404).json({ error: 'Puzzle not found' });
+      return res.status(200).json({ success: true, deleted: deleted[0].id });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
