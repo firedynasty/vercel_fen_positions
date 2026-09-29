@@ -733,8 +733,13 @@
                 <div id="myBoard" class="board"></div>
             </div>
 
-            <!-- Move History Textarea (hidden, still used for data) -->
-            <textarea id="moveHistoryTextArea" readonly style="display:none;"></textarea>
+            <!-- PGN of the moves played from the loaded FEN (Lichess "From Position" format) -->
+            <div style="margin-top: 10px;">
+                <textarea id="moveHistoryTextArea" readonly rows="4" placeholder="Moves you drop on the board appear here as a Lichess-style PGN..."></textarea>
+                <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('moveHistoryTextArea').value.trim()).then(()=>showToast('PGN copied!'))" style="margin-top: 6px;">📋 Copy PGN</button>
+                <button class="copy-btn" onclick="clearPgn()" style="margin-top: 6px; background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear PGN</button>
+                <button class="copy-btn" onclick="resetFen()" style="margin-top: 6px; background-color: rgba(255, 152, 0, 0.3);">↺ Reset FEN</button>
+            </div>
 
             <!-- Supabase Puzzles -->
             <div id="sbPuzzleSection" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; margin: 12px 0 8px;">
@@ -748,8 +753,10 @@
                     <select id="sbPuzzleSelect" disabled onchange="sbLoadSelectedPuzzle()" style="flex: 1; min-width: 220px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
                         <option value="">— pick a category first —</option>
                     </select>
+                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
                     <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
-                    <span id="sbPuzzleKind" style="display: none; padding: 6px 10px; border-radius: 5px; font-family: monospace; font-size: 13px; font-weight: bold;"></span>
+                    <button id="sbCyclePrevBtn" class="copy-btn" onclick="cycleBoardPrev()" style="background-color: rgba(233, 30, 99, 0.3);">Prev &#128260;</button>
+                    <button id="sbCycleBoardBtn" class="copy-btn" onclick="cycleBoard()" style="background-color: rgba(233, 30, 99, 0.3);">&#128260; Cycle Board</button>
                     <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
                 </div>
                 <div id="sbNoteDisplay" style="display: none; margin-top: 8px; padding: 10px; background: #0f3460; border-radius: 5px; color: #eee; font-size: 14px;"></div>
@@ -1040,6 +1047,8 @@
         let selectedSquare = null;   // For mobile click-to-move
         let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
         let cyclePositions = [];     // Array of positions to cycle through
+        let pgnStartFen = '';        // Header FEN of the recorded PGN; only changes on load / Clear PGN / Reset FEN
+        let pgnMoves = [];           // SAN-style moves dropped since pgnStartFen
         let cyclePgnSource = '';     // The full PGN text those positions were parsed from (saved to Supabase while cycling)
         let cycleIndex = 0;          // Current position in cycle
         let lastCycledFen = null;    // Last FEN that was cycled
@@ -1076,11 +1085,16 @@
                 sparePieces: true,
                 dropOffBoard: 'trash',
                 position: 'start',
-                // No move-legality check: pieces can be placed and moved anywhere
-                onDrop: function(source, target, piece, newPos) {
+                // Every piece drop is appended to the PGN as a move (no legality check); the header
+                // FEN stays fixed until Reset FEN. Spare pieces added / dragged off just edit the board.
+                onDrop: function(source, target, piece, newPos, oldPos) {
                     if (source === target) return;
                     if (source === 'spare' && target === 'offboard') return;
-                    syncFromBoardEdit(Chessboard.objToFen(newPos));
+                    if (source === 'spare' || target === 'offboard') {
+                        pgnBoardEdited(Chessboard.objToFen(newPos));
+                        return;
+                    }
+                    pgnRecordMove(source, target, piece, oldPos, newPos);
                 }
             };
 
@@ -1172,6 +1186,8 @@
                 // Reset and sync chess.js with the new position
                 chess = new Chess(completeFen);
                 startingFen = completeFen; // Store as starting position
+                pgnStartFen = completeFen;
+                pgnMoves = [];
 
                 // Update fenDisplay
                 document.getElementById('fenDisplay').value = completeFen;
@@ -1208,27 +1224,156 @@
             }
         }
 
-        // Sync the FEN box and dependent state after a freely edited board
-        // (pieces moved without legality checks). Turn comes from the toggle.
-        function syncFromBoardEdit(placement) {
-            const turn = document.getElementById('turnToggleCheckbox').checked ? 'b' : 'w';
-            const fen = placement + ' ' + turn + ' ' + deriveCastlingFromPosition(placement) + ' - 0 1';
+        // ---- PGN recorder -------------------------------------------------------------
+        // Header FEN + every dropped move, in the Lichess "From Position" format:
+        //   [Variant "From Position"]
+        //   [FEN "..."]
+        //
+        //   1. Qxf7 b5 2. Qxh5 a3
 
+        function fenFor(placement, turn) {
+            return placement + ' ' + turn + ' ' + deriveCastlingFromPosition(placement) + ' - 0 1';
+        }
+
+        // Move text for one drop. Uses chess.js when the move happens to be legal (proper SAN such
+        // as Nbd7 or exd5); otherwise a plain best-effort notation, since nothing is ever refused.
+        function moveNotation(from, to, piece, oldPos) {
+            const color = piece[0];
+            const type = piece[1];
+            try {
+                const temp = new Chess(fenFor(Chessboard.objToFen(oldPos), color));
+                const move = temp.move({ from: from, to: to, promotion: 'q' });
+                if (move) return move.san;
+            } catch (e) { /* fall through to the plain notation */ }
+            const capture = oldPos[to] ? 'x' : '';
+            if (type === 'P') return capture ? from[0] + 'x' + to : to;
+            return type + capture + to;
+        }
+
+        // "1. Qxf7 b5 2. Qxh5 a3" (or "1... b5 2. ..." when Black moves first), numbered from the header FEN
+        function formatPgnMoves() {
+            const parts = pgnStartFen.split(' ');
+            let turn = parts[1] || 'w';
+            let number = parseInt(parts[5], 10) || 1;
+            const out = [];
+            pgnMoves.forEach((move, i) => {
+                if (turn === 'w') {
+                    out.push(number + '. ' + move);
+                } else {
+                    out.push((i === 0 ? number + '... ' : '') + move);
+                    number++;
+                }
+                turn = turn === 'w' ? 'b' : 'w';
+            });
+            return out.join(' ');
+        }
+
+        function renderPgn() {
+            let text = '';
+            if (pgnStartFen) {
+                text = '[Variant "From Position"]\n[FEN "' + pgnStartFen + '"]';
+                if (pgnMoves.length) text += '\n\n' + formatPgnMoves();
+                startingFen = pgnStartFen;
+            }
+            document.getElementById('moveHistoryTextArea').value = text;
+            document.getElementById('positionFen').value = text;
+            cyclePgnSource = pgnMoves.length ? text : '';
+        }
+
+        function showTurn(turn) {
+            document.getElementById('turnToggleCheckbox').checked = (turn === 'b');
+            document.getElementById('turnToggleLabel').textContent =
+                turn === 'b' ? '♚ Black to Move' : '♔ White to Move';
+        }
+
+        // Start recording from this FEN (fresh header, no moves, cycle cleared)
+        function pgnRebase(fen) {
+            pgnStartFen = fen;
+            pgnMoves = [];
             currentFen = fen;
-            startingFen = fen;
-            try { chess = new Chess(fen); } catch (e) { /* chess.js rejects odd positions; the board itself is unaffected */ }
-
+            try { chess = new Chess(fen); } catch (e) { /* board is unaffected */ }
             document.getElementById('fenDisplay').value = fen;
-            const variantFormat = '[Variant "From Position"]\n[FEN "' + fen + '"]';
-            document.getElementById('positionFen').value = variantFormat;
-            document.getElementById('moveHistoryTextArea').value = variantFormat;
+            showTurn(fen.split(' ')[1]);
             updateLichessUrls(fen);
-
             cyclePositions = [];
-            cyclePgnSource = '';
             cycleIndex = 0;
             lastCycledFen = null;
             currentCyclingIndex = null;
+            renderPgn();
+        }
+
+        // A piece was dropped from one square to another: append it to the PGN
+        function pgnRecordMove(from, to, piece, oldPos, newPos) {
+            const oldPlacement = Chessboard.objToFen(oldPos);
+            const newPlacement = Chessboard.objToFen(newPos);
+
+            if (!pgnStartFen) {
+                // Nothing loaded yet: the position before this move becomes the header FEN
+                const turn = document.getElementById('turnToggleCheckbox').checked ? 'b' : 'w';
+                pgnStartFen = fenFor(oldPlacement, turn);
+                pgnMoves = [];
+                cyclePositions = [];
+            }
+            // If Prev stepped back into the line, the new move replaces everything after that point
+            if (cyclePositions.length > 1 && cycleIndex < pgnMoves.length) {
+                pgnMoves = pgnMoves.slice(0, cycleIndex);
+                cyclePositions = cyclePositions.slice(0, cycleIndex + 1);
+            }
+            if (!cyclePositions.length) cyclePositions = [pgnStartFen];
+
+            pgnMoves.push(moveNotation(from, to, piece, oldPos));
+
+            const nextTurn = piece[0] === 'w' ? 'b' : 'w';
+            const fen = fenFor(newPlacement, nextTurn);
+            cyclePositions.push(fen);
+            cycleIndex = cyclePositions.length - 1;
+
+            currentFen = fen;
+            try { chess = new Chess(fen); } catch (e) { /* board is unaffected */ }
+            document.getElementById('fenDisplay').value = fen;
+            showTurn(nextTurn);
+            updateLichessUrls(fen);
+            renderPgn();
+        }
+
+        // Spare piece added / piece dragged off the board: the board changes but the PGN header stays
+        function pgnBoardEdited(placement) {
+            const turn = document.getElementById('turnToggleCheckbox').checked ? 'b' : 'w';
+            const fen = fenFor(placement, turn);
+            currentFen = fen;
+            try { chess = new Chess(fen); } catch (e) { /* board is unaffected */ }
+            document.getElementById('fenDisplay').value = fen;
+            updateLichessUrls(fen);
+        }
+
+        // Adopt a loaded PGN (paste / Supabase / saved table) as the recorded PGN so drops append to it
+        function pgnAdoptFromText(text) {
+            const replay = replayPgnRelaxed(text);
+            if (!replay.start) return;
+            pgnStartFen = replay.start;
+            pgnMoves = replay.moves;
+            renderPgn();
+        }
+
+        // Empty the PGN box completely. The board stays as it is; the next piece dropped
+        // starts a new PGN whose header FEN is the position just before that drop.
+        function clearPgn() {
+            pgnStartFen = '';
+            pgnMoves = [];
+            cyclePositions = [];
+            cycleIndex = 0;
+            lastCycledFen = null;
+            currentCyclingIndex = null;
+            renderPgn();
+            showToast('PGN cleared');
+        }
+
+        // Make the position currently on the board the header FEN and drop the recorded moves
+        function resetFen() {
+            if (typeof board === 'undefined' || !board) return;
+            const turn = document.getElementById('turnToggleCheckbox').checked ? 'b' : 'w';
+            pgnRebase(fenFor(board.fen(), turn));
+            showToast('Header FEN reset to the board');
         }
 
         // Update board display after a move (for chess.js integration)
@@ -1240,6 +1385,7 @@
             let pgnMoves = chess.pgn();
             // Remove any existing headers from PGN
             pgnMoves = pgnMoves.replace(/\[[^\]]*\]\s*/g, '').trim();
+            pgnMoves = pgnMoves.replace(/(\d+)\.\s\.\.\./g, '$1...'); // Lichess writes 1... b5, chess.js writes 1. ... b5
 
             // Build formatted output with Variant header
             const variantFormat = '[Variant "From Position"]\n[FEN "' + startingFen + '"]' +
@@ -1536,6 +1682,7 @@
             lastCycledFen = fenText;
             cyclePositions = parseFenVariantToPositions(fenText);
             cyclePgnSource = fenText;
+            pgnAdoptFromText(fenText);
             cycleIndex = 0;
 
             if (cyclePositions.length > 0) {
@@ -1591,6 +1738,7 @@
             currentCyclingIndex = null;
             cyclePositions = positions;
             cyclePgnSource = text;
+            pgnAdoptFromText(text);
             cycleIndex = 0;
             loadPositionFromCycle();
             showToast(positions.length > 1
@@ -1599,54 +1747,112 @@
         }
 
         // Parse FEN variant format to extract all positions
+        // Positions for cycling, replayed from a "[FEN ...]" PGN. Legal moves use chess.js; a move
+        // that isn't legal is still applied as written (no legality check), so the cycle never skips it.
         function parseFenVariantToPositions(text) {
-            const positions = [];
+            return replayPgnRelaxed(text).positions;
+        }
 
-            try {
-                // Extract FEN from [FEN "..."] header
-                const fenMatch = text.match(/\[FEN\s+"([^"]+)"\]/);
-                if (!fenMatch) return positions;
+        // Replay a "From Position" PGN: returns { start, positions: [FEN...], moves: [SAN...] }
+        function replayPgnRelaxed(text) {
+            const out = { start: '', positions: [], moves: [] };
+            const fenMatch = (text || '').match(/\[FEN\s+"([^"]+)"\]/);
+            if (!fenMatch) return out;
 
-                const startFen = fenMatch[1];
+            out.start = fenMatch[1];
+            let pos = Chessboard.fenToObj(out.start.split(' ')[0]);
+            if (!pos) return out;
+            let turn = out.start.split(' ')[1] === 'b' ? 'b' : 'w';
+            out.positions.push(out.start);
 
-                // Extract moves (everything after the headers)
-                const movesMatch = text.match(/\]\s*\n\s*\n(.+)/s);
-                if (!movesMatch) {
-                    // No moves, just return starting position
-                    positions.push(startFen);
-                    return positions;
+            const movesMatch = text.match(/\]\s*\n\s*\n(.+)/s);
+            const tokens = (movesMatch ? movesMatch[1] : '')
+                .replace(/\{[^}]*\}/g, '')          // comments
+                .replace(/\d+\.(\.\.)?/g, '')        // move numbers (1. and 1...)
+                .replace(/\([^)]*\)/g, '')          // variations
+                .split(/\s+/)
+                .filter(t => t && !/^[.\s]*$/.test(t) && !/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t));
+
+            for (const token of tokens) {
+                let next = null;
+                let san = token;
+                try {
+                    const temp = new Chess(fenFor(Chessboard.objToFen(pos), turn));
+                    const move = temp.move(token, { sloppy: true });
+                    if (move) { next = Chessboard.fenToObj(temp.fen().split(' ')[0]); san = move.san; }
+                } catch (e) { /* not legal: apply it loosely below */ }
+                if (!next) next = relaxedApplyMove(pos, token, turn);
+                if (!next) continue; // not a readable move at all
+                pos = next;
+                turn = turn === 'w' ? 'b' : 'w';
+                out.positions.push(fenFor(Chessboard.objToFen(pos), turn));
+                out.moves.push(san);
+            }
+            return out;
+        }
+
+        // Apply one SAN-style move to a chessboard.js position object without checking legality.
+        // The moving piece is found from the piece letter, any file/rank hint and the destination,
+        // preferring the side to move and a piece that could really reach the square.
+        function relaxedApplyMove(pos, token, turn) {
+            const t = token.replace(/[+#!?]+$/, '');
+            const next = Object.assign({}, pos);
+
+            if (/^(O-O-O|0-0-0|O-O|0-0)$/.test(t)) {
+                const long = /^(O-O-O|0-0-0)$/.test(t);
+                const rank = turn === 'w' ? '1' : '8';
+                if (!next['e' + rank] || next['e' + rank][1] !== 'K') return null;
+                next[(long ? 'c' : 'g') + rank] = next['e' + rank];
+                delete next['e' + rank];
+                const rookFrom = (long ? 'a' : 'h') + rank;
+                if (next[rookFrom] && next[rookFrom][1] === 'R') {
+                    next[(long ? 'd' : 'f') + rank] = next[rookFrom];
+                    delete next[rookFrom];
                 }
-
-                const movesText = movesMatch[1].trim();
-                if (!movesText) {
-                    positions.push(startFen);
-                    return positions;
-                }
-
-                // Use chess.js to parse moves
-                const tempChess = new Chess(startFen);
-                positions.push(tempChess.fen()); // Add starting position
-
-                // Extract moves (remove move numbers and variations)
-                const moves = movesText
-                    .replace(/\{[^}]*\}/g, '') // Remove comments
-                    .replace(/\d+\.(\.\.)?/g, '') // Remove move numbers
-                    .replace(/\([^)]*\)/g, '') // Remove variations in parentheses
-                    .split(/\s+/)
-                    .filter(m => m && !m.match(/^[.\s]*$/));
-
-                // Play each move and store positions
-                for (const moveStr of moves) {
-                    const move = tempChess.move(moveStr, { sloppy: true });
-                    if (move) {
-                        positions.push(tempChess.fen());
-                    }
-                }
-            } catch (error) {
-                console.error('Error parsing FEN variant:', error);
+                return next;
             }
 
-            return positions;
+            const m = t.match(/^([KQRBN])?([a-h])?([1-8])?x?([a-h][1-8])(?:=?([QRBN]))?$/);
+            if (!m) return null;
+            const piece = m[1] || 'P', hintFile = m[2], hintRank = m[3], to = m[4], promo = m[5];
+            const files = 'abcdefgh';
+            const toFile = files.indexOf(to[0]), toRank = +to[1];
+
+            let best = null, bestScore = -1;
+            for (const sq in pos) {
+                const p = pos[sq];
+                if (p[1] !== piece || sq === to) continue;
+                if (hintFile && sq[0] !== hintFile) continue;
+                if (hintRank && sq[1] !== hintRank) continue;
+                const df = Math.abs(files.indexOf(sq[0]) - toFile);
+                const dr = Math.abs(+sq[1] - toRank);
+                let reach = false, line = false;
+                if (piece === 'N') reach = df * dr === 2;
+                else if (piece === 'K') reach = Math.max(df, dr) === 1;
+                else if (piece === 'P') {
+                    // one step (or a double step from the home rank), in either direction since moves may be illegal
+                    const home = (p[0] === 'w' && sq[1] === '2') || (p[0] === 'b' && sq[1] === '7');
+                    reach = (dr === 1 && df <= 1) || (dr === 2 && df === 0 && home);
+                } else {
+                    reach = (piece !== 'B' && (df === 0 || dr === 0)) || (piece !== 'R' && df === dr);
+                    if (reach) { // is the path free of other pieces?
+                        const sf = Math.sign(toFile - files.indexOf(sq[0])), sr = Math.sign(toRank - +sq[1]);
+                        let f = files.indexOf(sq[0]) + sf, r = +sq[1] + sr;
+                        line = true;
+                        while (f !== toFile || r !== toRank) {
+                            if (pos[files[f] + r]) { line = false; break; }
+                            f += sf; r += sr;
+                        }
+                    }
+                }
+                const score = (reach ? 100 : 0) + (p[0] === turn ? 10 : 0) + (line ? 5 : 0); // can it get there > whose move > clear path
+                if (score > bestScore) { bestScore = score; best = sq; }
+            }
+            if (!best) return null;
+            const mover = pos[best];
+            delete next[best];
+            next[to] = promo ? mover[0] + promo : mover;
+            return next;
         }
 
         // Load current position from cycle
@@ -2546,8 +2752,7 @@
                 // Show the pieces exactly as read: straight onto chessboard.js,
                 // no chess.js validation, castling logic or perspective conversion
                 board.position(data.fen.split(' ')[0]);
-                currentFen = data.fen;
-                document.getElementById('fenDisplay').value = data.fen;
+                pgnRebase(fenFor(data.fen.split(' ')[0], document.getElementById('turnToggleCheckbox').checked ? 'b' : 'w'));
                 showToast('FEN read from image');
             } catch (err) {
                 showToast('Image to FEN failed: ' + err.message);
@@ -2593,17 +2798,18 @@
             const puzzleSel = document.getElementById('sbPuzzleSelect');
             const revealBtn = document.getElementById('sbRevealNoteBtn');
             sbHideNote();
-            sbSetKind(null);
             if (!category) {
                 puzzleSel.innerHTML = '<option value="">— pick a category first —</option>';
                 puzzleSel.disabled = true;
                 document.getElementById('sbNextPuzzleBtn').disabled = true;
+                document.getElementById('sbPrevPuzzleBtn').disabled = true;
                 revealBtn.disabled = true;
                 return;
             }
             puzzleSel.innerHTML = '<option value="">Loading…</option>';
             puzzleSel.disabled = true;
                 document.getElementById('sbNextPuzzleBtn').disabled = true;
+                document.getElementById('sbPrevPuzzleBtn').disabled = true;
             revealBtn.disabled = true;
             try {
                 const res = await fetch('/api/puzzles?action=list&category=' + encodeURIComponent(category));
@@ -2624,6 +2830,7 @@
                 }).join('');
                 puzzleSel.disabled = false;
                 document.getElementById('sbNextPuzzleBtn').disabled = false;
+                document.getElementById('sbPrevPuzzleBtn').disabled = false;
                 sbLoadSelectedPuzzle();
             } catch (err) {
                 puzzleSel.innerHTML = '<option value="">Failed to load</option>';
@@ -2644,7 +2851,6 @@
             sbHideNote();
             if (!puzzle) {
                 revealBtn.disabled = true;
-                sbSetKind(null);
                 return;
             }
             revealBtn.disabled = false;
@@ -2652,22 +2858,20 @@
             if (sbIsPgn(puzzle.fen)) {
                 const positions = parseFenVariantToPositions(puzzle.fen.replace(/\r\n?/g, '\n'));
                 if (!positions.length) {
-                    sbSetKind(null);
                     showToast('PGN puzzle has no valid [FEN "..."] header');
                     return;
                 }
                 currentCyclingIndex = null;
                 cyclePositions = positions;
                 cyclePgnSource = puzzle.fen;
+                pgnAdoptFromText(puzzle.fen);
                 cycleIndex = 0;
                 loadPositionFromCycle();
-                sbSetKind('pgn', positions.length);
                 return;
             }
 
             document.getElementById('fenDisplay').value = puzzle.fen;
             loadFenOnBoard();
-            sbSetKind('fen');
         }
 
         // A saved puzzle is a PGN (cycle with Prev / Cycle Board) if it has a [FEN "..."] header
@@ -2680,19 +2884,13 @@
             return m ? m[1] : '';
         }
 
-        // FEN / PGN badge next to the Next button
-        function sbSetKind(kind, count) {
-            const el = document.getElementById('sbPuzzleKind');
-            if (!kind) { el.style.display = 'none'; return; }
-            if (kind === 'pgn') {
-                el.textContent = 'PGN · ' + count + (count === 1 ? ' position' : ' positions');
-                el.style.background = 'rgba(233, 30, 99, 0.3)';
-            } else {
-                el.textContent = 'FEN';
-                el.style.background = 'rgba(62, 207, 142, 0.3)';
-            }
-            el.style.color = '#eee';
-            el.style.display = 'inline-block';
+        // Load the previous puzzle in the current category (wraps to the last from the first)
+        function sbPrevPuzzle() {
+            const puzzleSel = document.getElementById('sbPuzzleSelect');
+            if (puzzleSel.disabled || !puzzleSel.options.length) return;
+            const count = puzzleSel.options.length;
+            puzzleSel.selectedIndex = (puzzleSel.selectedIndex - 1 + count) % count;
+            sbLoadSelectedPuzzle();
         }
 
         // Load the next puzzle in the current category (wraps to the first after the last)
@@ -2833,9 +3031,11 @@
                         return;
                     }
 
-                    // Free placement: move the piece with no legality check
+                    // Move the piece and append it to the PGN (no legality check)
+                    const oldPos = board.position();
+                    const piece = oldPos[sourceSquare];
                     board.move(sourceSquare + '-' + targetSquare);
-                    syncFromBoardEdit(board.fen());
+                    pgnRecordMove(sourceSquare, targetSquare, piece, oldPos, board.position());
 
                     // Reset selection
                     selectedSquare = null;
@@ -3090,6 +3290,7 @@
                         // Set up cycling from the full variant format (includes moves)
                         cyclePositions = parseFenVariantToPositions(fenRaw);
                         cyclePgnSource = fenRaw;
+                        pgnAdoptFromText(fenRaw);
                         cycleIndex = 0;
                         if (cyclePositions.length > 1) {
                             gdriveSetStatus('Loaded puzzle: "' + (name.length > 50 ? name.substring(0, 50) + '...' : name) + '" — ' + cyclePositions.length + ' positions, use Cycle Board');
