@@ -15,7 +15,10 @@
 //   POST /api/puzzles   { action: "save", category, note, fen }
 //   DELETE /api/puzzles?id=123
 
-const LIST_COLUMNS = 'id,category,note,fen,created_at';
+const LIST_COLUMNS = 'id,category,note,fen,position,created_at';
+// position is set by vercel_flashcards/supabase_fen_chess.html (▲ ▼ reorder).
+// Needs: alter table puzzles add column position integer; update puzzles set position = id;
+const LIST_ORDER = 'position.asc.nullslast,id.asc';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -48,7 +51,7 @@ export default async function handler(req, res) {
       }
 
       if (action === 'list') {
-        const params = new URLSearchParams({ select: LIST_COLUMNS, order: 'id.asc' });
+        const params = new URLSearchParams({ select: LIST_COLUMNS, order: LIST_ORDER });
         if (category) params.set('category', `eq.${category}`);
         const r = await fetch(`${url}/rest/v1/puzzles?${params}`, { headers });
         const rows = await r.json();
@@ -75,10 +78,18 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'category and fen are required' });
       }
 
+      // New puzzles go to the end of their category.
+      const last = await fetch(`${url}/rest/v1/puzzles?${new URLSearchParams({
+        select: 'position', category: `eq.${category}`, order: 'position.desc.nullslast', limit: '1',
+      })}`, { headers });
+      const lastRows = await last.json();
+      if (!last.ok) return res.status(last.status).json(lastRows);
+      const position = ((lastRows[0] && lastRows[0].position) || 0) + 1;
+
       const r = await fetch(`${url}/rest/v1/puzzles`, {
         method: 'POST',
         headers: { ...headers, Prefer: 'return=representation' },
-        body: JSON.stringify([{ category, note: note || null, fen }]),
+        body: JSON.stringify([{ category, note: note || null, fen, position }]),
       });
       const created = await r.json();
       if (!r.ok) return res.status(r.status).json(created);
