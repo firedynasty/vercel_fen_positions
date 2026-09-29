@@ -712,7 +712,9 @@
                     <button class="complete-btn" onclick="loadFenOnBoard()">&#127937; Load on Board</button>
                     <button class="copy-btn" onclick="flipBoard()">&#8635; Flip Board</button>
                     <button class="copy-btn" onclick="clearFenDisplay()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear FEN</button>
-                    <button id="cycleBoardBtn" class="copy-btn" onclick="cycleBoard()" style="display: none; background-color: rgba(233, 30, 99, 0.3);">&#128260; Cycle Board</button>
+                    <button id="pastePgnBtn" class="copy-btn" onclick="pastePgnFromClipboard()" style="background-color: rgba(0, 150, 136, 0.3);">&#128203; Paste PGN</button>
+                    <button id="cyclePrevBtn" class="copy-btn" onclick="cycleBoardPrev()" style="background-color: rgba(233, 30, 99, 0.3);">Prev &#128260;</button>
+                    <button id="cycleBoardBtn" class="copy-btn" onclick="cycleBoard()" style="background-color: rgba(233, 30, 99, 0.3);">&#128260; Cycle Board</button>
                     <button id="lichessLinksBtn" class="copy-btn" onclick="openLichessLinksModal()" style="background-color: #629924; color: white; font-weight: bold;">Lichess Links</button>
                 </div>
             </div>
@@ -747,6 +749,7 @@
                         <option value="">— pick a category first —</option>
                     </select>
                     <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
+                    <span id="sbPuzzleKind" style="display: none; padding: 6px 10px; border-radius: 5px; font-family: monospace; font-size: 13px; font-weight: bold;"></span>
                     <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
                 </div>
                 <div id="sbNoteDisplay" style="display: none; margin-top: 8px; padding: 10px; background: #0f3460; border-radius: 5px; color: #eee; font-size: 14px;"></div>
@@ -1037,6 +1040,7 @@
         let selectedSquare = null;   // For mobile click-to-move
         let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
         let cyclePositions = [];     // Array of positions to cycle through
+        let cyclePgnSource = '';     // The full PGN text those positions were parsed from (saved to Supabase while cycling)
         let cycleIndex = 0;          // Current position in cycle
         let lastCycledFen = null;    // Last FEN that was cycled
         let currentCyclingIndex = null; // Track which table row is currently being cycled
@@ -1192,6 +1196,7 @@
 
                 // Reset cycling state (loading regular FEN)
                 cyclePositions = [];
+                cyclePgnSource = '';
                 cycleIndex = 0;
                 lastCycledFen = null;
                 currentCyclingIndex = null;
@@ -1220,6 +1225,7 @@
             updateLichessUrls(fen);
 
             cyclePositions = [];
+            cyclePgnSource = '';
             cycleIndex = 0;
             lastCycledFen = null;
             currentCyclingIndex = null;
@@ -1247,6 +1253,7 @@
 
             // Update cycling positions from the new move history
             cyclePositions = parseFenVariantToPositions(variantFormat);
+            cyclePgnSource = variantFormat;
             cycleIndex = cyclePositions.length - 1; // Point to current (latest) position
 
             // Update fenDisplay with just the current FEN
@@ -1528,6 +1535,7 @@
             currentCyclingIndex = index;
             lastCycledFen = fenText;
             cyclePositions = parseFenVariantToPositions(fenText);
+            cyclePgnSource = fenText;
             cycleIndex = 0;
 
             if (cyclePositions.length > 0) {
@@ -1555,6 +1563,41 @@
             loadPositionFromCycle();
         }
 
+        // Step back one position in the cycle
+        function cycleBoardPrev() {
+            if (cyclePositions.length === 0) {
+                showToast('No positions to cycle. Use Paste PGN first.');
+                return;
+            }
+            cycleIndex = (cycleIndex - 1 + cyclePositions.length) % cyclePositions.length;
+            loadPositionFromCycle();
+        }
+
+        // Read a [FEN "..."] PGN from the clipboard and load it for cycling
+        async function pastePgnFromClipboard() {
+            let text;
+            try {
+                text = await navigator.clipboard.readText();
+            } catch (e) {
+                showToast('Clipboard access denied');
+                return;
+            }
+            text = (text || '').replace(/\r\n?/g, '\n').trim();
+            const positions = parseFenVariantToPositions(text);
+            if (positions.length === 0) {
+                showToast('No [FEN "..."] found on clipboard');
+                return;
+            }
+            currentCyclingIndex = null;
+            cyclePositions = positions;
+            cyclePgnSource = text;
+            cycleIndex = 0;
+            loadPositionFromCycle();
+            showToast(positions.length > 1
+                ? `PGN loaded: ${positions.length} positions. Use Prev / Cycle Board.`
+                : 'Position loaded (no moves to cycle)');
+        }
+
         // Parse FEN variant format to extract all positions
         function parseFenVariantToPositions(text) {
             const positions = [];
@@ -1567,7 +1610,7 @@
                 const startFen = fenMatch[1];
 
                 // Extract moves (everything after the headers)
-                const movesMatch = text.match(/\]\s*\n\n(.+)/s);
+                const movesMatch = text.match(/\]\s*\n\s*\n(.+)/s);
                 if (!movesMatch) {
                     // No moves, just return starting position
                     positions.push(startFen);
@@ -1586,7 +1629,8 @@
 
                 // Extract moves (remove move numbers and variations)
                 const moves = movesText
-                    .replace(/\d+\./g, '') // Remove move numbers
+                    .replace(/\{[^}]*\}/g, '') // Remove comments
+                    .replace(/\d+\.(\.\.)?/g, '') // Remove move numbers
                     .replace(/\([^)]*\)/g, '') // Remove variations in parentheses
                     .split(/\s+/)
                     .filter(m => m && !m.match(/^[.\s]*$/));
@@ -2549,6 +2593,7 @@
             const puzzleSel = document.getElementById('sbPuzzleSelect');
             const revealBtn = document.getElementById('sbRevealNoteBtn');
             sbHideNote();
+            sbSetKind(null);
             if (!category) {
                 puzzleSel.innerHTML = '<option value="">— pick a category first —</option>';
                 puzzleSel.disabled = true;
@@ -2571,8 +2616,11 @@
                     return;
                 }
                 puzzleSel.innerHTML = puzzles.map((p, i) => {
-                    const preview = (p.fen || '').slice(0, 24);
-                    return `<option value="${p.id}">${i + 1} — ${preview}${p.fen && p.fen.length > 24 ? '…' : ''}</option>`;
+                    const isPgn = sbIsPgn(p.fen);
+                    // PGN puzzles: preview the start position from the [FEN "..."] header
+                    const text = isPgn ? sbPgnStartFen(p.fen) : (p.fen || '');
+                    const preview = text.slice(0, 24);
+                    return `<option value="${p.id}">${i + 1} ${isPgn ? '▶ PGN' : '· FEN'} — ${preview}${text.length > 24 ? '…' : ''}</option>`;
                 }).join('');
                 puzzleSel.disabled = false;
                 document.getElementById('sbNextPuzzleBtn').disabled = false;
@@ -2596,11 +2644,55 @@
             sbHideNote();
             if (!puzzle) {
                 revealBtn.disabled = true;
+                sbSetKind(null);
                 return;
             }
+            revealBtn.disabled = false;
+
+            if (sbIsPgn(puzzle.fen)) {
+                const positions = parseFenVariantToPositions(puzzle.fen.replace(/\r\n?/g, '\n'));
+                if (!positions.length) {
+                    sbSetKind(null);
+                    showToast('PGN puzzle has no valid [FEN "..."] header');
+                    return;
+                }
+                currentCyclingIndex = null;
+                cyclePositions = positions;
+                cyclePgnSource = puzzle.fen;
+                cycleIndex = 0;
+                loadPositionFromCycle();
+                sbSetKind('pgn', positions.length);
+                return;
+            }
+
             document.getElementById('fenDisplay').value = puzzle.fen;
             loadFenOnBoard();
-            revealBtn.disabled = false;
+            sbSetKind('fen');
+        }
+
+        // A saved puzzle is a PGN (cycle with Prev / Cycle Board) if it has a [FEN "..."] header
+        function sbIsPgn(text) {
+            return /\[FEN\s+"/.test(text || '');
+        }
+
+        function sbPgnStartFen(text) {
+            const m = (text || '').match(/\[FEN\s+"([^"]+)"\]/);
+            return m ? m[1] : '';
+        }
+
+        // FEN / PGN badge next to the Next button
+        function sbSetKind(kind, count) {
+            const el = document.getElementById('sbPuzzleKind');
+            if (!kind) { el.style.display = 'none'; return; }
+            if (kind === 'pgn') {
+                el.textContent = 'PGN · ' + count + (count === 1 ? ' position' : ' positions');
+                el.style.background = 'rgba(233, 30, 99, 0.3)';
+            } else {
+                el.textContent = 'FEN';
+                el.style.background = 'rgba(62, 207, 142, 0.3)';
+            }
+            el.style.color = '#eee';
+            el.style.display = 'inline-block';
         }
 
         // Load the next puzzle in the current category (wraps to the first after the last)
@@ -2641,12 +2733,15 @@
                 ? document.getElementById('sbNewCategoryInput').value.trim()
                 : sel.value;
             const note = document.getElementById('sbNoteInput').value.trim();
-            const fen = document.getElementById('fenDisplay').value.trim();
+            // While a PGN cycle is active, save the whole PGN into the FEN cell so it can be
+            // cycled again later; otherwise save the single FEN from the FEN box
+            const cycleActive = cyclePositions.length > 1 && cyclePgnSource.trim();
+            const fen = cycleActive ? cyclePgnSource.trim() : document.getElementById('fenDisplay').value.trim();
 
             if (!category) { showToast('Enter a category name'); return; }
             if (!fen) { showToast('No FEN on the board to save'); return; }
 
-            statusEl.textContent = 'Saving…';
+            statusEl.textContent = cycleActive ? 'Saving PGN (' + cyclePositions.length + ' positions)…' : 'Saving…';
             try {
                 const res = await fetch('/api/puzzles', {
                     method: 'POST',
@@ -2656,9 +2751,9 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Save failed');
 
-                statusEl.textContent = 'Saved to "' + category + '".';
+                statusEl.textContent = 'Saved ' + (cycleActive ? 'PGN' : 'FEN') + ' to "' + category + '".';
                 document.getElementById('sbNoteInput').value = '';
-                showToast('Puzzle saved!');
+                showToast(cycleActive ? 'PGN saved (' + cyclePositions.length + ' positions)!' : 'Puzzle saved!');
 
                 await sbLoadCategories();
                 document.getElementById('sbCategorySelect').value = category;
@@ -2994,6 +3089,7 @@
                         loadFenOnBoard();
                         // Set up cycling from the full variant format (includes moves)
                         cyclePositions = parseFenVariantToPositions(fenRaw);
+                        cyclePgnSource = fenRaw;
                         cycleIndex = 0;
                         if (cyclePositions.length > 1) {
                             gdriveSetStatus('Loaded puzzle: "' + (name.length > 50 ? name.substring(0, 50) + '...' : name) + '" — ' + cyclePositions.length + ' positions, use Cycle Board');
