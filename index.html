@@ -534,7 +534,7 @@
         /* Move History Textarea */
         #moveHistoryTextArea {
             width: 100%;
-            min-height: 80px;
+            min-height: 63px; /* one 14px monospace row shorter than before (was 80px) */
             font-size: 14px;
             font-family: monospace;
             border: 2px solid #555;
@@ -735,7 +735,7 @@
 
             <!-- PGN of the moves played from the loaded FEN (Lichess "From Position" format) -->
             <div style="margin-top: 10px;">
-                <textarea id="moveHistoryTextArea" readonly rows="4" placeholder="Moves you drop on the board appear here as a Lichess-style PGN..."></textarea>
+                <textarea id="moveHistoryTextArea" readonly rows="3" placeholder="Moves you drop on the board appear here as a Lichess-style PGN..."></textarea>
                 <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('moveHistoryTextArea').value.trim()).then(()=>showToast('PGN copied!'))" style="margin-top: 6px;">📋 Copy PGN</button>
                 <button class="copy-btn" onclick="clearPgn()" style="margin-top: 6px; background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear PGN</button>
                 <button class="copy-btn" onclick="resetFen()" style="margin-top: 6px; background-color: rgba(255, 152, 0, 0.3);">↺ Reset FEN</button>
@@ -758,6 +758,9 @@
                     <button id="sbCyclePrevBtn" class="copy-btn" onclick="cycleBoardPrev()" style="background-color: rgba(233, 30, 99, 0.3);">Prev &#128260;</button>
                     <button id="sbCycleBoardBtn" class="copy-btn" onclick="cycleBoard()" style="background-color: rgba(233, 30, 99, 0.3);">&#128260; Cycle Board</button>
                     <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
+                    <label style="display: flex; align-items: center; gap: 4px; color: #aaa; font-size: 12px; cursor: pointer;" title="Show each puzzle's note automatically as you step through with Next / Prev">
+                        <input type="checkbox" id="sbAutoNoteToggle" onchange="sbSetAutoNote(this.checked)"> Auto-reveal notes
+                    </label>
                 </div>
                 <div id="sbNoteDisplay" style="display: none; margin-top: 8px; padding: 10px; background: #0f3460; border-radius: 5px; color: #eee; font-size: 14px;"></div>
 
@@ -2855,6 +2858,7 @@
                 return;
             }
             revealBtn.disabled = false;
+            if (window.sbAutoNote) sbShowNote();
 
             if (sbIsPgn(puzzle.fen)) {
                 const positions = parseFenVariantToPositions(puzzle.fen.replace(/\r\n?/g, '\n'));
@@ -2908,15 +2912,27 @@
             noteEl.textContent = '';
         }
 
-        function sbToggleNote() {
+        function sbShowNote() {
             const noteEl = document.getElementById('sbNoteDisplay');
-            if (noteEl.style.display !== 'none') {
-                sbHideNote();
-                return;
-            }
             const puzzle = sbCurrentPuzzle();
             noteEl.textContent = (puzzle && puzzle.note) ? puzzle.note : 'No note for this puzzle.';
             noteEl.style.display = 'block';
+        }
+
+        function sbToggleNote() {
+            const noteEl = document.getElementById('sbNoteDisplay');
+            if (noteEl.style.display !== 'none') sbHideNote(); else sbShowNote();
+        }
+
+        // Auto-reveal: show the note whenever a puzzle loads (Next / Prev / dropdown). Remembered per browser.
+        window.sbAutoNote = false;
+        try { window.sbAutoNote = localStorage.getItem('sbAutoNote') === 'true'; } catch (e) {}
+        document.getElementById('sbAutoNoteToggle').checked = window.sbAutoNote;
+
+        function sbSetAutoNote(on) {
+            window.sbAutoNote = !!on;
+            try { localStorage.setItem('sbAutoNote', window.sbAutoNote); } catch (e) {}
+            if (window.sbAutoNote && sbCurrentPuzzle()) sbShowNote();
         }
 
         function sbToggleNewCategoryInput() {
