@@ -3,6 +3,10 @@ Go row by row from the TOP row to the BOTTOM row, and within each row from the L
 Return JSON: {"rows": [8 strings, each exactly 8 characters]}.
 Use "." for an empty square, uppercase KQRBNP for white pieces and lowercase kqrbnp for black pieces. Do not invent pieces.`;
 
+// Models the page's dropdown may request; anything else falls back to the default
+const ALLOWED_MODELS = ['gpt-4o-mini', 'gpt-4.1', 'gpt-5.4-mini', 'gpt-5.4', 'gpt-5.5'];
+const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-5.4';
+
 // Build the FEN in code from the 64-square grid; models miscount FEN digits
 function rowsToPlacement(rows) {
   if (!Array.isArray(rows) || rows.length !== 8) return null;
@@ -25,7 +29,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
   }
 
-  const { image } = req.body || {};
+  const { image, model } = req.body || {};
   if (typeof image !== 'string' || !image.startsWith('data:image/')) {
     return res.status(400).json({ error: 'Expected "image" as a data:image/... URL' });
   }
@@ -38,7 +42,7 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || 'gpt-5.4',
+        model: ALLOWED_MODELS.includes(model) ? model : DEFAULT_MODEL,
         response_format: { type: 'json_object' },
         messages: [
           {

@@ -697,6 +697,13 @@
                 <button onclick="closeImagePreview()" style="position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 18px; line-height: 1;">×</button>
                 <div style="margin-top: 8px;">
                     <button id="imageToFenBtn" style="background: #6f42c1; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;" onclick="readFenFromImage()">🤖 Read FEN from image</button>
+                    <select id="imageToFenModel" title="OpenAI model used to read the board" style="margin-left: 6px; padding: 8px; border-radius: 5px; font-size: 14px;">
+                        <option value="gpt-4o-mini">gpt-4o-mini (cheapest, least accurate)</option>
+                        <option value="gpt-4.1">gpt-4.1</option>
+                        <option value="gpt-5.4-mini">gpt-5.4-mini</option>
+                        <option value="gpt-5.4" selected>gpt-5.4 (recommended)</option>
+                        <option value="gpt-5.5">gpt-5.5 (best, slower)</option>
+                    </select>
                 </div>
             </div>
 
@@ -2460,10 +2467,23 @@
             return canvas.toDataURL('image/jpeg', 0.9);
         }
 
+        // Remember the chosen model between visits
+        (function () {
+            const sel = document.getElementById('imageToFenModel');
+            try {
+                const saved = localStorage.getItem('imageToFenModel');
+                if (saved && [...sel.options].some(o => o.value === saved)) sel.value = saved;
+            } catch (e) {}
+            sel.addEventListener('change', () => {
+                try { localStorage.setItem('imageToFenModel', sel.value); } catch (e) {}
+            });
+        })();
+
         // Send the loaded image to OpenAI (via /api/image-to-fen) and load the FEN it returns
         async function readFenFromImage() {
             const img = document.getElementById('imagePreview');
             const btn = document.getElementById('imageToFenBtn');
+            const modelSelect = document.getElementById('imageToFenModel');
             if (!img.src || !img.naturalWidth) {
                 showToast('Load an image first');
                 return;
@@ -2476,7 +2496,7 @@
                 const res = await fetch('/api/image-to-fen', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: imageToDataUrl(img, 1536) })
+                    body: JSON.stringify({ image: imageToDataUrl(img, 1536), model: modelSelect.value })
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Request failed');
