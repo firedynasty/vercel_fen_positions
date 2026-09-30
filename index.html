@@ -719,6 +719,14 @@
                 </div>
             </div>
 
+            <!-- PGN of the moves played from the loaded FEN (Lichess "From Position" format) -->
+            <div style="margin-top: 10px;">
+                <textarea id="moveHistoryTextArea" readonly rows="3" placeholder="Moves you drop on the board appear here as a Lichess-style PGN..."></textarea>
+                <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('moveHistoryTextArea').value.trim()).then(()=>showToast('PGN copied!'))" style="margin-top: 6px;">📋 Copy PGN</button>
+                <button class="copy-btn" onclick="clearPgn()" style="margin-top: 6px; background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear PGN</button>
+                <button class="copy-btn" onclick="resetFen()" style="margin-top: 6px; background-color: rgba(255, 152, 0, 0.3);">↺ Reset FEN</button>
+            </div>
+
             <!-- Turn Toggle Slider (above board — set whose move before loading) -->
             <div class="turn-toggle-container">
                 <span class="turn-toggle-label" id="turnToggleLabel">♔ White to Move</span>
@@ -731,14 +739,6 @@
             <!-- Interactive Chess Board -->
             <div class="board-sticky-wrapper" id="boardStickyWrapper">
                 <div id="myBoard" class="board"></div>
-            </div>
-
-            <!-- PGN of the moves played from the loaded FEN (Lichess "From Position" format) -->
-            <div style="margin-top: 10px;">
-                <textarea id="moveHistoryTextArea" readonly rows="3" placeholder="Moves you drop on the board appear here as a Lichess-style PGN..."></textarea>
-                <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('moveHistoryTextArea').value.trim()).then(()=>showToast('PGN copied!'))" style="margin-top: 6px;">📋 Copy PGN</button>
-                <button class="copy-btn" onclick="clearPgn()" style="margin-top: 6px; background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear PGN</button>
-                <button class="copy-btn" onclick="resetFen()" style="margin-top: 6px; background-color: rgba(255, 152, 0, 0.3);">↺ Reset FEN</button>
             </div>
 
             <!-- Supabase Puzzles -->
