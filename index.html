@@ -753,6 +753,9 @@
                     <select id="sbPuzzleSelect" disabled onchange="sbLoadSelectedPuzzle()" style="flex: 1; min-width: 220px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
                         <option value="">— pick a category first —</option>
                     </select>
+                    <span id="sbLoadedPuzzleId" title="Supabase id of the puzzle currently on the board" style="color: #3ecf8e; font-weight: bold; min-width: 40px;"></span>
+                    <input type="text" id="sbPuzzleIdInput" placeholder="Load by ID..." onkeydown="if(event.key==='Enter') sbLoadPuzzleByIdInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 100px;">
+                    <button onclick="sbLoadPuzzleByIdInput()" title="Fetch straight from Supabase by id — no need to pick a category first" style="padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Load ID</button>
                     <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
                     <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
                     <button id="sbCyclePrevBtn" class="copy-btn" onclick="cycleBoardPrev()" style="background-color: rgba(233, 30, 99, 0.3);">Prev &#128260;</button>
@@ -775,6 +778,9 @@
                     <button id="sbDeletePuzzleBtn" onclick="sbDeletePuzzle()" title="Delete the puzzle currently selected in the dropdown from Supabase" style="padding: 8px 18px; background: #c0392b; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">🗑️ Delete Loaded FEN/PGN</button>
                 </div>
                 <div id="sbPuzzleStatus" style="margin-top: 6px; font-size: 12px; color: #888;"></div>
+                <div style="margin-top: 4px; font-size: 12px; color: #888;">
+                    Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Otherwise the category dropdown fills in normally, but no puzzle loads onto the board until you pick one.
+                </div>
             </div>
 
             <!-- Move History Display -->
@@ -1059,9 +1065,13 @@
         let currentCyclingIndex = null; // Track which table row is currently being cycled
         let lastSelectedRow = null; // Track last selected/added row for highlighting
 
-        // Initialize chessboard after DOM loads
+        // Populate the category dropdown on page open — { noLoad: true } skips
+        // auto-loading a puzzle onto the board, since that part races ahead of
+        // `board` being created below (sbLoadPuzzlesForCategory -> sbLoadSelectedPuzzle
+        // -> board.position(...)). The ?id= deep-link loader (sbLoadPuzzleFromUrlParam)
+        // handles loading an actual puzzle, polling for `board` first.
         window.addEventListener('DOMContentLoaded', function() {
-            sbLoadCategories();
+            sbLoadCategories({ noLoad: true });
         });
 
         window.addEventListener('DOMContentLoaded', function() {
@@ -1143,7 +1153,7 @@
         }
 
         // Load FEN on board
-        function loadFenOnBoard() {
+        function loadFenOnBoard(silent) {
             const fenInput = document.getElementById('fenDisplay').value.trim();
             if (!fenInput) {
                 showToast('Please enter a FEN string first');
@@ -1221,7 +1231,7 @@
                 lastCycledFen = null;
                 currentCyclingIndex = null;
 
-                showToast('Position loaded on board!');
+                if (!silent) showToast('Position loaded on board!');
             } catch (e) {
                 console.error('FEN error:', e);
                 showToast('Invalid FEN notation: ' + e.message);
@@ -1860,7 +1870,7 @@
         }
 
         // Load current position from cycle
-        function loadPositionFromCycle() {
+        function loadPositionFromCycle(silent) {
             if (cyclePositions.length === 0) return;
 
             const fen = cyclePositions[cycleIndex];
@@ -1881,7 +1891,7 @@
                 currentFen = fen;
                 updateLichessUrls(fen);
 
-                showToast(`Position ${cycleIndex + 1}/${cyclePositions.length}`);
+                if (!silent) showToast(`Position ${cycleIndex + 1}/${cyclePositions.length}`);
             } catch (error) {
                 console.error('Error loading position:', error);
                 showToast('Error loading position');
@@ -2773,7 +2783,8 @@
 
         window.sbPuzzlesByCategory = {}; // category -> [{id, category, note, fen}]
 
-        async function sbLoadCategories() {
+        async function sbLoadCategories(opts) {
+            opts = opts || {};
             const browseSel = document.getElementById('sbCategorySelect');
             const saveSel = document.getElementById('sbSaveCategorySelect');
             try {
@@ -2790,7 +2801,15 @@
                 if (categories.length) saveSel.value = categories[0];
                 sbToggleNewCategoryInput();
 
-                if (categories.length) sbLoadPuzzlesForCategory();
+                // Awaited (not fire-and-forget): callers that immediately change
+                // sbCategorySelect after awaiting this (e.g. sbLoadPuzzleById)
+                // need this to have actually finished first, or its dropdown
+                // populate can land later and clobber their category switch.
+                // opts.noLoad skips it entirely — used when the caller is about
+                // to switch to a different category anyway, so the default
+                // (alphabetically-first) category's puzzle never briefly
+                // flashes onto the board first.
+                if (categories.length && !opts.noLoad) await sbLoadPuzzlesForCategory();
             } catch (err) {
                 browseSel.innerHTML = '<option value="">Failed to load</option>';
                 showToast('Loading puzzle categories failed: ' + err.message);
@@ -2852,12 +2871,15 @@
         function sbLoadSelectedPuzzle() {
             const puzzle = sbCurrentPuzzle();
             const revealBtn = document.getElementById('sbRevealNoteBtn');
+            const idEl = document.getElementById('sbLoadedPuzzleId');
             sbHideNote();
             if (!puzzle) {
                 revealBtn.disabled = true;
+                if (idEl) idEl.textContent = '';
                 return;
             }
             revealBtn.disabled = false;
+            if (idEl) idEl.textContent = '#' + puzzle.id;
             if (window.sbAutoNote) sbShowNote();
 
             if (sbIsPgn(puzzle.fen)) {
@@ -2871,13 +2893,91 @@
                 cyclePgnSource = puzzle.fen;
                 pgnAdoptFromText(puzzle.fen);
                 cycleIndex = 0;
-                loadPositionFromCycle();
+                loadPositionFromCycle(true); // silent — no toast for puzzle loads
                 return;
             }
 
             document.getElementById('fenDisplay').value = puzzle.fen;
-            loadFenOnBoard();
+            loadFenOnBoard(true); // silent — no toast for puzzle loads
         }
+
+        // Fetch a puzzle directly by id (not by browsing category -> list),
+        // then sync the category/puzzle dropdowns to it so Prev/Next/Reveal
+        // Note keep working afterward. Shared by the ID input and the
+        // ?id= URL deep link.
+        async function sbLoadPuzzleById(id) {
+            const statusEl = document.getElementById('sbPuzzleStatus');
+            statusEl.textContent = 'Loading…';
+            try {
+                const res = await fetch('/api/puzzles?action=get&id=' + encodeURIComponent(id));
+                const puzzle = await res.json();
+                if (!res.ok) throw new Error(puzzle.error || 'Request failed');
+
+                await sbLoadCategories({ noLoad: true }); // populates sbCategorySelect only — we're about to pick a different category anyway
+                document.getElementById('sbCategorySelect').value = puzzle.category;
+                await sbLoadPuzzlesForCategory(); // populates sbPuzzleSelect (and auto-loads its first entry)
+                document.getElementById('sbPuzzleSelect').value = String(puzzle.id);
+                sbLoadSelectedPuzzle(); // correct the board to the actually-requested puzzle
+
+                statusEl.textContent = 'Loaded puzzle #' + puzzle.id + ' ("' + puzzle.category + '").';
+                return true;
+            } catch (err) {
+                statusEl.textContent = 'Load failed: ' + err.message;
+                showToast('Load puzzle failed: ' + err.message);
+                return false;
+            }
+        }
+
+        async function sbLoadPuzzleByIdInput() {
+            const input = document.getElementById('sbPuzzleIdInput');
+            const id = input.value.trim();
+            if (!id) return;
+            await sbLoadPuzzleById(id);
+        }
+
+        // Deep-link support: /?id=10 (or /?puzzle_id=10), or the bare form
+        // /?10 with no key at all.
+        //
+        // `board` (the chessboard.js instance) isn't created until the
+        // DOMContentLoaded handler further down runs, which can still be
+        // pending when this fires (both are DOMContentLoaded listeners, and
+        // this one is registered first). Ping every 100ms (visibly, via
+        // #sbPuzzleStatus) until `board` exists, then load.
+        function sbLoadPuzzleFromUrlParam() {
+            const search = window.location.search;
+            if (search.length <= 1) return; // no "?" or empty
+            const raw = search.slice(1);
+            let id;
+            if (raw.includes('=')) {
+                const params = new URLSearchParams(search);
+                id = params.get('id') || params.get('puzzle_id');
+            } else {
+                id = decodeURIComponent(raw.split('&')[0]);
+            }
+            if (!id || !/^\d+$/.test(id)) return;
+            const input = document.getElementById('sbPuzzleIdInput');
+            if (input) input.value = id;
+
+            let attempt = 0;
+            const maxAttempts = 100; // ~10s at 100ms
+            const statusEl = document.getElementById('sbPuzzleStatus');
+            const timer = setInterval(function ping() {
+                attempt++;
+                const ready = typeof board !== 'undefined';
+                if (statusEl && !ready) statusEl.textContent = 'Waiting for board to finish loading… (' + attempt + ')';
+
+                if (ready) {
+                    clearInterval(timer);
+                    sbLoadPuzzleById(id);
+                } else if (attempt >= maxAttempts) {
+                    clearInterval(timer);
+                    if (statusEl) statusEl.textContent = 'Board never finished loading — could not auto-load id=' + id;
+                    showToast('Board never finished initializing — could not auto-load puzzle id=' + id);
+                }
+            }, 100);
+        }
+        window.sbLoadPuzzleFromUrlParam = sbLoadPuzzleFromUrlParam; // callable from devtools for debugging
+        document.addEventListener('DOMContentLoaded', sbLoadPuzzleFromUrlParam);
 
         // A saved puzzle is a PGN (cycle with Prev / Cycle Board) if it has a [FEN "..."] header
         function sbIsPgn(text) {
