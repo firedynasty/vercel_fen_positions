@@ -778,6 +778,14 @@
                     <button id="sbDeletePuzzleBtn" onclick="sbDeletePuzzle()" title="Delete the puzzle currently selected in the dropdown from Supabase" style="padding: 8px 18px; background: #c0392b; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">🗑️ Delete Loaded FEN/PGN</button>
                 </div>
                 <div id="sbPuzzleStatus" style="margin-top: 6px; font-size: 12px; color: #888;"></div>
+
+                <!-- Dropbox /study/chess is the source of truth; Supabase is the copy this page reads -->
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                    <button id="chessSyncBtn" onclick="chessSyncFromDropbox()" title="Make Supabase match Dropbox /study/chess/*.csv" style="padding: 8px 16px; background: #0061fe; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold;">&#8645; Sync from Dropbox</button>
+                    <button id="chessExportBtn" onclick="chessExportToDropbox()" title="One-time: write the Supabase puzzles out as /study/chess/&lt;category&gt;.csv (existing files are left alone)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace;">Export to Dropbox (once)</button>
+                    <span style="font-size: 12px; color: #888;">Source of truth: Dropbox <code style="color: #ddd;">/study/chess/&lt;category&gt;.csv</code> (fen,note). Reorder, edit notes or delete there, then Sync. Save and Delete here update the CSV too.</span>
+                </div>
+                <div id="chessSyncStatus" style="margin-top: 6px; font-size: 12px; color: #888; white-space: pre-wrap;"></div>
                 <div style="margin-top: 4px; font-size: 12px; color: #888;">
                     Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Otherwise the category dropdown fills in normally, but no puzzle loads onto the board until you pick one.
                 </div>
@@ -1123,6 +1131,9 @@
             // Load saved data after board is initialized
             loadFromLocalStorage();
 
+            // Dropbox sign-in lasts for this tab (a sign-in redirects the whole page)
+            try { window.dropboxAccessToken = sessionStorage.getItem('dropbox_token') || null; } catch (e) {}
+            updateDropboxButtons();
             // Handle Dropbox OAuth redirect if returning from Dropbox
             handleDropboxOAuthRedirect();
 
@@ -2221,10 +2232,12 @@
                 const data = await res.json();
                 if (data.access_token) {
                     window.dropboxAccessToken = data.access_token;
+                    try { sessionStorage.setItem('dropbox_token', data.access_token); } catch (e) {}
                     sessionStorage.removeItem('dropbox_code_verifier');
                     window.history.replaceState({}, document.title, redirectUri);
                     updateDropboxButtons();
                     showToast('Dropbox connected!');
+                    chessResumePending();
                 } else {
                     console.error('Dropbox auth failed:', data.error_description || data.error);
                 }
@@ -2244,6 +2257,7 @@
                 } catch { /* ignore */ }
             }
             window.dropboxAccessToken = null;
+            try { sessionStorage.removeItem('dropbox_token'); } catch (e) {}
             window.dropboxCurrentFilePath = null;
             window.dropboxFolderPath = '';
             window.dropboxFolderFiles = [];
@@ -2424,6 +2438,216 @@
                 }
             } catch (err) {
                 setDropboxStatus('Save error: ' + err.message);
+            }
+        }
+
+        // ============================================
+        // CHESS CSVs IN DROPBOX (source of truth) -> Supabase (what this page reads)
+        // One CSV per category: /study/chess/<category>.csv with columns fen,note.
+        // ============================================
+        const CHESS_DIR = '/study/chess';
+
+        function chessCsvPath(category) {
+            return CHESS_DIR + '/' + category.replace(/[\/\\]/g, '-') + '.csv';
+        }
+
+        // Dropbox-API-Arg is an HTTP header: non-ASCII must be \u-escaped.
+        function chessApiArg(obj) {
+            return JSON.stringify(obj).replace(/[\u007f-￿]/g, c => '\\u' + ('000' + c.charCodeAt(0).toString(16)).slice(-4));
+        }
+
+        // Not signed in: remember what to do, sign in (redirects the page), resume after.
+        function chessNeedsSignIn(pending) {
+            if (window.dropboxAccessToken) return false;
+            try { sessionStorage.setItem('chess_pending', JSON.stringify(pending || { type: 'none' })); } catch (e) {}
+            showToast('Signing in to Dropbox first…');
+            dropboxSignIn();
+            return true;
+        }
+
+        async function chessResumePending() {
+            let p = null;
+            try { p = JSON.parse(sessionStorage.getItem('chess_pending') || 'null'); sessionStorage.removeItem('chess_pending'); } catch (e) {}
+            if (!p) return;
+            if (p.type === 'sync') return chessSyncFromDropbox();
+            if (p.type === 'export') return chessExportToDropbox();
+            if (p.type === 'save') {
+                const statusEl = document.getElementById('sbPuzzleStatus');
+                try {
+                    await chessAppendRow(p.category, p.fen, p.note);
+                    const res = await fetch('/api/puzzles', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'save', category: p.category, note: p.note, fen: p.fen })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Save failed');
+                    statusEl.textContent = 'Saved to "' + p.category + '" (Dropbox ' + chessCsvPath(p.category) + ' + Supabase).';
+                    showToast('Puzzle saved!');
+                    await sbLoadCategories();
+                } catch (err) {
+                    showToast('Save failed: ' + err.message);
+                }
+            }
+        }
+
+        async function chessDbx(url, opts) {
+            const res = await fetch(url, opts);
+            if (res.status === 401) {
+                window.dropboxAccessToken = null;
+                try { sessionStorage.removeItem('dropbox_token'); } catch (e) {}
+                updateDropboxButtons();
+                throw new Error('Dropbox session expired: sign in again');
+            }
+            return res;
+        }
+
+        function chessParseCsv(text) {
+            const rows = Papa.parse(text, { skipEmptyLines: true }).data;
+            if (rows.length && String(rows[0][0] || '').trim().toLowerCase() === 'fen') rows.shift();
+            return rows.filter(r => String(r[0] || '').trim())
+                       .map(r => ({ fen: String(r[0]).trim(), note: String(r[1] || '').trim() }));
+        }
+
+        // -> { text, rev } or null when the file doesn't exist yet
+        async function chessReadCsv(category) {
+            const res = await chessDbx('https://content.dropboxapi.com/2/files/download', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + window.dropboxAccessToken, 'Dropbox-API-Arg': chessApiArg({ path: chessCsvPath(category) }) }
+            });
+            if (res.status === 409) return null;
+            if (!res.ok) throw new Error('Reading ' + chessCsvPath(category) + ' failed (' + res.status + ')');
+            const text = await res.text();
+            let rev = null;
+            try { rev = JSON.parse(res.headers.get('Dropbox-API-Result')).rev; } catch (e) {}
+            if (!rev) {
+                const m = await chessDbx('https://api.dropboxapi.com/2/files/get_metadata', {
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + window.dropboxAccessToken, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: chessCsvPath(category) })
+                });
+                rev = (await m.json()).rev;
+            }
+            return { text, rev };
+        }
+
+        // Upload only if the file is unchanged since it was read (rev), or doesn't exist yet.
+        async function chessWriteCsv(category, text, rev) {
+            const res = await chessDbx('https://content.dropboxapi.com/2/files/upload', {
+                method: 'POST',
+                headers: {
+                    Authorization: 'Bearer ' + window.dropboxAccessToken,
+                    'Content-Type': 'application/octet-stream',
+                    'Dropbox-API-Arg': chessApiArg({
+                        path: chessCsvPath(category),
+                        mode: rev ? { '.tag': 'update', update: rev } : { '.tag': 'add' },
+                        autorename: false, mute: true
+                    })
+                },
+                body: text
+            });
+            if (res.status === 409) throw new Error(chessCsvPath(category) + ' changed in Dropbox since it was read: try again');
+            if (!res.ok) throw new Error('Writing ' + chessCsvPath(category) + ' failed (' + res.status + ')');
+        }
+
+        async function chessAppendRow(category, fen, note) {
+            const cur = await chessReadCsv(category);
+            const line = Papa.unparse([[fen, note || '']], { newline: '\n' }) + '\n';
+            let text = cur ? cur.text : 'fen,note\n';
+            if (text && !text.endsWith('\n')) text += '\n';
+            await chessWriteCsv(category, text + line, cur && cur.rev);
+        }
+
+        async function chessRemoveRow(category, fen) {
+            const cur = await chessReadCsv(category);
+            if (!cur) return;  // not in Dropbox: nothing to remove there
+            const rows = chessParseCsv(cur.text);
+            const i = rows.findIndex(r => r.fen === String(fen).trim());
+            if (i < 0) return;
+            rows.splice(i, 1);
+            const text = Papa.unparse({ fields: ['fen', 'note'], data: rows.map(r => [r.fen, r.note]) }, { newline: '\n' }) + '\n';
+            await chessWriteCsv(category, text, cur.rev);
+        }
+
+        async function chessSyncFromDropbox() {
+            if (chessNeedsSignIn({ type: 'sync' })) return;
+            const statusEl = document.getElementById('chessSyncStatus');
+            const btn = document.getElementById('chessSyncBtn');
+            btn.disabled = true;
+            try {
+                statusEl.textContent = 'Reading ' + CHESS_DIR + '…';
+                const files = [];
+                let res = await chessDbx('https://api.dropboxapi.com/2/files/list_folder', {
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + window.dropboxAccessToken, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: CHESS_DIR })
+                });
+                if (res.status === 409) throw new Error(CHESS_DIR + ' not found: use "Export to Dropbox (once)" first');
+                if (!res.ok) throw new Error('Listing ' + CHESS_DIR + ' failed (' + res.status + ')');
+                let data = await res.json();
+                while (true) {
+                    data.entries.forEach(e => { if (e['.tag'] === 'file' && /\.csv$/i.test(e.name)) files.push(e.name); });
+                    if (!data.has_more) break;
+                    res = await chessDbx('https://api.dropboxapi.com/2/files/list_folder/continue', {
+                        method: 'POST',
+                        headers: { Authorization: 'Bearer ' + window.dropboxAccessToken, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cursor: data.cursor })
+                    });
+                    data = await res.json();
+                }
+                const categories = {};
+                await Promise.all(files.map(async name => {
+                    const category = name.replace(/\.csv$/i, '');
+                    const cur = await chessReadCsv(category);
+                    categories[category] = cur ? chessParseCsv(cur.text) : [];
+                }));
+                const total = Object.values(categories).reduce((n, r) => n + r.length, 0);
+
+                const post = (dryRun) => fetch('/api/puzzles', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'sync', categories, dryRun })
+                }).then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Sync failed'); return d; });
+
+                const plan = await post(true);
+                const summary = files.length + ' CSVs, ' + total + ' puzzles → +' + plan.add + ' add, ~' + plan.update + ' update, -' + plan.delete + ' delete';
+                if (!plan.add && !plan.update && !plan.delete) { statusEl.textContent = summary + '\nSupabase already matches Dropbox.'; return; }
+                const gone = plan.deleted.slice(0, 8).map(d => '  #' + d.id + ' ' + d.category + (d.note ? ': ' + d.note.slice(0, 40) : '')).join('\n');
+                if (!confirm('Sync Supabase to Dropbox?\n\n' + summary + (plan.delete ? '\n\nDeleting (not in any CSV):\n' + gone + (plan.delete > 8 ? '\n  …' : '') : ''))) {
+                    statusEl.textContent = summary + '\nCancelled.';
+                    return;
+                }
+                await post(false);
+                statusEl.textContent = summary + '\nDone.';
+                showToast('Synced from Dropbox');
+                await sbLoadCategories();
+            } catch (err) {
+                statusEl.textContent = 'Sync failed: ' + err.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // One-time: write Supabase out as CSVs. Existing CSVs are never overwritten.
+        async function chessExportToDropbox() {
+            if (chessNeedsSignIn({ type: 'export' })) return;
+            const statusEl = document.getElementById('chessSyncStatus');
+            try {
+                statusEl.textContent = 'Reading Supabase…';
+                const res = await fetch('/api/puzzles?action=list');
+                const rows = await res.json();
+                if (!res.ok) throw new Error(rows.error || 'List failed');
+                const byCat = {};
+                rows.forEach(r => (byCat[r.category] = byCat[r.category] || []).push(r));
+                const written = [], skipped = [];
+                for (const [category, list] of Object.entries(byCat)) {
+                    if (await chessReadCsv(category)) { skipped.push(category); continue; }
+                    const text = Papa.unparse({ fields: ['fen', 'note'], data: list.map(r => [r.fen, r.note || '']) }, { newline: '\n' }) + '\n';
+                    await chessWriteCsv(category, text, null);
+                    written.push(category + ' (' + list.length + ')');
+                }
+                statusEl.textContent = 'Exported to ' + CHESS_DIR + ': ' + (written.join(', ') || 'nothing new') +
+                    (skipped.length ? '\nAlready in Dropbox, left alone: ' + skipped.join(', ') : '');
+            } catch (err) {
+                statusEl.textContent = 'Export failed: ' + err.message;
             }
         }
 
@@ -3050,10 +3274,12 @@
             const category = puzzle.category;
             const kind = sbIsPgn(puzzle.fen) ? 'PGN' : 'FEN';
             const label = puzzle.note ? '\n\nNote: ' + puzzle.note.slice(0, 120) : '';
+            if (chessNeedsSignIn(null)) return;
             if (!confirm('Delete this ' + kind + ' puzzle from "' + category + '"? This cannot be undone.' + label)) return;
 
             statusEl.textContent = 'Deleting…';
             try {
+                await chessRemoveRow(category, puzzle.fen);
                 const res = await fetch('/api/puzzles?id=' + encodeURIComponent(puzzle.id), { method: 'DELETE' });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Delete failed');
@@ -3086,9 +3312,11 @@
 
             if (!category) { showToast('Enter a category name'); return; }
             if (!fen) { showToast('No FEN on the board to save'); return; }
+            if (chessNeedsSignIn({ type: 'save', category, note, fen })) return;
 
             statusEl.textContent = cycleActive ? 'Saving PGN (' + cyclePositions.length + ' positions)…' : 'Saving…';
             try {
+                await chessAppendRow(category, fen, note);
                 const res = await fetch('/api/puzzles', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -3097,7 +3325,7 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Save failed');
 
-                statusEl.textContent = 'Saved ' + (cycleActive ? 'PGN' : 'FEN') + ' to "' + category + '".';
+                statusEl.textContent = 'Saved ' + (cycleActive ? 'PGN' : 'FEN') + ' to "' + category + '" (Dropbox ' + chessCsvPath(category) + ' + Supabase).';
                 document.getElementById('sbNoteInput').value = '';
                 showToast(cycleActive ? 'PGN saved (' + cyclePositions.length + ' positions)!' : 'Puzzle saved!');
 

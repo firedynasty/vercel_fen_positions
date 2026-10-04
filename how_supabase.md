@@ -4,6 +4,8 @@ Save the position (or whole PGN) on the board to a Supabase table, group it into
 
 Everything here is described from the code as it runs today: `api/puzzles.js` (server) and the `sb…` functions plus the "Supabase Puzzles" section in `index.html` (browser).
 
+> **Source of truth: Dropbox, not Supabase.** The puzzles are kept as CSVs in Dropbox, one file per category: `/study/chess/<category>.csv` with columns `fen,note`, rows in puzzle order. Supabase is the copy this page reads, so `?id=` links and Load by ID work without a Dropbox sign-in. See section 12.
+
 ---
 
 ## 1. Big picture
@@ -62,7 +64,7 @@ If this column does not exist, the **list** call fails, because `position` is in
 - The list is sorted by `position` ascending (rows with no position last), then `id`.
 - A new save gets `position = (highest position in that category) + 1` (1 if the category is empty), so new puzzles go to the end.
 - Deleting a puzzle leaves a gap in the numbers. That is fine, the sort order still works.
-- Another page (`vercel_flashcards/supabase_fen_chess.html`, per the code comment) can reorder puzzles with ▲ ▼ by changing `position`. This app only reads it.
+- To reorder, move lines in the category's CSV in Dropbox and press **⇅ Sync from Dropbox**: `position` becomes each row's line number (see section 12).
 
 ---
 
@@ -245,7 +247,7 @@ Related PGN pieces the feature depends on: `pgnAdoptFromText`, `replayPgnRelaxed
 | Saving a PGN fails with a length error | `fen` is a short `varchar`. Change it to `text`. |
 | A saved PGN loads as one position | The text has no `[FEN "…"]` header, so it is treated as a plain FEN, or it has a header but no moves. |
 | Prev 🔄 / Cycle Board say "No positions to cycle" | The loaded puzzle is a plain FEN, or no PGN is loaded. |
-| New puzzles appear in the wrong place | Another page reordered `position`. New saves go to `highest position + 1` in that category. |
+| New puzzles appear in the wrong place | New saves go to `highest position + 1`. Run **⇅ Sync from Dropbox** to make the order match the CSV. |
 | Delete does nothing on an old row | It has no numeric `id`, or it was already deleted (`404 Puzzle not found`). |
 
 ---
@@ -263,4 +265,21 @@ For the page, save a throwaway puzzle in a test category, load it, step with Pre
 - The list endpoint returns every puzzle in a category at once. That is fine for hundreds, not for very large sets.
 - The note is plain text. There are no images, tags or difficulty fields.
 - The stored PGN keeps illegal moves as written, so some third-party PGN tools may not read them.
-- Deleting does not renumber `position`, and reordering lives in a different page.
+- Deleting does not renumber `position` until the next sync.
+
+---
+
+## 12. Dropbox CSVs (source of truth) and Sync
+
+```
+Dropbox /study/chess/<category>.csv  ──⇅ Sync from Dropbox──▶  Supabase puzzles  ──▶  this page
+        ▲  Save appends a row, Delete removes it (and both also update Supabase)
+```
+
+- **One CSV per category**, file name = category: `/study/chess/mate_in_5.csv`. Columns `fen,note`; the `fen` cell can hold a whole PGN (quoted, line breaks are fine).
+- **Save** (needs Dropbox sign-in; the page signs in and finishes the save on return) appends a row to the category's CSV (creating it with a `fen,note` header if new), then saves to Supabase.
+- **Delete** removes the row from the CSV, then from Supabase.
+- **Writes are safe**: each write only goes through if the CSV hasn't changed in Dropbox since the page read it; otherwise it says "changed in Dropbox… try again".
+- **⇅ Sync from Dropbox** reads every CSV in `/study/chess` and makes Supabase match. It shows a summary (+add, ~update, −delete, and which puzzles would be deleted) and asks before changing anything. Rows are matched by FEN, so a puzzle keeps its `id` (and `?id=` links) when you reorder lines, edit its note, or move it to another CSV. Changing the FEN text itself makes it a new puzzle with a new id. A sync that finds no puzzles at all is refused, so an empty or missing folder can't wipe the table.
+- **Export to Dropbox (once)** writes the current Supabase puzzles out as CSVs, for the first switch-over. Existing CSVs are never overwritten.
+- The Dropbox sign-in lasts for the browser tab (stored in `sessionStorage`).
