@@ -281,5 +281,5 @@ Dropbox /study/chess/<category>.csv  ──⇅ Sync from Dropbox──▶  Supab
 - **Delete** removes the row from the CSV, then from Supabase.
 - **Writes are safe**: each write only goes through if the CSV hasn't changed in Dropbox since the page read it; otherwise it says "changed in Dropbox… try again".
 - **⇅ Sync from Dropbox** reads every CSV in `/study/chess` and makes Supabase match. It shows a summary (+add, ~update, −delete, and which puzzles would be deleted) and asks before changing anything. Rows are matched by FEN, so a puzzle keeps its `id` (and `?id=` links) when you reorder lines, edit its note, or move it to another CSV. Changing the FEN text itself makes it a new puzzle with a new id. A sync that finds no puzzles at all is refused, so an empty or missing folder can't wipe the table.
-- **Export to Dropbox (once)** writes the current Supabase puzzles out as CSVs, for the first switch-over. Existing CSVs are never overwritten.
+- **First switch-over** was done with `python3 export_puzzles_to_dropbox.py` on the Mac (writes the Supabase puzzles out as CSVs; never overwrites existing ones).
 - The Dropbox sign-in lasts for the browser tab (stored in `sessionStorage`).

@@ -774,7 +774,7 @@
                     </select>
                     <input type="text" id="sbNewCategoryInput" placeholder="New category name (e.g. mate_in_5)..." style="min-width: 180px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
                     <input type="text" id="sbNoteInput" placeholder="Note (e.g. win a pawn)..." style="flex: 1; min-width: 200px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
-                    <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">💾 Save Board FEN to Supabase</button>
+                    <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">💾 Save to Dropbox + Supabase</button>
                     <button id="sbDeletePuzzleBtn" onclick="sbDeletePuzzle()" title="Delete the puzzle currently selected in the dropdown from Supabase" style="padding: 8px 18px; background: #c0392b; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">🗑️ Delete Loaded FEN/PGN</button>
                 </div>
                 <div id="sbPuzzleStatus" style="margin-top: 6px; font-size: 12px; color: #888;"></div>
@@ -782,7 +782,6 @@
                 <!-- Dropbox /study/chess is the source of truth; Supabase is the copy this page reads -->
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
                     <button id="chessSyncBtn" onclick="chessSyncFromDropbox()" title="Make Supabase match Dropbox /study/chess/*.csv" style="padding: 8px 16px; background: #0061fe; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold;">&#8645; Sync from Dropbox</button>
-                    <button id="chessExportBtn" onclick="chessExportToDropbox()" title="One-time: write the Supabase puzzles out as /study/chess/&lt;category&gt;.csv (existing files are left alone)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace;">Export to Dropbox (once)</button>
                     <span style="font-size: 12px; color: #888;">Source of truth: Dropbox <code style="color: #ddd;">/study/chess/&lt;category&gt;.csv</code> (fen,note). Reorder, edit notes or delete there, then Sync. Save and Delete here update the CSV too.</span>
                 </div>
                 <div id="chessSyncStatus" style="margin-top: 6px; font-size: 12px; color: #888; white-space: pre-wrap;"></div>
@@ -2470,7 +2469,6 @@
             try { p = JSON.parse(sessionStorage.getItem('chess_pending') || 'null'); sessionStorage.removeItem('chess_pending'); } catch (e) {}
             if (!p) return;
             if (p.type === 'sync') return chessSyncFromDropbox();
-            if (p.type === 'export') return chessExportToDropbox();
             if (p.type === 'save') {
                 const statusEl = document.getElementById('sbPuzzleStatus');
                 try {
@@ -2581,7 +2579,7 @@
                     headers: { Authorization: 'Bearer ' + window.dropboxAccessToken, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ path: CHESS_DIR })
                 });
-                if (res.status === 409) throw new Error(CHESS_DIR + ' not found: use "Export to Dropbox (once)" first');
+                if (res.status === 409) throw new Error(CHESS_DIR + ' not found in Dropbox (export once with export_puzzles_to_dropbox.py)');
                 if (!res.ok) throw new Error('Listing ' + CHESS_DIR + ' failed (' + res.status + ')');
                 let data = await res.json();
                 while (true) {
@@ -2623,31 +2621,6 @@
                 statusEl.textContent = 'Sync failed: ' + err.message;
             } finally {
                 btn.disabled = false;
-            }
-        }
-
-        // One-time: write Supabase out as CSVs. Existing CSVs are never overwritten.
-        async function chessExportToDropbox() {
-            if (chessNeedsSignIn({ type: 'export' })) return;
-            const statusEl = document.getElementById('chessSyncStatus');
-            try {
-                statusEl.textContent = 'Reading Supabase…';
-                const res = await fetch('/api/puzzles?action=list');
-                const rows = await res.json();
-                if (!res.ok) throw new Error(rows.error || 'List failed');
-                const byCat = {};
-                rows.forEach(r => (byCat[r.category] = byCat[r.category] || []).push(r));
-                const written = [], skipped = [];
-                for (const [category, list] of Object.entries(byCat)) {
-                    if (await chessReadCsv(category)) { skipped.push(category); continue; }
-                    const text = Papa.unparse({ fields: ['fen', 'note'], data: list.map(r => [r.fen, r.note || '']) }, { newline: '\n' }) + '\n';
-                    await chessWriteCsv(category, text, null);
-                    written.push(category + ' (' + list.length + ')');
-                }
-                statusEl.textContent = 'Exported to ' + CHESS_DIR + ': ' + (written.join(', ') || 'nothing new') +
-                    (skipped.length ? '\nAlready in Dropbox, left alone: ' + skipped.join(', ') : '');
-            } catch (err) {
-                statusEl.textContent = 'Export failed: ' + err.message;
             }
         }
 
