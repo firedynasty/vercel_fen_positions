@@ -712,6 +712,7 @@
                     <button class="complete-btn" onclick="loadFenOnBoard()">&#127937; Load on Board</button>
                     <button class="copy-btn" onclick="flipBoard()">&#8635; Flip Board</button>
                     <button class="copy-btn" onclick="clearFenDisplay()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear FEN</button>
+                    <button id="pasteFenBtn" class="copy-btn" onclick="pasteFenFromClipboard()" title="Paste a FEN from the clipboard and load it on the board (a PGN is loaded like Paste PGN)" style="background-color: rgba(0, 150, 136, 0.3);">&#128203; Paste FEN</button>
                     <button id="pastePgnBtn" class="copy-btn" onclick="pastePgnFromClipboard()" style="background-color: rgba(0, 150, 136, 0.3);">&#128203; Paste PGN</button>
                     <button id="cyclePrevBtn" class="copy-btn" onclick="cycleBoardPrev()" style="background-color: rgba(233, 30, 99, 0.3);">Prev &#128260;</button>
                     <button id="cycleBoardBtn" class="copy-btn" onclick="cycleBoard()" style="background-color: rgba(233, 30, 99, 0.3);">&#128260; Cycle Board</button>
@@ -764,6 +765,7 @@
                     <label style="display: flex; align-items: center; gap: 4px; color: #aaa; font-size: 12px; cursor: pointer;" title="Show each puzzle's note automatically as you step through with Next / Prev">
                         <input type="checkbox" id="sbAutoNoteToggle" onchange="sbSetAutoNote(this.checked)"> Auto-reveal notes
                     </label>
+                    <button id="sbCopyLinkBtn" onclick="sbCopyPuzzleLink()" disabled title="Copy a link that opens this puzzle (?id=…)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold;">&#128279; Copy link</button>
                 </div>
                 <div id="sbNoteDisplay" style="display: none; margin-top: 8px; padding: 10px; background: #0f3460; border-radius: 5px; color: #eee; font-size: 14px;"></div>
 
@@ -1745,6 +1747,28 @@
         }
 
         // Read a [FEN "..."] PGN from the clipboard and load it for cycling
+        // Clipboard FEN -> FEN box -> board, in one click. A PGN on the clipboard
+        // (has a [FEN "..."] header) is handed to Paste PGN instead.
+        async function pasteFenFromClipboard() {
+            let text;
+            try {
+                text = await navigator.clipboard.readText();
+            } catch (e) {
+                showToast('Clipboard access denied');
+                return;
+            }
+            text = (text || '').replace(/\r\n?/g, '\n').trim();
+            if (!text) { showToast('Clipboard is empty'); return; }
+            if (/\[FEN\s+"/.test(text)) return pastePgnFromClipboard();
+            document.getElementById('fenDisplay').value = text;
+            loadFenOnBoard();
+            // A pasted FEN is a single position: leave the PGN box empty (like Clear PGN)
+            // so nothing treats it as a PGN. Dropping a piece starts a fresh PGN from here.
+            pgnStartFen = '';
+            pgnMoves = [];
+            renderPgn();
+        }
+
         async function pastePgnFromClipboard() {
             let text;
             try {
@@ -3070,12 +3094,15 @@
             const revealBtn = document.getElementById('sbRevealNoteBtn');
             const idEl = document.getElementById('sbLoadedPuzzleId');
             sbHideNote();
+            const linkBtn = document.getElementById('sbCopyLinkBtn');
             if (!puzzle) {
                 revealBtn.disabled = true;
+                if (linkBtn) linkBtn.disabled = true;
                 if (idEl) idEl.textContent = '';
                 return;
             }
             revealBtn.disabled = false;
+            if (linkBtn) linkBtn.disabled = false;
             if (idEl) idEl.textContent = '#' + puzzle.id;
             if (window.sbAutoNote) sbShowNote();
 
@@ -3122,6 +3149,19 @@
                 statusEl.textContent = 'Load failed: ' + err.message;
                 showToast('Load puzzle failed: ' + err.message);
                 return false;
+            }
+        }
+
+        // Link that reopens the loaded puzzle: <page>?id=<id> (read back by sbLoadPuzzleFromUrlParam)
+        async function sbCopyPuzzleLink() {
+            const puzzle = sbCurrentPuzzle();
+            if (!puzzle) { showToast('Load a puzzle first'); return; }
+            const link = window.location.origin + window.location.pathname + '?id=' + puzzle.id;
+            try {
+                await navigator.clipboard.writeText(link);
+                showToast('Copied: ' + link);
+            } catch (e) {
+                prompt('Copy this link:', link);
             }
         }
 
