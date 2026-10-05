@@ -790,6 +790,11 @@
                 <div style="margin-top: 4px; font-size: 12px; color: #888;">
                     Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Otherwise the category dropdown fills in normally, but no puzzle loads onto the board until you pick one.
                 </div>
+                <div style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5;">
+                    <b style="color: #ddd;">💾 Save to Dropbox + Supabase</b> copies the FEN (or loaded PGN) to both: a new line at the end of <code style="color: #ddd;">/study/chess/&lt;category&gt;.csv</code> and a new Supabase row with a new id. It never replaces a line, so saving the same FEN twice gives two lines.<br>
+                    <b style="color: #ddd;">Delete a line in the CSV, then ⇅ Sync from Dropbox:</b> Sync sees that FEN is in no CSV and asks first, e.g. "Deleting (not in any CSV): #42 mate_in_5: win the queen". OK deletes it from Supabase; Cancel changes nothing.<br>
+                    A <code style="color: #ddd;">?id=</code> link to a deleted puzzle stops working ("Puzzle not found"). Cutting a line into another CSV is a <b style="color: #ddd;">move</b>, not a delete: same id, new category.
+                </div>
             </div>
 
             <!-- Move History Display -->
