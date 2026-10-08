@@ -784,17 +784,49 @@
                 <!-- Dropbox /study/chess is the source of truth; Supabase is the copy this page reads -->
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
                     <button id="chessSyncBtn" onclick="chessSyncFromDropbox()" title="Make Supabase match Dropbox /study/chess/*.csv" style="padding: 8px 16px; background: #0061fe; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold;">&#8645; Sync from Dropbox</button>
-                    <span style="font-size: 12px; color: #888;">Source of truth: Dropbox <code style="color: #ddd;">/study/chess/&lt;category&gt;.csv</code> (fen,note). Reorder, edit notes or delete there, then Sync. Save and Delete here update the CSV too.</span>
+                    <span style="font-size: 12px; color: #888;">Source of truth: Dropbox <code style="color: #ddd;">/study/chess/&lt;category&gt;.csv</code> (fen,note). <b style="color: #ddd;">💾 Save appends one new row to the end of that CSV in Dropbox</b>, then adds the same puzzle to Supabase. Delete removes that row from the CSV and Supabase. <b style="color: #ddd;">⇅ Sync from Dropbox</b> is for cleaning up in Dropbox itself: open <code style="color: #ddd;">/study/chess</code>, reorder lines, edit notes, add or delete lines, or move a line to another CSV, then press Sync. It reads what is now in every CSV and changes Supabase to match, showing what will change and asking first.</span>
                 </div>
                 <div id="chessSyncStatus" style="margin-top: 6px; font-size: 12px; color: #888; white-space: pre-wrap;"></div>
                 <div style="margin-top: 4px; font-size: 12px; color: #888;">
                     Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Otherwise the category dropdown fills in normally, but no puzzle loads onto the board until you pick one.
                 </div>
-                <div style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5;">
-                    <b style="color: #ddd;">💾 Save to Dropbox + Supabase</b> copies the FEN (or loaded PGN) to both: a new line at the end of <code style="color: #ddd;">/study/chess/&lt;category&gt;.csv</code> and a new Supabase row with a new id. It never replaces a line, so saving the same FEN twice gives two lines.<br>
-                    <b style="color: #ddd;">Delete a line in the CSV, then ⇅ Sync from Dropbox:</b> Sync sees that FEN is in no CSV and asks first, e.g. "Deleting (not in any CSV): #42 mate_in_5: win the queen". OK deletes it from Supabase; Cancel changes nothing.<br>
-                    A <code style="color: #ddd;">?id=</code> link to a deleted puzzle stops working ("Puzzle not found"). Cutting a line into another CSV is a <b style="color: #ddd;">move</b>, not a delete: same id, new category.
-                </div>
+                <details style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5;">
+                    <summary style="cursor: pointer; color: #ddd; font-weight: bold;">How Dropbox + Supabase work together (tap to open)</summary>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Where things live</b></p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li><b style="color: #ddd;">Dropbox is the source of truth.</b> There is one CSV per category in <code style="color: #ddd;">/study/chess/</code>, and the file name is the category: <code style="color: #ddd;">mate_in_5.csv</code>. Each line is <code style="color: #ddd;">fen,note</code>. The fen cell can hold a whole PGN, in quotes, so it can span several lines.</li>
+                        <li><b style="color: #ddd;">Supabase is the copy this page reads.</b> The category and puzzle dropdowns, Prev / Next, the <code style="color: #ddd;">?id=</code> links and the puzzle ids all come from Supabase. Each puzzle row there has a number, shown as #id next to the dropdown.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">💾 Save to Dropbox + Supabase</b></p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li>Saves the FEN in the FEN box. If a PGN is loaded and you are stepping through it with Prev / Cycle Board, it saves the whole PGN instead.</li>
+                        <li>Step 1, Dropbox: <b style="color: #ddd;">appends one new row (a new line) at the end of</b> <code style="color: #ddd;">/study/chess/&lt;category&gt;.csv</code>. It edits the existing file, it does not upload a new one. A new category creates the file with a <code style="color: #ddd;">fen,note</code> header. Step 2, Supabase: adds a new row with a new id. If step 1 fails, nothing is saved to Supabase. If step 2 fails, the row is already in the CSV, and pressing Sync brings Supabase up to date.</li>
+                        <li>It never replaces a line. Saving the same FEN twice gives two lines and two ids.</li>
+                        <li>You must be signed in to Dropbox. If you are not, the page sends you to sign in and finishes the save when you come back. The sign-in lasts for this browser tab only, so a new tab asks again.</li>
+                        <li><b style="color: #ddd;">Safe writes:</b> a save only goes through if the CSV has not changed in Dropbox since the page read it. If it has, you see "changed in Dropbox since it was read: try again", and nothing is lost.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">🗑️ Delete</b> (the red button here)</p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li>Deletes the puzzle selected in the dropdown: its line is removed from the CSV, then its Supabase row. It asks you to confirm first and cannot be undone.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Edit in Dropbox, then ⇅ Sync from Dropbox</b></p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li>In Dropbox you can <b style="color: #ddd;">reorder</b> lines, <b style="color: #ddd;">edit notes</b>, <b style="color: #ddd;">add</b> lines, <b style="color: #ddd;">delete</b> lines, or <b style="color: #ddd;">cut a line into another CSV</b>. Then press Sync here.</li>
+                        <li>Sync reads every CSV and works out what would change. It shows a summary first, like <i>3 CSVs, 41 puzzles → +2 add, ~1 update, -1 delete</i>, and lists the puzzles that would be deleted, for example <i>Deleting (not in any CSV): #42 mate_in_5: win the queen</i>. <b style="color: #ddd;">OK</b> applies it. <b style="color: #ddd;">Cancel</b> changes nothing. If nothing differs it says "Supabase already matches Dropbox."</li>
+                        <li><b style="color: #ddd;">Lines are matched by their FEN / PGN text,</b> not by position. So a puzzle keeps its id, and its <code style="color: #ddd;">?id=</code> links, when you reorder lines, edit its note, or move it to another CSV. Moving it changes only its category.</li>
+                        <li>If you change the FEN text itself, Sync sees a new puzzle (new id) and, if the old text is gone, offers to delete the old one.</li>
+                        <li>A sync that finds no puzzles at all is refused, so an empty or missing folder can never wipe the table.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Links</b></p>
+                    <ul style="margin: 0 0 8px 18px; padding: 0;">
+                        <li>A <code style="color: #ddd;">?id=</code> link opens that puzzle. After a delete (or a Sync that deleted it) the link stops working and says "Puzzle not found". After a move it still works.</li>
+                    </ul>
+                </details>
             </div>
 
             <!-- Move History Display -->
@@ -3266,14 +3298,12 @@
             if (noteEl.style.display !== 'none') sbHideNote(); else sbShowNote();
         }
 
-        // Auto-reveal: show the note whenever a puzzle loads (Next / Prev / dropdown). Remembered per browser.
-        window.sbAutoNote = false;
-        try { window.sbAutoNote = localStorage.getItem('sbAutoNote') === 'true'; } catch (e) {}
+        // Auto-reveal: show the note whenever a puzzle loads (Next / Prev / dropdown). On by default at every load.
+        window.sbAutoNote = true;
         document.getElementById('sbAutoNoteToggle').checked = window.sbAutoNote;
 
         function sbSetAutoNote(on) {
             window.sbAutoNote = !!on;
-            try { localStorage.setItem('sbAutoNote', window.sbAutoNote); } catch (e) {}
             if (window.sbAutoNote && sbCurrentPuzzle()) sbShowNote();
         }
 
