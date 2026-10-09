@@ -757,8 +757,8 @@
                     <span id="sbLoadedPuzzleId" title="Supabase id of the puzzle currently on the board" style="color: #3ecf8e; font-weight: bold; min-width: 40px;"></span>
                     <input type="text" id="sbPuzzleIdInput" placeholder="Load by ID..." onkeydown="if(event.key==='Enter') sbLoadPuzzleByIdInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 100px;">
                     <button onclick="sbLoadPuzzleByIdInput()" title="Fetch straight from Supabase by id — no need to pick a category first" style="padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Load ID</button>
-                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
-                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
+                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category (← key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
+                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category (→ key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
                     <button id="sbCyclePrevBtn" class="copy-btn" onclick="cycleBoardPrev()" style="background-color: rgba(233, 30, 99, 0.3);">Prev &#128260;</button>
                     <button id="sbCycleBoardBtn" class="copy-btn" onclick="cycleBoard()" style="background-color: rgba(233, 30, 99, 0.3);">&#128260; Cycle Board</button>
                     <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
@@ -766,6 +766,16 @@
                         <input type="checkbox" id="sbAutoNoteToggle" onchange="sbSetAutoNote(this.checked)"> Auto-reveal notes
                     </label>
                     <button id="sbCopyLinkBtn" onclick="sbCopyPuzzleLink()" disabled title="Copy a link that opens this puzzle (?id=…)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold;">&#128279; Copy link</button>
+                </div>
+                <div id="sbPuzzleLinks" style="display: none; margin-top: 6px; font-size: 12px; line-height: 1.6;">
+                    <div title="Always opens this exact puzzle, even after you reorder or delete others. Tap once to select the whole link.">
+                        <span style="color: #888;">link</span>
+                        <span id="sbPuzzleLinkId" style="color: #00d4ff; user-select: all; word-break: break-all;"></span>
+                    </div>
+                    <div title="By place in the dropdown: category + number. Shifts if you reorder or delete puzzles. Tap once to select the whole link.">
+                        <span style="color: #888;">by place</span>
+                        <span id="sbPuzzleLinkPlace" style="color: #00d4ff; user-select: all; word-break: break-all;"></span>
+                    </div>
                 </div>
                 <div id="sbNoteDisplay" style="display: none; margin-top: 8px; padding: 10px; background: #0f3460; border-radius: 5px; color: #eee; font-size: 14px;"></div>
 
@@ -788,7 +798,7 @@
                 </div>
                 <div id="chessSyncStatus" style="margin-top: 6px; font-size: 12px; color: #888; white-space: pre-wrap;"></div>
                 <div style="margin-top: 4px; font-size: 12px; color: #888;">
-                    Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Otherwise the category dropdown fills in normally, but no puzzle loads onto the board until you pick one.
+                    Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Or by category and place in the dropdown: <code style="color: #ddd;">?category=mate_in_5&amp;n=3</code> (3rd entry; <code style="color: #ddd;">n</code> defaults to 1; it follows the dropdown order, so it shifts if you reorder or delete — <code style="color: #ddd;">?id=</code> never does). Otherwise the category dropdown fills in normally, but no puzzle loads onto the board until you pick one.<br>Keys: <b style="color: #ddd;">← / →</b> previous / next puzzle, <b style="color: #ddd;">Space</b> next move, <b style="color: #ddd;">Shift+Space</b> previous move.
                 </div>
                 <details style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5;">
                     <summary style="cursor: pointer; color: #ddd; font-weight: bold;">How Dropbox + Supabase work together (tap to open)</summary>
@@ -835,9 +845,9 @@
                     <span style="color: #888;">Move history will appear here...</span>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 6px;">
-                    <button class="copy-btn" onclick="moveNavPrev()" style="padding: 8px 18px; font-size: 14px;">← Back</button>
+                    <button class="copy-btn" onclick="moveNavPrev()" title="Previous move (Shift+Space)" style="padding: 8px 18px; font-size: 14px;">← Back</button>
                     <span id="moveNavIndicator" style="font-weight: bold; min-width: 60px; text-align: center; color: #eee; font-size: 13px;">Start</span>
-                    <button class="copy-btn" onclick="moveNavNext()" style="padding: 8px 18px; font-size: 14px;">Next →</button>
+                    <button class="copy-btn" onclick="moveNavNext()" title="Next move (Space)" style="padding: 8px 18px; font-size: 14px;">Next →</button>
                 </div>
                 <button class="copy-btn" onclick="copyMoveHistory()" style="width: 100%; padding: 8px; font-size: 13px;">📋 Copy Move History</button>
             </div>
@@ -3074,7 +3084,9 @@
             }
         }
 
-        async function sbLoadPuzzlesForCategory() {
+        // opts.index: 0-based dropdown entry to load instead of the first one (used by the ?category=&n= deep link)
+        async function sbLoadPuzzlesForCategory(opts) {
+            opts = (opts && typeof opts.index === 'number') ? opts : {};
             const category = document.getElementById('sbCategorySelect').value;
             const puzzleSel = document.getElementById('sbPuzzleSelect');
             const revealBtn = document.getElementById('sbRevealNoteBtn');
@@ -3112,6 +3124,7 @@
                 puzzleSel.disabled = false;
                 document.getElementById('sbNextPuzzleBtn').disabled = false;
                 document.getElementById('sbPrevPuzzleBtn').disabled = false;
+                if (typeof opts.index === 'number') puzzleSel.selectedIndex = Math.max(0, Math.min(puzzles.length - 1, opts.index));
                 sbLoadSelectedPuzzle();
             } catch (err) {
                 puzzleSel.innerHTML = '<option value="">Failed to load</option>';
@@ -3136,11 +3149,13 @@
                 revealBtn.disabled = true;
                 if (linkBtn) linkBtn.disabled = true;
                 if (idEl) idEl.textContent = '';
+                sbRefreshPuzzleLinks();
                 return;
             }
             revealBtn.disabled = false;
             if (linkBtn) linkBtn.disabled = false;
             if (idEl) idEl.textContent = '#' + puzzle.id;
+            sbRefreshPuzzleLinks();
             if (window.sbAutoNote) sbShowNote();
 
             if (sbIsPgn(puzzle.fen)) {
@@ -3189,11 +3204,35 @@
             }
         }
 
-        // Link that reopens the loaded puzzle: <page>?id=<id> (read back by sbLoadPuzzleFromUrlParam)
+        // The two deep links for a puzzle (read back by sbParseDeepLink):
+        //   id    <page>?id=<id>                      always that puzzle
+        //   place <page>?category=<category>&n=<n>    Nth entry of the category's dropdown (shifts on reorder/delete)
+        function sbBuildPuzzleLinks(base, puzzle, n) {
+            return {
+                id: base + '?id=' + puzzle.id,
+                place: base + '?category=' + encodeURIComponent(puzzle.category) + '&n=' + n
+            };
+        }
+
+        // Show the links for the loaded puzzle in the selectable line under the browse row (hidden when none)
+        function sbRefreshPuzzleLinks() {
+            const box = document.getElementById('sbPuzzleLinks');
+            if (!box) return;
+            const puzzle = sbCurrentPuzzle();
+            if (!puzzle) { box.style.display = 'none'; return; }
+            const n = document.getElementById('sbPuzzleSelect').selectedIndex + 1;
+            const links = sbBuildPuzzleLinks(window.location.origin + window.location.pathname, puzzle, n);
+            document.getElementById('sbPuzzleLinkId').textContent = links.id;
+            document.getElementById('sbPuzzleLinkPlace').textContent = links.place;
+            box.style.display = 'block';
+        }
+        window.sbRefreshPuzzleLinks = sbRefreshPuzzleLinks;
+
+        // Link that reopens the loaded puzzle: <page>?id=<id>
         async function sbCopyPuzzleLink() {
             const puzzle = sbCurrentPuzzle();
             if (!puzzle) { showToast('Load a puzzle first'); return; }
-            const link = window.location.origin + window.location.pathname + '?id=' + puzzle.id;
+            const link = sbBuildPuzzleLinks(window.location.origin + window.location.pathname, puzzle, 0).id;
             try {
                 await navigator.clipboard.writeText(link);
                 showToast('Copied: ' + link);
@@ -3209,8 +3248,54 @@
             await sbLoadPuzzleById(id);
         }
 
-        // Deep-link support: /?id=10 (or /?puzzle_id=10), or the bare form
-        // /?10 with no key at all.
+        // Load the Nth entry (1-based, as numbered in the puzzle dropdown) of a category.
+        // Same order as the dropdown (position, then id), so it can shift if you reorder or
+        // delete; ?id= is the stable link.
+        async function sbLoadPuzzleByCategory(category, n) {
+            const statusEl = document.getElementById('sbPuzzleStatus');
+            statusEl.textContent = 'Loading…';
+            try {
+                await sbLoadCategories({ noLoad: true });
+                const catSel = document.getElementById('sbCategorySelect');
+                if (![...catSel.options].some(o => o.value === category)) throw new Error('no category "' + category + '"');
+                catSel.value = category;
+                await sbLoadPuzzlesForCategory({ index: n - 1 }); // loads that entry straight away, no first-puzzle flash
+
+                const puzzleSel = document.getElementById('sbPuzzleSelect');
+                const total = puzzleSel.options.length;
+                if (puzzleSel.disabled) throw new Error('"' + category + '" has no puzzles');
+                const shown = puzzleSel.selectedIndex + 1;
+                statusEl.textContent = 'Loaded "' + category + '" ' + shown + ' of ' + total +
+                    (shown !== n ? ' (asked for ' + n + ', only ' + total + ' exist)' : '') + '.';
+                return true;
+            } catch (err) {
+                statusEl.textContent = 'Load failed: ' + err.message;
+                showToast('Load puzzle failed: ' + err.message);
+                return false;
+            }
+        }
+
+        // What a page URL's query string asks for. Pure, so it can be tested on its own.
+        //   ?id=10  ?puzzle_id=10  ?10                    -> { id: '10' }
+        //   ?category=mate_in_5&n=3                       -> { category: 'mate_in_5', n: 3 }  (n, pos or position; 1-based; default 1)
+        // id wins if both are given. Anything else (e.g. Dropbox's ?code=...) -> null.
+        function sbParseDeepLink(search) {
+            if (!search || search.length <= 1) return null;
+            const raw = search.slice(1);
+            if (!raw.includes('=')) {
+                const id = decodeURIComponent(raw.split('&')[0]);
+                return /^\d+$/.test(id) ? { id: id } : null;
+            }
+            const params = new URLSearchParams(search);
+            const id = params.get('id') || params.get('puzzle_id');
+            if (id && /^\d+$/.test(id)) return { id: id };
+            const category = (params.get('category') || '').trim();
+            if (!category) return null;
+            const n = parseInt(params.get('n') || params.get('pos') || params.get('position') || '1', 10);
+            return { category: category, n: n >= 1 ? n : 1 };
+        }
+
+        // Deep-link support, see sbParseDeepLink for the accepted forms.
         //
         // `board` (the chessboard.js instance) isn't created until the
         // DOMContentLoaded handler further down runs, which can still be
@@ -3218,23 +3303,15 @@
         // this one is registered first). Ping every 100ms (visibly, via
         // #sbPuzzleStatus) until `board` exists, then load.
         function sbLoadPuzzleFromUrlParam() {
-            const search = window.location.search;
-            if (search.length <= 1) return; // no "?" or empty
-            const raw = search.slice(1);
-            let id;
-            if (raw.includes('=')) {
-                const params = new URLSearchParams(search);
-                id = params.get('id') || params.get('puzzle_id');
-            } else {
-                id = decodeURIComponent(raw.split('&')[0]);
-            }
-            if (!id || !/^\d+$/.test(id)) return;
+            const target = sbParseDeepLink(window.location.search);
+            if (!target) return;
             const input = document.getElementById('sbPuzzleIdInput');
-            if (input) input.value = id;
+            if (input && target.id) input.value = target.id;
 
             let attempt = 0;
             const maxAttempts = 100; // ~10s at 100ms
             const statusEl = document.getElementById('sbPuzzleStatus');
+            const what = target.id ? 'id=' + target.id : 'category=' + target.category + '&n=' + target.n;
             const timer = setInterval(function ping() {
                 attempt++;
                 const ready = typeof board !== 'undefined';
@@ -3242,11 +3319,12 @@
 
                 if (ready) {
                     clearInterval(timer);
-                    sbLoadPuzzleById(id);
+                    if (target.id) sbLoadPuzzleById(target.id);
+                    else sbLoadPuzzleByCategory(target.category, target.n);
                 } else if (attempt >= maxAttempts) {
                     clearInterval(timer);
-                    if (statusEl) statusEl.textContent = 'Board never finished loading — could not auto-load id=' + id;
-                    showToast('Board never finished initializing — could not auto-load puzzle id=' + id);
+                    if (statusEl) statusEl.textContent = 'Board never finished loading — could not auto-load ' + what;
+                    showToast('Board never finished initializing — could not auto-load puzzle ' + what);
                 }
             }, 100);
         }
@@ -3976,11 +4054,45 @@
             }
         };
 
-        // Arrow key navigation
+        // Keyboard shortcuts (decision is a pure function so it can be tested on its own):
+        //   ←  /  →         previous / next Supabase puzzle  (same as ◀ Prev / Next ▶)
+        //   Space           next move in the move list       (same as Next →)
+        //   Shift + Space   previous move in the move list   (same as ← Back)
+        // Ignored while typing in a text box / textarea, while a dropdown has focus
+        // (arrows already change it), with Ctrl / Alt / Cmd held, or with the Lichess Links popup open.
+        function keyShortcut(k) {
+            if (k.ctrlKey || k.altKey || k.metaKey || k.modalOpen) return null;
+            const typing = k.tag === 'TEXTAREA' || k.tag === 'SELECT' || k.editable ||
+                (k.tag === 'INPUT' && !/^(checkbox|radio|button|submit|range)$/.test(k.type || 'text'));
+            if (typing) return null;
+            if (k.key === 'ArrowRight') return 'puzzleNext';
+            if (k.key === 'ArrowLeft') return 'puzzlePrev';
+            if (k.key === ' ' || k.key === 'Spacebar') return k.shiftKey ? 'movePrev' : 'moveNext';
+            return null;
+        }
+
+        function keyShortcutFromEvent(e) {
+            const t = e.target || {};
+            const modal = document.getElementById('lichessLinksModal');
+            return keyShortcut({
+                key: e.key, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, altKey: e.altKey, metaKey: e.metaKey,
+                tag: t.tagName, type: t.type, editable: !!t.isContentEditable,
+                modalOpen: !!(modal && modal.style.display === 'flex')
+            });
+        }
+
         document.addEventListener('keydown', function(e) {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            if (e.key === 'ArrowLeft') { window.moveNavPrev(); e.preventDefault(); }
-            if (e.key === 'ArrowRight') { window.moveNavNext(); e.preventDefault(); }
+            const action = keyShortcutFromEvent(e);
+            if (!action) return;
+            e.preventDefault(); // stops Space scrolling the page or re-clicking whichever button has focus
+            if (action === 'puzzleNext') sbNextPuzzle();
+            else if (action === 'puzzlePrev') sbPrevPuzzle();
+            else if (action === 'moveNext') window.moveNavNext();
+            else if (action === 'movePrev') window.moveNavPrev();
+        });
+        // Firefox clicks a focused button on Space *keyup*, so cancel that too
+        document.addEventListener('keyup', function(e) {
+            if (keyShortcutFromEvent(e) === 'moveNext' || keyShortcutFromEvent(e) === 'movePrev') e.preventDefault();
         });
 
         // Hook into updateBoardDisplay to re-render move list
