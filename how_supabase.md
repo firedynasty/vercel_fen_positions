@@ -1,10 +1,10 @@
 # How the Supabase puzzle feature works
 
-Save the position (or whole PGN) on the board to a Supabase table, group it into categories, and load, step through, and delete it later.
+Save the position (or whole PGN) on the board to a Supabase table, group it into categories, add many at once by pasting rows, and load, step through, and delete it later.
 
 Everything here is described from the code as it runs today: `api/puzzles.js` (server) and the `sb…` functions plus the "Supabase Puzzles" section in `index.html` (browser).
 
-> **Source of truth: Dropbox, not Supabase.** The puzzles are kept as CSVs in Dropbox, one file per category: `/study/chess/<category>.csv` with columns `fen,note`, rows in puzzle order. Supabase is the copy this page reads, so `?id=` links and Load by ID work without a Dropbox sign-in. See section 12.
+> **Source of truth: the Supabase `puzzles` table.** The page saves, bulk-adds and deletes in Supabase only, and nothing syncs from files automatically. For a backup, or to bulk edit in a spreadsheet or text editor, use the local script `puzzles_csv.py`, which moves puzzles to and from one CSV per category. See section 12.
 
 ---
 
@@ -16,7 +16,8 @@ browser (index.html)                 Vercel function                  Supabase
 │ Supabase Puzzles panel│ ────────▶ │ /api/puzzles     │ ─────────▶ │ table        │
 │  sbSavePuzzle()       │           │ (api/puzzles.js) │  service   │ `puzzles`    │
 │  sbLoadPuzzles…()     │ ◀──────── │ holds the secret │  role key  │              │
-│  sbDeletePuzzle()     │   JSON    │ key server-side  │ ◀───────── │              │
+│  sbBulkAdd()          │   JSON    │ key server-side  │ ◀───────── │              │
+│  sbDeletePuzzle()     │           │                  │            │              │
 └───────────────────────┘           └──────────────────┘            └──────────────┘
 ```
 
@@ -34,8 +35,9 @@ browser (index.html)                 Vercel function                  Supabase
 |---|---|
 | `SUPABASE_URL` | `https://xxxx.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | the project's `service_role` key (not the anon key) |
+| `ACCESS_CODE` | a code you choose. Every write (save, bulk add, delete) must send it in the `X-Access-Code` header. Reading needs no code. |
 
-For local work run `vercel dev` (a plain static server, like `npm run dev`, has no `/api`). If either variable is missing, every call returns `500 {"error":"Supabase env vars not set on server."}`.
+For local work run `vercel dev` (a plain static server, like `npm run dev`, has no `/api`), with the variables in `.env.local`. If either Supabase variable is missing, every call returns `500 {"error":"Supabase env vars not set on server."}`. If `ACCESS_CODE` is missing, every write returns `500 {"error":"ACCESS_CODE not set on server."}` (it fails closed, there is no default code).
 
 ### Table: `puzzles`
 
@@ -62,9 +64,9 @@ If this column does not exist, the **list** call fails, because `position` is in
 ### Ordering
 
 - The list is sorted by `position` ascending (rows with no position last), then `id`.
-- A new save gets `position = (highest position in that category) + 1` (1 if the category is empty), so new puzzles go to the end.
+- A new save gets `position = (highest position in that category) + 1` (1 if the category is empty), so new puzzles go to the end. A bulk add numbers its rows from there, in order.
 - Deleting a puzzle leaves a gap in the numbers. That is fine, the sort order still works.
-- To reorder, move lines in the category's CSV in Dropbox and press **⇅ Sync from Dropbox**: `position` becomes each row's line number (see section 12).
+- To reorder, edit the category's CSV and run `python puzzles_csv.py --upload`: `position` becomes each row's line number (see section 12).
 
 ---
 
@@ -93,7 +95,9 @@ Moves in a saved PGN may include illegal ones (the board allows any move). When 
 
 ## 4. The API: `/api/puzzles`
 
-CORS is open (`Access-Control-Allow-Origin: *`) and allows `GET, POST, DELETE, OPTIONS`.
+CORS is open (`Access-Control-Allow-Origin: *`) and allows `GET, POST, DELETE, OPTIONS` and the `Content-Type` and `X-Access-Code` headers.
+
+**Writes need the access code.** `POST` and `DELETE` must send `X-Access-Code: <ACCESS_CODE>`. A wrong or missing code returns `401 { "error": "Wrong access code" }`; a server with no `ACCESS_CODE` returns `500`. The check runs before anything else, so a rejected request touches nothing. `GET` needs no code.
 
 ### `GET /api/puzzles?action=categories`
 Returns the distinct category names, sorted.
@@ -110,8 +114,8 @@ Returns the puzzles in a category, ordered as in section 2. Leave out `category`
 ### `GET /api/puzzles?action=get&id=13`
 Returns one puzzle with all columns. `400` if `id` is missing, `404` if there is no such row.
 
-### `POST /api/puzzles`
-Saves a puzzle. Body:
+### `POST /api/puzzles` (action `save`)
+Saves a puzzle. Needs the access code. Body:
 ```json
 { "action": "save", "category": "endgames", "note": "win a pawn", "fen": "<FEN or PGN text>" }
 ```
@@ -119,8 +123,18 @@ Saves a puzzle. Body:
 - The function looks up the category's highest `position` first and stores `position = highest + 1`.
 - Response: `200 { "success": true, "puzzle": { …the new row… } }`.
 
+### `POST /api/puzzles` (action `bulk`)
+Adds many puzzles to one category in one request. Needs the access code. Body:
+```json
+{ "action": "bulk", "category": "white_blunder", "rows": [{ "fen": "<FEN or PGN text>", "note": "…" }] }
+```
+- `category` and at least one row with a `fen` are required (`400` otherwise). Rows with an empty `fen` are dropped.
+- Positions continue after the category's highest `position`, in row order.
+- Response: `200 { "success": true, "added": 3 }`.
+- The server does not check for duplicates. The page skips rows already in the category before it sends them.
+
 ### `DELETE /api/puzzles?id=13`
-Deletes one puzzle.
+Deletes one puzzle. Needs the access code.
 - `id` must be all digits, otherwise `400 { "error": "A numeric id is required" }`. Nothing else can reach the Supabase query.
 - `404 { "error": "Puzzle not found" }` if no row matched.
 - `200 { "success": true, "deleted": 13 }` on success.
@@ -154,10 +168,23 @@ The section is titled **Supabase Puzzles** and has two rows.
 | **Category dropdown** (save) | Pick an existing category or **+ New category…**. |
 | **New category name box** | Appears only for **+ New category…**. |
 | **Note box** | Optional hint text stored in `note`. |
-| **💾 Save Board FEN to Supabase** | Saves either the board's FEN or the whole PGN (rule below). |
+| **💾 Save to Supabase** | Saves either the board's FEN or the whole PGN (rule below). |
 | **🗑️ Delete Loaded FEN/PGN** | Deletes the puzzle selected in the puzzle dropdown, after a confirm dialog. |
 
 A status line under the row shows "Saving…", "Saved FEN to …", "Saved PGN to …" or "Deleted …".
+
+### Bulk add
+
+Under the save row, **Bulk add rows (paste fen,note)** is a collapsed section with a textarea and an **➕ Add rows to Supabase** button.
+
+- Paste one or many `fen,note` rows (CSV; the PGN in quotes, with `""` for a quote inside it). A `fen,note` header line is skipped.
+- The category comes from the **save row's category dropdown** (or the new-category box when **+ New category…** is selected). The board and the Note box are not used.
+- Every row needs two cells and a `[FEN "…"]` header in the first. If any row fails, nothing is added and the status line lists the row numbers.
+- Rows already in that category, and repeats inside the paste, are skipped. A confirm shows how many will be added.
+
+### Access code
+
+Save, bulk add and delete ask for the access code the first time (a prompt) and remember it in this browser's `localStorage` (`puzzles_access_code`). A `401` clears the remembered code, so the next write asks again. Browsing needs no code.
 
 ---
 
@@ -172,7 +199,7 @@ click 💾
   │     no  → fen = the text in the FEN box
   ├─ no category chosen  → toast "Enter a category name"
   ├─ nothing to save     → toast "No FEN on the board to save"
-  └─ POST /api/puzzles { action:"save", category, note, fen }
+  └─ POST /api/puzzles { action:"save", category, note, fen }   (with the access code)
         → status "Saved PGN/FEN to <category>", clear the note box, reload the category list,
           re-select the category you saved into
 ```
@@ -196,7 +223,7 @@ pick a puzzle, or press Prev ◀ / Next ▶
 ```
 click 🗑️ (a puzzle must be selected)
   → confirm("Delete this FEN/PGN puzzle from <category>? This cannot be undone.")
-  → DELETE /api/puzzles?id=<id>
+  → DELETE /api/puzzles?id=<id>   (with the access code)
   → reload categories, stay in the same category (unless it is now empty),
     reload the puzzle dropdown; the first remaining puzzle loads
 ```
@@ -207,7 +234,9 @@ Cancel in the dialog does nothing. There is no undo.
 
 ## 7. Where the code lives
 
-**`api/puzzles.js`**: the whole server side (`categories`, `list`, `get`, `save`, `delete`).
+**`api/puzzles.js`**: the whole server side (`categories`, `list`, `get`, `save`, `bulk`, `delete`, and the access-code check on the writes).
+
+**`puzzles_csv.py`**: the local backup / bulk-edit script (section 12). It is not part of the web app.
 
 **`index.html`**:
 
@@ -222,6 +251,9 @@ Cancel in the dialog does nothing. There is no undo.
 | `sbToggleNote()` / `sbHideNote()` | Reveal Note. |
 | `sbToggleNewCategoryInput()` | Show the new-category box only for **+ New category…**. |
 | `sbSavePuzzle()` | Save (single FEN or the whole PGN). |
+| `sbParseBulk(text)` | Turn pasted `fen,note` CSV into rows (PapaParse) and report unreadable rows. |
+| `sbBulkAdd()` / `sbBulkSave()` | Validate and de-duplicate the pasted rows, confirm, then send them as one `bulk` request. |
+| `sbAccessCode()` / `sbWriteFetch()` | Ask for and remember the access code; every write goes through `sbWriteFetch`, which adds the header and handles `401`. |
 | `sbDeletePuzzle()` | Confirm and delete. |
 
 Related PGN pieces the feature depends on: `pgnAdoptFromText`, `replayPgnRelaxed`, `parseFenVariantToPositions`, `cycleBoard`, `cycleBoardPrev`, and the `cyclePositions` / `cyclePgnSource` variables.
@@ -231,7 +263,8 @@ Related PGN pieces the feature depends on: `pgnAdoptFromText`, `replayPgnRelaxed
 ## 8. Security notes
 
 - The service-role key is only ever on the server. Keep `SUPABASE_SERVICE_ROLE_KEY` out of the repo and out of any client code.
-- The endpoint has **no login**. Anyone who can reach `/api/puzzles` can list, save and **delete** puzzles. If the site is public, add a shared-secret check to the `POST` and `DELETE` branches (compare a request header to a secret env var, reject with `401`).
+- Reading is open: anyone who can reach `/api/puzzles` can list and read puzzles. **Writes** (save, bulk, delete) need the shared `ACCESS_CODE` in the `X-Access-Code` header; it is compared in constant time, a wrong code gets `401`, and a server with no code configured refuses all writes. The code is one shared secret, kept in the page's `localStorage` once entered, so treat it as a light lock, not a login. Keep `ACCESS_CODE` out of the repo.
+- No web request can delete puzzles because of a CSV: the only thing that deletes rows in bulk is `python puzzles_csv.py --upload`, run by hand on your machine with the service-role key, and it asks first.
 - `category` is passed into the Supabase query as `eq.<category>` by URL-encoding, and delete only takes digits. Do not build other query strings from raw user text without doing the same.
 - Deletes are permanent. If you want an undo, switch to a soft delete (a `deleted_at` column that the list query filters out).
 
@@ -243,18 +276,22 @@ Related PGN pieces the feature depends on: `pgnAdoptFromText`, `replayPgnRelaxed
 |---|---|
 | `500 Supabase env vars not set on server.` | `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY` is missing. Set it in Vercel (and redeploy) or in your `vercel dev` environment. |
 | Categories load but the puzzle dropdown says "Failed to load" | The `position` column probably does not exist (the list request asks for it). Run the `alter table` from section 2. |
+| `500 ACCESS_CODE not set on server.` | Set `ACCESS_CODE` in Vercel (and redeploy) or in `.env.local` for `vercel dev`. Saves, bulk adds and deletes are refused until it exists. |
+| "Wrong access code: try again" (`401`) | The code you typed (or the one remembered in this browser) doesn't match the server's `ACCESS_CODE`. The remembered one is cleared; you are asked again on the next write. |
 | Category dropdown says "Failed to load" | The `/api` route is not running (static server instead of `vercel dev`), or the env vars are wrong. Check the browser console and the network tab. |
 | Saving a PGN fails with a length error | `fen` is a short `varchar`. Change it to `text`. |
 | A saved PGN loads as one position | The text has no `[FEN "…"]` header, so it is treated as a plain FEN, or it has a header but no moves. |
 | Prev 🔄 / Cycle Board say "No positions to cycle" | The loaded puzzle is a plain FEN, or no PGN is loaded. |
-| New puzzles appear in the wrong place | New saves go to `highest position + 1`. Run **⇅ Sync from Dropbox** to make the order match the CSV. |
+| New puzzles appear in the wrong place | New saves go to `highest position + 1`. To reorder, edit the CSV and run `python puzzles_csv.py --upload` (section 12). |
+| Bulk add says "Row(s) … could not be read" | Each row needs two cells (the PGN, then the note) and the first must contain `[FEN "…"]`. A stray quote in the PGN that isn't doubled (`""`) breaks the row. Nothing was added. |
+| `puzzles_csv.py` says to set `CHESS_SUPABASE_URL` | Export `CHESS_SUPABASE_URL` and `CHESS_SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`) in your shell. |
 | Delete does nothing on an old row | It has no numeric `id`, or it was already deleted (`404 Puzzle not found`). |
 
 ---
 
 ## 10. Testing without touching real data
 
-The API can be tested against a mocked `fetch` (no Supabase calls). Set the two env vars to dummy values, replace `globalThis.fetch`, call the handler with `{ method, query, body }`, and check the status and body. For example, `DELETE` with `id=15;drop` must return `400`, an unknown id must return `404`, and a valid id must issue exactly one `DELETE …/rest/v1/puzzles?id=eq.15` request.
+The API can be tested against a mocked `fetch` (no Supabase calls). Set the two env vars to dummy values, replace `globalThis.fetch`, call the handler with `{ method, query, body }`, and check the status and body. Send the `x-access-code` header on writes (set `ACCESS_CODE` to a dummy value too); a write without it must return `401` and make no Supabase request. For example, `DELETE` with `id=15;drop` must return `400`, an unknown id must return `404`, and a valid id must issue exactly one `DELETE …/rest/v1/puzzles?id=eq.15` request.
 
 For the page, save a throwaway puzzle in a test category, load it, step with Prev/Next, then delete it.
 
@@ -265,21 +302,40 @@ For the page, save a throwaway puzzle in a test category, load it, step with Pre
 - The list endpoint returns every puzzle in a category at once. That is fine for hundreds, not for very large sets.
 - The note is plain text. There are no images, tags or difficulty fields.
 - The stored PGN keeps illegal moves as written, so some third-party PGN tools may not read them.
-- Deleting does not renumber `position` until the next sync.
+- Deleting does not renumber `position`; the next `python puzzles_csv.py --upload` does.
 
 ---
 
-## 12. Dropbox CSVs (source of truth) and Sync
+## 12. Backup and bulk edit with CSVs: `puzzles_csv.py`
+
+Supabase is the source of truth. `puzzles_csv.py` (repo root) is a local script, not part of the web app. It turns the table into one CSV per category and back, so you can keep a backup or edit many puzzles in a text editor.
 
 ```
-Dropbox /study/chess/<category>.csv  ──⇅ Sync from Dropbox──▶  Supabase puzzles  ──▶  this page
-        ▲  Save appends a row, Delete removes it (and both also update Supabase)
+Supabase puzzles ──python puzzles_csv.py --download──▶  <category>.csv files
+Supabase puzzles ◀──python puzzles_csv.py --upload────  (edited) <category>.csv files
 ```
 
-- **One CSV per category**, file name = category: `/study/chess/mate_in_5.csv`. Columns `fen,note`; the `fen` cell can hold a whole PGN (quoted, line breaks are fine).
-- **Save** (needs Dropbox sign-in; the page signs in and finishes the save on return) appends a row to the category's CSV (creating it with a `fen,note` header if new), then saves to Supabase.
-- **Delete** removes the row from the CSV, then from Supabase.
-- **Writes are safe**: each write only goes through if the CSV hasn't changed in Dropbox since the page read it; otherwise it says "changed in Dropbox… try again".
-- **⇅ Sync from Dropbox** reads every CSV in `/study/chess` and makes Supabase match. It shows a summary (+add, ~update, −delete, and which puzzles would be deleted) and asks before changing anything. Rows are matched by FEN, so a puzzle keeps its `id` (and `?id=` links) when you reorder lines, edit its note, or move it to another CSV. Changing the FEN text itself makes it a new puzzle with a new id. A sync that finds no puzzles at all is refused, so an empty or missing folder can't wipe the table.
-- **First switch-over** was done with `python3 export_puzzles_to_dropbox.py` on the Mac (writes the Supabase puzzles out as CSVs; never overwrites existing ones).
-- The Dropbox sign-in lasts for the browser tab (stored in `sessionStorage`).
+- **Folder:** `~/Library/CloudStorage/Dropbox/study/chess` by default, the locally synced Dropbox folder. The script just reads and writes files there, so there is no Dropbox API and no sign-in. Use `--dir PATH` for another folder.
+- **Files:** one per category, named `<category>.csv` (a `/` or `\` in a category name becomes `-`), header `fen,note`, rows in puzzle order. The `fen` cell can hold a whole PGN (quoted; commas, quotes and line breaks are fine, the script uses Python's `csv` module).
+- **Keys:** `CHESS_SUPABASE_URL` and `CHESS_SUPABASE_SERVICE_ROLE_KEY` in the environment (it falls back to `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`). The script talks straight to Supabase with the service-role key; it does not use the access code.
+
+Exactly one mode is required:
+
+| Mode | What it does |
+|---|---|
+| `--download` | Writes `<category>.csv` for every category in Supabase, overwriting files whose content changed and skipping identical ones. CSVs for categories that no longer exist are left alone and listed. It never deletes files. |
+| `--upload` | Reads every `*.csv` (category = file name) into Supabase. Rows with an empty `fen` are skipped and `position` is the row number in the file. Rows are matched by FEN (same category first, then any category), so a matched puzzle keeps its `id` and `?id=` links when you reorder, edit its note or move it to another CSV. Unmatched CSV rows are inserted; `category`, `note` and `position` are updated where they differ; **Supabase rows that match no CSV row are deleted.** Changing the FEN text itself makes a new puzzle with a new id and deletes the old one. It refuses to run if the CSVs contain no puzzles at all, so an empty or missing folder can't wipe the table. |
+
+Options: `--dry-run` prints the plan (files to write, or `+add ~update -delete` with the rows that would be deleted) and changes nothing. `--yes` skips the confirmation; otherwise it always asks, and `--upload` lists the rows to be deleted before asking.
+
+Typical use:
+
+```bash
+python puzzles_csv.py --download --dry-run   # what would be written
+python puzzles_csv.py --download             # back up
+# …edit the CSVs…
+python puzzles_csv.py --upload --dry-run     # see +add ~update -delete first
+python puzzles_csv.py --upload
+```
+
+**Take a `--download` first and read the `--upload --dry-run` plan.** An upload makes Supabase match the CSVs exactly, so anything added on the page since your last download (for example a bulk add) is deleted unless it is in the files. An upload straight after a download reports `+0 ~0 -0`.

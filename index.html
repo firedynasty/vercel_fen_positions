@@ -786,55 +786,65 @@
                     </select>
                     <input type="text" id="sbNewCategoryInput" placeholder="New category name (e.g. mate_in_5)..." style="min-width: 180px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
                     <input type="text" id="sbNoteInput" placeholder="Note (e.g. win a pawn)..." style="flex: 1; min-width: 200px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
-                    <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">💾 Save to Dropbox + Supabase</button>
+                    <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">💾 Save to Supabase</button>
                     <button id="sbDeletePuzzleBtn" onclick="sbDeletePuzzle()" title="Delete the puzzle currently selected in the dropdown from Supabase" style="padding: 8px 18px; background: #c0392b; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">🗑️ Delete Loaded FEN/PGN</button>
                 </div>
                 <div id="sbPuzzleStatus" style="margin-top: 6px; font-size: 12px; color: #888;"></div>
 
-                <!-- Dropbox /study/chess is the source of truth; Supabase is the copy this page reads -->
-                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-                    <button id="chessSyncBtn" onclick="chessSyncFromDropbox()" title="Make Supabase match Dropbox /study/chess/*.csv" style="padding: 8px 16px; background: #0061fe; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold;">&#8645; Sync from Dropbox</button>
-                    <span style="font-size: 12px; color: #888;">Source of truth: Dropbox <code style="color: #ddd;">/study/chess/&lt;category&gt;.csv</code> (fen,note). <b style="color: #ddd;">💾 Save appends one new row to the end of that CSV in Dropbox</b>, then adds the same puzzle to Supabase. Delete removes that row from the CSV and Supabase. <b style="color: #ddd;">⇅ Sync from Dropbox</b> is for cleaning up in Dropbox itself: open <code style="color: #ddd;">/study/chess</code>, reorder lines, edit notes, add or delete lines, or move a line to another CSV, then press Sync. It reads what is now in every CSV and changes Supabase to match, showing what will change and asking first.</span>
+                <!-- Bulk add: paste fen,note rows exactly as exported from the chess app; category = the dropdown in the Save row above -->
+                <details style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <summary style="cursor: pointer; color: #ddd; font-weight: bold; font-size: 13px;">Bulk add rows (paste fen,note)</summary>
+                    <p style="font-size: 12px; color: #888; margin: 6px 0;">Paste one or many <code style="color: #ddd;">fen,note</code> rows (CSV, the PGN in quotes). They are added to the category chosen in the Save row above (or the new category name typed there). A <code style="color: #ddd;">fen,note</code> header line is skipped, and rows already in that category are ignored. The board and the Note box are not used.</p>
+                    <textarea id="sbBulkInput" rows="6" placeholder='"[Variant ""From Position""]&#10;[FEN ""…""]&#10;&#10;12. f5?? …","note text — https://…"' style="width: 100%; box-sizing: border-box; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 13px;"></textarea>
+                    <button onclick="sbBulkAdd()" style="margin-top: 6px; padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">➕ Add rows to Supabase</button>
+                </details>
+
+                <!-- Supabase `puzzles` is the only source of truth -->
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px; color: #888;">
+                    Source of truth: the Supabase <code style="color: #ddd;">puzzles</code> table. <b style="color: #ddd;">💾 Save</b>, <b style="color: #ddd;">➕ Add rows</b> and <b style="color: #ddd;">🗑️ Delete</b> change Supabase only, and need the access code (asked once, remembered in this browser). To back up or bulk edit, use <code style="color: #ddd;">python puzzles_csv.py</code> (see below).
                 </div>
-                <div id="chessSyncStatus" style="margin-top: 6px; font-size: 12px; color: #888; white-space: pre-wrap;"></div>
                 <div style="margin-top: 4px; font-size: 12px; color: #888;">
                     Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Or by category and place in the dropdown: <code style="color: #ddd;">?category=mate_in_5&amp;n=3</code> (3rd entry; <code style="color: #ddd;">n</code> defaults to 1; it follows the dropdown order, so it shifts if you reorder or delete — <code style="color: #ddd;">?id=</code> never does). Otherwise the category dropdown fills in normally, but no puzzle loads onto the board until you pick one.<br>Keys: <b style="color: #ddd;">← / →</b> previous / next puzzle, <b style="color: #ddd;">Space</b> next move, <b style="color: #ddd;">Shift+Space</b> previous move.
                 </div>
                 <details style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5;">
-                    <summary style="cursor: pointer; color: #ddd; font-weight: bold;">How Dropbox + Supabase work together (tap to open)</summary>
+                    <summary style="cursor: pointer; color: #ddd; font-weight: bold;">How the puzzles are stored (tap to open)</summary>
 
                     <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Where things live</b></p>
                     <ul style="margin: 0 0 0 18px; padding: 0;">
-                        <li><b style="color: #ddd;">Dropbox is the source of truth.</b> There is one CSV per category in <code style="color: #ddd;">/study/chess/</code>, and the file name is the category: <code style="color: #ddd;">mate_in_5.csv</code>. Each line is <code style="color: #ddd;">fen,note</code>. The fen cell can hold a whole PGN, in quotes, so it can span several lines.</li>
-                        <li><b style="color: #ddd;">Supabase is the copy this page reads.</b> The category and puzzle dropdowns, Prev / Next, the <code style="color: #ddd;">?id=</code> links and the puzzle ids all come from Supabase. Each puzzle row there has a number, shown as #id next to the dropdown.</li>
+                        <li><b style="color: #ddd;">Supabase is the only source of truth.</b> The category and puzzle dropdowns, Prev / Next, the <code style="color: #ddd;">?id=</code> links and the puzzle ids all come from the <code style="color: #ddd;">puzzles</code> table. Each puzzle row has a number, shown as #id next to the dropdown.</li>
+                        <li>There is no automatic sync with any file. Nothing you do on this page, and no CSV, can delete puzzles behind your back.</li>
                     </ul>
 
-                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">💾 Save to Dropbox + Supabase</b></p>
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">💾 Save to Supabase</b></p>
                     <ul style="margin: 0 0 0 18px; padding: 0;">
                         <li>Saves the FEN in the FEN box. If a PGN is loaded and you are stepping through it with Prev / Cycle Board, it saves the whole PGN instead.</li>
-                        <li>Step 1, Dropbox: <b style="color: #ddd;">appends one new row (a new line) at the end of</b> <code style="color: #ddd;">/study/chess/&lt;category&gt;.csv</code>. It edits the existing file, it does not upload a new one. A new category creates the file with a <code style="color: #ddd;">fen,note</code> header. Step 2, Supabase: adds a new row with a new id. If step 1 fails, nothing is saved to Supabase. If step 2 fails, the row is already in the CSV, and pressing Sync brings Supabase up to date.</li>
-                        <li>It never replaces a line. Saving the same FEN twice gives two lines and two ids.</li>
-                        <li>You must be signed in to Dropbox. If you are not, the page sends you to sign in and finishes the save when you come back. The sign-in lasts for this browser tab only, so a new tab asks again.</li>
-                        <li><b style="color: #ddd;">Safe writes:</b> a save only goes through if the CSV has not changed in Dropbox since the page read it. If it has, you see "changed in Dropbox since it was read: try again", and nothing is lost.</li>
+                        <li>Adds a new row with a new id at the end of the category. It never replaces a row, so saving the same FEN twice gives two rows.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">➕ Bulk add</b></p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li>Paste <code style="color: #ddd;">fen,note</code> rows into the textarea; they are added to the chosen category, skipping rows already there.</li>
                     </ul>
 
                     <p style="margin: 8px 0 4px;"><b style="color: #ddd;">🗑️ Delete</b> (the red button here)</p>
                     <ul style="margin: 0 0 0 18px; padding: 0;">
-                        <li>Deletes the puzzle selected in the dropdown: its line is removed from the CSV, then its Supabase row. It asks you to confirm first and cannot be undone.</li>
+                        <li>Deletes the puzzle selected in the dropdown from Supabase. It asks you to confirm first and cannot be undone.</li>
                     </ul>
 
-                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Edit in Dropbox, then ⇅ Sync from Dropbox</b></p>
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Access code</b></p>
                     <ul style="margin: 0 0 0 18px; padding: 0;">
-                        <li>In Dropbox you can <b style="color: #ddd;">reorder</b> lines, <b style="color: #ddd;">edit notes</b>, <b style="color: #ddd;">add</b> lines, <b style="color: #ddd;">delete</b> lines, or <b style="color: #ddd;">cut a line into another CSV</b>. Then press Sync here.</li>
-                        <li>Sync reads every CSV and works out what would change. It shows a summary first, like <i>3 CSVs, 41 puzzles → +2 add, ~1 update, -1 delete</i>, and lists the puzzles that would be deleted, for example <i>Deleting (not in any CSV): #42 mate_in_5: win the queen</i>. <b style="color: #ddd;">OK</b> applies it. <b style="color: #ddd;">Cancel</b> changes nothing. If nothing differs it says "Supabase already matches Dropbox."</li>
-                        <li><b style="color: #ddd;">Lines are matched by their FEN / PGN text,</b> not by position. So a puzzle keeps its id, and its <code style="color: #ddd;">?id=</code> links, when you reorder lines, edit its note, or move it to another CSV. Moving it changes only its category.</li>
-                        <li>If you change the FEN text itself, Sync sees a new puzzle (new id) and, if the old text is gone, offers to delete the old one.</li>
-                        <li>A sync that finds no puzzles at all is refused, so an empty or missing folder can never wipe the table.</li>
+                        <li>Save, bulk add and delete need the server's <code style="color: #ddd;">ACCESS_CODE</code>. The page asks for it the first time and remembers it in this browser (localStorage). A wrong code is forgotten, so you are asked again. Reading puzzles needs no code.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Backup and bulk edit: <code style="color: #ddd;">python puzzles_csv.py</code></b></p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li><code style="color: #ddd;">--download</code> writes one CSV per category (<code style="color: #ddd;">&lt;category&gt;.csv</code>, columns <code style="color: #ddd;">fen,note</code>, in puzzle order) into <code style="color: #ddd;">~/Library/CloudStorage/Dropbox/study/chess</code>, a backup you can also edit.</li>
+                        <li><code style="color: #ddd;">--upload</code> reads those CSVs back into Supabase: rows are matched by FEN (a puzzle keeps its id and <code style="color: #ddd;">?id=</code> links when you reorder, edit its note or move it to another CSV), new rows are inserted, and Supabase rows that match no CSV row are deleted. It shows the plan and asks first; <code style="color: #ddd;">--dry-run</code> only prints it. It refuses to run if the CSVs hold no puzzles.</li>
                     </ul>
 
                     <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Links</b></p>
                     <ul style="margin: 0 0 8px 18px; padding: 0;">
-                        <li>A <code style="color: #ddd;">?id=</code> link opens that puzzle. After a delete (or a Sync that deleted it) the link stops working and says "Puzzle not found". After a move it still works.</li>
+                        <li>A <code style="color: #ddd;">?id=</code> link opens that puzzle. After the puzzle is deleted the link stops working and says "Puzzle not found". Moving it to another category does not break it.</li>
                     </ul>
                 </details>
             </div>
@@ -2307,7 +2317,6 @@
                     window.history.replaceState({}, document.title, redirectUri);
                     updateDropboxButtons();
                     showToast('Dropbox connected!');
-                    chessResumePending();
                 } else {
                     console.error('Dropbox auth failed:', data.error_description || data.error);
                 }
@@ -2508,190 +2517,6 @@
                 }
             } catch (err) {
                 setDropboxStatus('Save error: ' + err.message);
-            }
-        }
-
-        // ============================================
-        // CHESS CSVs IN DROPBOX (source of truth) -> Supabase (what this page reads)
-        // One CSV per category: /study/chess/<category>.csv with columns fen,note.
-        // ============================================
-        const CHESS_DIR = '/study/chess';
-
-        function chessCsvPath(category) {
-            return CHESS_DIR + '/' + category.replace(/[\/\\]/g, '-') + '.csv';
-        }
-
-        // Dropbox-API-Arg is an HTTP header: non-ASCII must be \u-escaped.
-        function chessApiArg(obj) {
-            return JSON.stringify(obj).replace(/[\u007f-￿]/g, c => '\\u' + ('000' + c.charCodeAt(0).toString(16)).slice(-4));
-        }
-
-        // Not signed in: remember what to do, sign in (redirects the page), resume after.
-        function chessNeedsSignIn(pending) {
-            if (window.dropboxAccessToken) return false;
-            try { sessionStorage.setItem('chess_pending', JSON.stringify(pending || { type: 'none' })); } catch (e) {}
-            showToast('Signing in to Dropbox first…');
-            dropboxSignIn();
-            return true;
-        }
-
-        async function chessResumePending() {
-            let p = null;
-            try { p = JSON.parse(sessionStorage.getItem('chess_pending') || 'null'); sessionStorage.removeItem('chess_pending'); } catch (e) {}
-            if (!p) return;
-            if (p.type === 'sync') return chessSyncFromDropbox();
-            if (p.type === 'save') {
-                const statusEl = document.getElementById('sbPuzzleStatus');
-                try {
-                    await chessAppendRow(p.category, p.fen, p.note);
-                    const res = await fetch('/api/puzzles', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'save', category: p.category, note: p.note, fen: p.fen })
-                    });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || 'Save failed');
-                    statusEl.textContent = 'Saved to "' + p.category + '" (Dropbox ' + chessCsvPath(p.category) + ' + Supabase).';
-                    showToast('Puzzle saved!');
-                    await sbLoadCategories();
-                } catch (err) {
-                    showToast('Save failed: ' + err.message);
-                }
-            }
-        }
-
-        async function chessDbx(url, opts) {
-            const res = await fetch(url, opts);
-            if (res.status === 401) {
-                window.dropboxAccessToken = null;
-                try { sessionStorage.removeItem('dropbox_token'); } catch (e) {}
-                updateDropboxButtons();
-                throw new Error('Dropbox session expired: sign in again');
-            }
-            return res;
-        }
-
-        function chessParseCsv(text) {
-            const rows = Papa.parse(text, { skipEmptyLines: true }).data;
-            if (rows.length && String(rows[0][0] || '').trim().toLowerCase() === 'fen') rows.shift();
-            return rows.filter(r => String(r[0] || '').trim())
-                       .map(r => ({ fen: String(r[0]).trim(), note: String(r[1] || '').trim() }));
-        }
-
-        // -> { text, rev } or null when the file doesn't exist yet
-        async function chessReadCsv(category) {
-            const res = await chessDbx('https://content.dropboxapi.com/2/files/download', {
-                method: 'POST',
-                headers: { Authorization: 'Bearer ' + window.dropboxAccessToken, 'Dropbox-API-Arg': chessApiArg({ path: chessCsvPath(category) }) }
-            });
-            if (res.status === 409) return null;
-            if (!res.ok) throw new Error('Reading ' + chessCsvPath(category) + ' failed (' + res.status + ')');
-            const text = await res.text();
-            let rev = null;
-            try { rev = JSON.parse(res.headers.get('Dropbox-API-Result')).rev; } catch (e) {}
-            if (!rev) {
-                const m = await chessDbx('https://api.dropboxapi.com/2/files/get_metadata', {
-                    method: 'POST',
-                    headers: { Authorization: 'Bearer ' + window.dropboxAccessToken, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: chessCsvPath(category) })
-                });
-                rev = (await m.json()).rev;
-            }
-            return { text, rev };
-        }
-
-        // Upload only if the file is unchanged since it was read (rev), or doesn't exist yet.
-        async function chessWriteCsv(category, text, rev) {
-            const res = await chessDbx('https://content.dropboxapi.com/2/files/upload', {
-                method: 'POST',
-                headers: {
-                    Authorization: 'Bearer ' + window.dropboxAccessToken,
-                    'Content-Type': 'application/octet-stream',
-                    'Dropbox-API-Arg': chessApiArg({
-                        path: chessCsvPath(category),
-                        mode: rev ? { '.tag': 'update', update: rev } : { '.tag': 'add' },
-                        autorename: false, mute: true
-                    })
-                },
-                body: text
-            });
-            if (res.status === 409) throw new Error(chessCsvPath(category) + ' changed in Dropbox since it was read: try again');
-            if (!res.ok) throw new Error('Writing ' + chessCsvPath(category) + ' failed (' + res.status + ')');
-        }
-
-        async function chessAppendRow(category, fen, note) {
-            const cur = await chessReadCsv(category);
-            const line = Papa.unparse([[fen, note || '']], { newline: '\n' }) + '\n';
-            let text = cur ? cur.text : 'fen,note\n';
-            if (text && !text.endsWith('\n')) text += '\n';
-            await chessWriteCsv(category, text + line, cur && cur.rev);
-        }
-
-        async function chessRemoveRow(category, fen) {
-            const cur = await chessReadCsv(category);
-            if (!cur) return;  // not in Dropbox: nothing to remove there
-            const rows = chessParseCsv(cur.text);
-            const i = rows.findIndex(r => r.fen === String(fen).trim());
-            if (i < 0) return;
-            rows.splice(i, 1);
-            const text = Papa.unparse({ fields: ['fen', 'note'], data: rows.map(r => [r.fen, r.note]) }, { newline: '\n' }) + '\n';
-            await chessWriteCsv(category, text, cur.rev);
-        }
-
-        async function chessSyncFromDropbox() {
-            if (chessNeedsSignIn({ type: 'sync' })) return;
-            const statusEl = document.getElementById('chessSyncStatus');
-            const btn = document.getElementById('chessSyncBtn');
-            btn.disabled = true;
-            try {
-                statusEl.textContent = 'Reading ' + CHESS_DIR + '…';
-                const files = [];
-                let res = await chessDbx('https://api.dropboxapi.com/2/files/list_folder', {
-                    method: 'POST',
-                    headers: { Authorization: 'Bearer ' + window.dropboxAccessToken, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: CHESS_DIR })
-                });
-                if (res.status === 409) throw new Error(CHESS_DIR + ' not found in Dropbox (export once with export_puzzles_to_dropbox.py)');
-                if (!res.ok) throw new Error('Listing ' + CHESS_DIR + ' failed (' + res.status + ')');
-                let data = await res.json();
-                while (true) {
-                    data.entries.forEach(e => { if (e['.tag'] === 'file' && /\.csv$/i.test(e.name)) files.push(e.name); });
-                    if (!data.has_more) break;
-                    res = await chessDbx('https://api.dropboxapi.com/2/files/list_folder/continue', {
-                        method: 'POST',
-                        headers: { Authorization: 'Bearer ' + window.dropboxAccessToken, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ cursor: data.cursor })
-                    });
-                    data = await res.json();
-                }
-                const categories = {};
-                await Promise.all(files.map(async name => {
-                    const category = name.replace(/\.csv$/i, '');
-                    const cur = await chessReadCsv(category);
-                    categories[category] = cur ? chessParseCsv(cur.text) : [];
-                }));
-                const total = Object.values(categories).reduce((n, r) => n + r.length, 0);
-
-                const post = (dryRun) => fetch('/api/puzzles', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'sync', categories, dryRun })
-                }).then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Sync failed'); return d; });
-
-                const plan = await post(true);
-                const summary = files.length + ' CSVs, ' + total + ' puzzles → +' + plan.add + ' add, ~' + plan.update + ' update, -' + plan.delete + ' delete';
-                if (!plan.add && !plan.update && !plan.delete) { statusEl.textContent = summary + '\nSupabase already matches Dropbox.'; return; }
-                const gone = plan.deleted.slice(0, 8).map(d => '  #' + d.id + ' ' + d.category + (d.note ? ': ' + d.note.slice(0, 40) : '')).join('\n');
-                if (!confirm('Sync Supabase to Dropbox?\n\n' + summary + (plan.delete ? '\n\nDeleting (not in any CSV):\n' + gone + (plan.delete > 8 ? '\n  …' : '') : ''))) {
-                    statusEl.textContent = summary + '\nCancelled.';
-                    return;
-                }
-                await post(false);
-                statusEl.textContent = summary + '\nDone.';
-                showToast('Synced from Dropbox');
-                await sbLoadCategories();
-            } catch (err) {
-                statusEl.textContent = 'Sync failed: ' + err.message;
-            } finally {
-                btn.disabled = false;
             }
         }
 
@@ -3391,6 +3216,29 @@
             input.style.display = sel.value === '__new__' ? '' : 'none';
         }
 
+        // Writes (save / bulk / delete) need the server's ACCESS_CODE: asked once, kept in localStorage.
+        // A wrong code is forgotten so the next write asks again.
+        function sbAccessCode() {
+            let code = '';
+            try { code = localStorage.getItem('puzzles_access_code') || ''; } catch (e) {}
+            if (!code) {
+                code = (prompt('Access code:') || '').trim();
+                if (code) { try { localStorage.setItem('puzzles_access_code', code); } catch (e) {} }
+            }
+            return code;
+        }
+
+        async function sbWriteFetch(url, opts) {
+            const code = sbAccessCode();
+            if (!code) throw new Error('Access code required');
+            const res = await fetch(url, { ...opts, headers: { ...(opts.headers || {}), 'X-Access-Code': code } });
+            if (res.status === 401) {
+                try { localStorage.removeItem('puzzles_access_code'); } catch (e) {}
+                throw new Error('Wrong access code: try again');
+            }
+            return res;
+        }
+
         // Delete the puzzle currently selected in the dropdown (the one loaded on the board) from Supabase
         async function sbDeletePuzzle() {
             const puzzle = sbCurrentPuzzle();
@@ -3400,13 +3248,11 @@
             const category = puzzle.category;
             const kind = sbIsPgn(puzzle.fen) ? 'PGN' : 'FEN';
             const label = puzzle.note ? '\n\nNote: ' + puzzle.note.slice(0, 120) : '';
-            if (chessNeedsSignIn(null)) return;
             if (!confirm('Delete this ' + kind + ' puzzle from "' + category + '"? This cannot be undone.' + label)) return;
 
             statusEl.textContent = 'Deleting…';
             try {
-                await chessRemoveRow(category, puzzle.fen);
-                const res = await fetch('/api/puzzles?id=' + encodeURIComponent(puzzle.id), { method: 'DELETE' });
+                const res = await sbWriteFetch('/api/puzzles?id=' + encodeURIComponent(puzzle.id), { method: 'DELETE' });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Delete failed');
 
@@ -3424,6 +3270,64 @@
             }
         }
 
+        // Pasted CSV text -> [{ fen, note }]. Each row is two cells: the PGN/FEN, then the note.
+        function sbParseBulk(text) {
+            const data = Papa.parse(text.replace(/\r/g, ''), { skipEmptyLines: true }).data;
+            if (data.length && String(data[0][0] || '').trim().toLowerCase() === 'fen') data.shift();
+            const rows = [], bad = [];
+            data.forEach((r, i) => {
+                const fen = String(r[0] || '').trim();
+                const note = String(r[1] || '').trim();
+                if (r.length < 2 || !sbIsPgn(fen)) { bad.push(i + 1); return; }
+                rows.push({ fen, note });
+            });
+            return { rows, bad };
+        }
+
+        async function sbBulkAdd() {
+            const statusEl = document.getElementById('sbPuzzleStatus');
+            const sel = document.getElementById('sbSaveCategorySelect');
+            const category = sel.value === '__new__'
+                ? document.getElementById('sbNewCategoryInput').value.trim()
+                : sel.value;
+            if (!category) { showToast('Pick or enter a category in the Save row first'); return; }
+            const { rows, bad } = sbParseBulk(document.getElementById('sbBulkInput').value);
+            if (bad.length) { statusEl.textContent = 'Row(s) ' + bad.join(', ') + ' could not be read (need two cells: a PGN with [FEN "…"], then the note). Nothing added.'; return; }
+
+            // Drop rows already in this category, and repeats within the paste.
+            let existing = [];
+            try {
+                const r = await fetch('/api/puzzles?action=list&category=' + encodeURIComponent(category));
+                if (r.ok) existing = (await r.json()).map(p => String(p.fen).trim());
+            } catch (e) {}
+            const seen = new Set(existing);
+            const fresh = rows.filter(r => !seen.has(r.fen) && seen.add(r.fen));
+            if (!fresh.length) { statusEl.textContent = 'Nothing new: every row is already in "' + category + '".'; return; }
+            const skipped = rows.length - fresh.length;
+            if (!confirm('Add ' + fresh.length + ' row(s) to "' + category + '"?' + (skipped ? '\n(' + skipped + ' duplicate(s) skipped)' : ''))) return;
+            await sbBulkSave(category, fresh);
+        }
+
+        async function sbBulkSave(category, rows) {
+            const statusEl = document.getElementById('sbPuzzleStatus');
+            statusEl.textContent = 'Adding ' + rows.length + ' row(s)…';
+            try {
+                const res = await sbWriteFetch('/api/puzzles', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'bulk', category, rows })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Bulk add failed');
+                statusEl.textContent = 'Added ' + data.added + ' row(s) to "' + category + '" (Supabase).';
+                document.getElementById('sbBulkInput').value = '';
+                showToast('Added ' + data.added + ' puzzles');
+                await sbLoadCategories();
+            } catch (err) {
+                statusEl.textContent = '';
+                showToast('Bulk add failed: ' + err.message);
+            }
+        }
+
         async function sbSavePuzzle() {
             const statusEl = document.getElementById('sbPuzzleStatus');
             const sel = document.getElementById('sbSaveCategorySelect');
@@ -3438,12 +3342,10 @@
 
             if (!category) { showToast('Enter a category name'); return; }
             if (!fen) { showToast('No FEN on the board to save'); return; }
-            if (chessNeedsSignIn({ type: 'save', category, note, fen })) return;
 
             statusEl.textContent = cycleActive ? 'Saving PGN (' + cyclePositions.length + ' positions)…' : 'Saving…';
             try {
-                await chessAppendRow(category, fen, note);
-                const res = await fetch('/api/puzzles', {
+                const res = await sbWriteFetch('/api/puzzles', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'save', category, note, fen })
@@ -3451,7 +3353,7 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Save failed');
 
-                statusEl.textContent = 'Saved ' + (cycleActive ? 'PGN' : 'FEN') + ' to "' + category + '" (Dropbox ' + chessCsvPath(category) + ' + Supabase).';
+                statusEl.textContent = 'Saved ' + (cycleActive ? 'PGN' : 'FEN') + ' to "' + category + '" (Supabase).';
                 document.getElementById('sbNoteInput').value = '';
                 showToast(cycleActive ? 'PGN saved (' + cyclePositions.length + ' positions)!' : 'Puzzle saved!');
 

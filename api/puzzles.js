@@ -7,28 +7,46 @@
 // Set in Vercel dashboard -> Settings -> Environment Variables:
 //   SUPABASE_URL = https://xxxx.supabase.co
 //   SUPABASE_SERVICE_ROLE_KEY = your-service-role-key
+//   ACCESS_CODE = code required (X-Access-Code header) for every write
 //
 // Endpoints:
 //   GET  /api/puzzles?action=categories
 //   GET  /api/puzzles?action=list&category=X
 //   GET  /api/puzzles?action=get&id=123
-//   POST /api/puzzles   { action: "save", category, note, fen }
-//   POST /api/puzzles   { action: "sync", categories: { name: [{ fen, note }, ...] }, dryRun }
-//   DELETE /api/puzzles?id=123
+//   POST /api/puzzles   { action: "save", category, note, fen }              (needs access code)
+//   POST /api/puzzles   { action: "bulk", category, rows: [{ fen, note }] }  (needs access code)
+//   DELETE /api/puzzles?id=123                                               (needs access code)
 //
-// Source of truth is Dropbox /study/chess/<category>.csv (fen,note). "sync" makes
-// the table match those CSVs (see syncPuzzles below); the page reads the table so
-// ?id= links and Load by ID work without a Dropbox sign-in.
+// Supabase `puzzles` is the only source of truth. Backup / bulk edit through CSVs is
+// done offline with puzzles_csv.py; no web request can delete puzzles because of a CSV.
+
+import { timingSafeEqual } from 'node:crypto';
 
 const LIST_COLUMNS = 'id,category,note,fen,position,created_at';
-// position = the row's line number in its CSV (set by sync; save appends at the end).
+// position = order inside a category (save / bulk append at the end; puzzles_csv.py --upload sets it).
 // Needs: alter table puzzles add column position integer; update puzzles set position = id;
 const LIST_ORDER = 'position.asc.nullslast,id.asc';
+
+// Writes need the shared ACCESS_CODE. Fails closed if it isn't configured.
+function checkAccessCode(req, res) {
+  const expected = process.env.ACCESS_CODE;
+  if (!expected) {
+    res.status(500).json({ error: 'ACCESS_CODE not set on server.' });
+    return false;
+  }
+  const given = String(req.headers['x-access-code'] || '');
+  const a = Buffer.from(given), b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    res.status(401).json({ error: 'Wrong access code' });
+    return false;
+  }
+  return true;
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Access-Code');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -77,12 +95,32 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
+      if (!checkAccessCode(req, res)) return;
       const { action, category, note, fen } = req.body || {};
-      if (action === 'sync') {
-        const { categories, dryRun } = req.body;
-        return res.status(200).json(await syncPuzzles(url, headers, categories, !!dryRun));
+      if (action === 'bulk') {
+        const rows = (req.body.rows || [])
+          .map(r => ({ fen: String(r.fen || '').trim(), note: String(r.note || '').trim() || null }))
+          .filter(r => r.fen);
+        if (!category || !rows.length) return res.status(400).json({ error: 'category and rows are required' });
+
+        // Same placement as save: after the highest position in the category.
+        const last = await fetch(`${url}/rest/v1/puzzles?${new URLSearchParams({
+          select: 'position', category: `eq.${category}`, order: 'position.desc.nullslast', limit: '1',
+        })}`, { headers });
+        const lastRows = await last.json();
+        if (!last.ok) return res.status(last.status).json(lastRows);
+        const start = ((lastRows[0] && lastRows[0].position) || 0) + 1;
+
+        const r = await fetch(`${url}/rest/v1/puzzles`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify(rows.map((row, i) => ({ category, note: row.note, fen: row.fen, position: start + i }))),
+        });
+        const created = await r.json();
+        if (!r.ok) return res.status(r.status).json(created);
+        return res.status(200).json({ success: true, added: created.length });
       }
-      if (action !== 'save') return res.status(400).json({ error: 'Unknown action. Use action=save or action=sync' });
+      if (action !== 'save') return res.status(400).json({ error: 'Unknown action. Use action=save or action=bulk' });
       if (!category || !fen) {
         return res.status(400).json({ error: 'category and fen are required' });
       }
@@ -106,6 +144,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
+      if (!checkAccessCode(req, res)) return;
       const id = String(req.query.id || '');
       if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'A numeric id is required' });
 
@@ -123,70 +162,4 @@ export default async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
-}
-
-// Make the table match the CSVs: { category: [{ fen, note }, ...] } in file order.
-// Rows are matched by FEN (same category first, then any category), so a matched
-// puzzle keeps its id and ?id= links survive reorders, note edits and moves
-// between CSVs. Unmatched CSV rows are inserted; unmatched table rows deleted.
-async function syncPuzzles(url, headers, categories, dryRun) {
-  if (!categories || typeof categories !== 'object') throw new Error('categories required');
-  const wanted = [];
-  for (const [category, rows] of Object.entries(categories)) {
-    (rows || []).forEach((r, i) => {
-      const fen = String(r.fen || '').trim();
-      if (fen) wanted.push({ category, fen, note: String(r.note || '').trim() || null, position: i + 1 });
-    });
-  }
-  // A Dropbox read that came back empty must never wipe the table.
-  if (!wanted.length) throw new Error('No puzzles in the CSVs; refusing to delete everything');
-
-  const r = await fetch(`${url}/rest/v1/puzzles?select=id,category,note,fen,position&order=id.asc`, { headers });
-  const existing = await r.json();
-  if (!r.ok) throw new Error(existing.message || `Supabase error ${r.status}`);
-
-  const unused = new Map(existing.map((row) => [row.id, row]));
-  const take = (pred) => {
-    for (const row of unused.values()) if (pred(row)) { unused.delete(row.id); return row; }
-    return null;
-  };
-  const inserts = [], updates = [];
-  // Pass 1: same category + FEN. Pass 2: FEN moved to another category.
-  const matched = new Map();
-  wanted.forEach((w, i) => {
-    const row = take((e) => e.category === w.category && e.fen.trim() === w.fen);
-    if (row) matched.set(i, row);
-  });
-  wanted.forEach((w, i) => {
-    const row = matched.get(i) || take((e) => e.fen.trim() === w.fen);
-    if (!row) { inserts.push(w); return; }
-    const patch = {};
-    if (row.category !== w.category) patch.category = w.category;
-    if ((row.note || null) !== w.note) patch.note = w.note;
-    if (row.position !== w.position) patch.position = w.position;
-    if (Object.keys(patch).length) updates.push({ id: row.id, patch });
-  });
-  const deletes = [...unused.values()];
-
-  const plan = {
-    add: inserts.length, update: updates.length, delete: deletes.length,
-    deleted: deletes.map((d) => ({ id: d.id, category: d.category, note: d.note })),
-  };
-  if (dryRun) return plan;
-
-  if (deletes.length) {
-    const d = await fetch(`${url}/rest/v1/puzzles?id=in.(${deletes.map((x) => x.id).join(',')})`, { method: 'DELETE', headers });
-    if (!d.ok) throw new Error(`Delete failed: ${d.status} ${await d.text()}`);
-  }
-  for (let i = 0; i < updates.length; i += 10) {
-    await Promise.all(updates.slice(i, i + 10).map(async (u) => {
-      const p = await fetch(`${url}/rest/v1/puzzles?id=eq.${u.id}`, { method: 'PATCH', headers, body: JSON.stringify(u.patch) });
-      if (!p.ok) throw new Error(`Update ${u.id} failed: ${p.status} ${await p.text()}`);
-    }));
-  }
-  if (inserts.length) {
-    const ins = await fetch(`${url}/rest/v1/puzzles`, { method: 'POST', headers, body: JSON.stringify(inserts) });
-    if (!ins.ok) throw new Error(`Insert failed: ${ins.status} ${await ins.text()}`);
-  }
-  return plan;
 }
