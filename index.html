@@ -730,8 +730,8 @@
                     <span id="sbLoadedPuzzleId" title="Supabase id of the puzzle currently on the board" style="color: #3ecf8e; font-weight: bold; min-width: 40px;"></span>
                     <input type="text" id="sbPuzzleIdInput" placeholder="Load by ID..." onkeydown="if(event.key==='Enter') sbLoadPuzzleByIdInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 100px;">
                     <button onclick="sbLoadPuzzleByIdInput()" title="Fetch straight from Supabase by id — no need to pick a category first" style="padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Load ID</button>
-                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category (↑ key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
-                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category (↓ key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
+                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category ([ key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
+                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category (] key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
                     <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
                     <label style="display: flex; align-items: center; gap: 4px; color: #aaa; font-size: 12px; cursor: pointer;" title="Show each puzzle's note automatically as you step through with Next / Prev">
                         <input type="checkbox" id="sbAutoNoteToggle" onchange="sbSetAutoNote(this.checked)"> Auto-reveal notes
@@ -944,9 +944,9 @@
                     <button class="copy-btn" onclick="lineLast()" title="To the end of the current line" style="padding: 8px 14px; font-size: 14px;">⏭</button>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 8px;">
-                    <button class="copy-btn" onclick="lineVariation(-1)" title="Previous variation ( [ key )" style="padding: 6px 14px; font-size: 13px;">[ Var</button>
+                    <button class="copy-btn" onclick="lineExitVariation()" title="Back to the main-line move ( ↑ key )" style="padding: 6px 14px; font-size: 13px;">↑ Out</button>
                     <span id="lineVarIndicator" style="min-width: 110px; text-align: center; color: #aaa; font-size: 12px;"></span>
-                    <button class="copy-btn" onclick="lineVariation(1)" title="Next variation ( ] key )" style="padding: 6px 14px; font-size: 13px;">Var ]</button>
+                    <button class="copy-btn" onclick="lineEnterVariation()" title="Step into a variation ( ↓ key )" style="padding: 6px 14px; font-size: 13px;">Var ↓</button>
                 </div>
                 <div id="lineComment" style="display: none; margin-bottom: 8px; padding: 8px 10px; background: rgba(0,0,0,0.3); border-left: 3px solid #ffd700; border-radius: 5px; font-size: 13px; line-height: 1.5; color: #ffd43b;"></div>
                 <button class="copy-btn" onclick="copyMoveHistory()" style="width: 100%; padding: 8px; font-size: 13px;">📋 Copy Move History</button>
@@ -1827,7 +1827,7 @@
             currentCyclingIndex = null;
             loadPositionFromCycle();
             showToast(cyclePositions.length > 1
-                ? `PGN loaded: ${cyclePositions.length - 1} moves. ← → step through it, [ ] switch variations.`
+                ? `PGN loaded: ${cyclePositions.length - 1} moves. ← → step through it, ↓ enters a variation, ↑ backs out.`
                 : 'Position loaded (no moves to step through)');
         }
 
@@ -2050,20 +2050,25 @@
 
         // [ / ]: switch between the alternatives at this point. A move with siblings cycles among
         // them; with none, it cycles the alternatives for the NEXT move (if there are any).
-        function lineVariation(dir) {
+        // ↓ : step into a variation. A move whose parent has other continuations "has variations"
+        // (they sit in parentheses after it); from the main-line move go to the first one, from inside
+        // a variation go on to the next sibling. With no sibling, fall back to the alternatives for the next move.
+        function lineEnterVariation() {
             if (!lineNode) { showToast('No line loaded'); return; }
             const sibs = lineNode.parent ? lineNode.parent.children : [];
-            if (sibs.length > 1) {
-                lineGo(sibs[(sibs.indexOf(lineNode) + dir + sibs.length) % sibs.length]);
-                return;
+            const at = sibs.indexOf(lineNode);
+            if (at >= 0 && at < sibs.length - 1) { lineGo(sibs[at + 1]); return; }
+            if (sibs.length <= 1 && lineNode.children.length > 1) { lineGo(lineNode.children[1]); return; }
+            showToast(sibs.length > 1 ? 'Last variation here' : 'No variation here');
+        }
+
+        // ↑ : jump back from a variation to the main-line move it branched from
+        function lineExitVariation() {
+            if (!lineNode) { showToast('No line loaded'); return; }
+            for (let n = lineNode; n && n.parent; n = n.parent) {
+                if (n.parent.children[0] !== n) { lineGo(n.parent.children[0]); return; }
             }
-            const kids = lineNode.children;
-            if (kids.length > 1) {
-                const base = Math.max(0, kids.indexOf(linePreferred(lineNode)));
-                lineGo(kids[(base + dir + kids.length) % kids.length]);
-                return;
-            }
-            showToast('No variation here');
+            showToast('Already on the main line');
         }
 
         function lineCleanComment(c) {
@@ -4108,8 +4113,8 @@
         // Keyboard shortcuts (decision is a pure function so it can be tested on its own):
         //   →  /  ←         next / previous move in the line   (same as Next → / ← Back)
         //   Space           next move                          (Shift + Space: previous move)
-        //   ]  /  [         next / previous variation          (same as Var ] / [ Var)
-        //   ↓  /  ↑         next / previous Supabase puzzle    (same as Next ▶ / ◀ Prev)
+        //   ↓  /  ↑         enter a variation / back out to the main line (Var ↓ / ↑ Out)
+        //   ]  /  [         next / previous Supabase puzzle    (same as Next ▶ / ◀ Prev)
         // Ignored while typing in a text box / textarea, while a dropdown has focus
         // (arrows already change it), with Ctrl / Alt / Cmd held, or with the Lichess Links popup open.
         function keyShortcut(k) {
@@ -4119,10 +4124,10 @@
             if (typing) return null;
             if (k.key === 'ArrowRight') return 'moveNext';
             if (k.key === 'ArrowLeft') return 'movePrev';
-            if (k.key === ']') return 'varNext';
-            if (k.key === '[') return 'varPrev';
-            if (k.key === 'ArrowDown') return 'puzzleNext';
-            if (k.key === 'ArrowUp') return 'puzzlePrev';
+            if (k.key === 'ArrowDown') return 'varNext';
+            if (k.key === 'ArrowUp') return 'varPrev';
+            if (k.key === ']') return 'puzzleNext';
+            if (k.key === '[') return 'puzzlePrev';
             if (k.key === ' ' || k.key === 'Spacebar') return k.shiftKey ? 'movePrev' : 'moveNext';
             return null;
         }
@@ -4145,8 +4150,8 @@
             else if (action === 'puzzlePrev') sbPrevPuzzle();
             else if (action === 'moveNext') window.moveNavNext();
             else if (action === 'movePrev') window.moveNavPrev();
-            else if (action === 'varNext') lineVariation(1);
-            else if (action === 'varPrev') lineVariation(-1);
+            else if (action === 'varNext') lineEnterVariation();
+            else if (action === 'varPrev') lineExitVariation();
         });
         // Firefox clicks a focused button on Space *keyup*, so cancel that too
         document.addEventListener('keyup', function(e) {

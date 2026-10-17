@@ -153,7 +153,7 @@ The section is titled **Supabase Puzzles** and has two rows.
 |---|---|
 | **Category dropdown** | Lists the categories. Changing it loads that category's puzzles. |
 | **Puzzle dropdown** | One entry per puzzle, e.g. `1 · FEN — 1k1q4/1pp2rQ1/8/3p…` or `3 ▶ PGN — 2k2r2/pppr1pQ1/…`. `· FEN` = plain FEN, `▶ PGN` = a saved PGN. The preview is the first 24 characters of the start FEN. Picking an entry loads it on the board. |
-| **◀ Prev / Next ▶** | Move to the previous or next puzzle in the category and load it (**↑ / ↓** keys). They wrap around at both ends. Disabled until a category has loaded. |
+| **◀ Prev / Next ▶** | Move to the previous or next puzzle in the category and load it (**[ / ]** keys). They wrap around at both ends. Disabled until a category has loaded. |
 | **👁 Reveal Note** | Shows or hides the puzzle's note. The note hides again whenever you load another puzzle. |
 
 **What loading does**
@@ -168,7 +168,7 @@ The section is titled **Supabase Puzzles** and has two rows.
 |---|---|
 | **← Back / Next →** (**←** / **→** keys, **Space** / **Shift+Space**) | Step along the current line. They stop at the ends (no wrap-around). |
 | **⏮ / ⏭** | Jump to the start position / the end of the current line. |
-| **[ Var / Var ]** (**[** / **]** keys) | Switch between the alternatives at this point. A move with sibling variations cycles among them; a move with none cycles the alternatives for the next move. The counter shows "line 2 of 3". |
+| **Var ↓ / ↑ Out** (**↓** / **↑** keys) | **↓** steps into a variation: on a move that has variations it goes to the first one (again for the next). **↑** jumps back from a variation to the main-line move it branched from. The counter shows "line 2 of 3". |
 | **Clicking a move** | Jumps there, in the main line or any variation. |
 | **Comment panel** | Shows the current move's comment. |
 
@@ -295,7 +295,7 @@ Related PGN pieces the feature depends on: `pgnAdoptFromText`, `replayPgnRelaxed
 | Saving a PGN fails with a length error | `fen` is a short `varchar`. Change it to `text`. |
 | A saved PGN loads as one position | The text has no `[FEN "…"]` header, so it is treated as a plain FEN, or it has a header but no moves. |
 | The move navigator is empty / ← → do nothing | The loaded puzzle is a plain FEN (one position), or no PGN is loaded. |
-| ← → no longer switch puzzles | By design: ← → step moves, **[ ]** switch variations, and **↑ ↓** switch puzzles. |
+| ← → no longer switch puzzles | By design: ← → step moves, **↓** enters a variation, **↑** backs out, and **[ ]** switch puzzles. |
 | New puzzles appear in the wrong place | New saves go to `highest position + 1`. To reorder, edit the CSV and run `python puzzles_csv.py --upload` (section 12). |
 | Bulk add says "Row(s) … could not be read" | Each row needs two cells (the PGN, then the note) and the first must contain `[FEN "…"]`. A stray quote in the PGN that isn't doubled (`""`) breaks the row. Nothing was added. |
 | `puzzles_csv.py` says to set `CHESS_SUPABASE_URL` | Export `CHESS_SUPABASE_URL` and `CHESS_SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`) in your shell. |
