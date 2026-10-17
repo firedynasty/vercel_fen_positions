@@ -42,6 +42,39 @@
             font-weight: bold;
         }
 
+        /* Side panes: ☰ Puzzles opens the left pane, Tools ☰ the right one. Wide screens make room
+           for them (body padding); narrower ones overlay the page. */
+        .pane-btn { position: fixed; top: 58px; z-index: 1000; padding: 8px 12px; background: #16213e; color: #00d4ff;
+            border: 1px solid #2a2a4e; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; }
+        #paneLeftBtn { left: 10px; }
+        #paneRightBtn { right: 112px; }
+        body.pane-left-open #paneLeftBtn, body.pane-right-open #paneRightBtn { display: none; }
+        .side-pane { position: fixed; top: 54px; bottom: 0; width: 440px; max-width: 100vw; box-sizing: border-box;
+            overflow-y: auto; padding: 0 12px 16px; background: #0e1527; z-index: 600; transition: transform 0.2s ease; }
+        #paneLeft { left: 0; border-right: 1px solid #2a2a4e; box-shadow: 4px 0 18px rgba(0,0,0,0.45); transform: translateX(-105%); }
+        #paneRight { right: 0; border-left: 1px solid #2a2a4e; box-shadow: -4px 0 18px rgba(0,0,0,0.45); transform: translateX(105%); }
+        body.pane-left-open #paneLeft, body.pane-right-open #paneRight { transform: translateX(0); }
+        .side-pane-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+            margin: 0 -12px 10px; padding: 8px 12px; background: #0e1527; border-bottom: 1px solid #2a2a4e; color: #00d4ff; font-weight: bold; }
+        .side-pane-header button { padding: 2px 10px; background: transparent; color: #aaa; border: none; font-size: 18px; cursor: pointer; }
+        body { transition: padding 0.2s ease; }
+        @media (min-width: 1100px) {
+            body.pane-left-open:not(.pane-right-open) { padding-left: 440px; }
+            body.pane-right-open:not(.pane-left-open) { padding-right: 440px; }
+        }
+        @media (min-width: 1500px) {
+            body.pane-left-open.pane-right-open { padding-left: 440px; padding-right: 440px; }
+        }
+        /* the fixed theme button would sit on the right pane's ✕, so it steps aside while that pane is open */
+        body.pane-right-open .theme-toggle-btn { right: 450px; }
+        @media (max-width: 560px) { body.pane-right-open .theme-toggle-btn { display: none; } }
+        body.light-mode .side-pane, body.light-mode .side-pane-header { background: #eef1f6; }
+        body.light-mode .side-pane-header { color: #0b6e99; border-bottom-color: #c9d1de; }
+        body.light-mode .pane-btn { background: #fff; color: #0b6e99; border-color: #c9d1de; }
+        .line-var { color: #9aa7bd; font-size: 13px; }
+        .line-var .move-san { color: #b8c4d9; }
+        .line-var .move-san.current { color: #1a1a2e; }
+
         /* Main content */
         .main-content {
             padding: 20px;
@@ -677,71 +710,11 @@
     <!-- Theme Toggle Button -->
     <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()">&#9788; Light</button>
 
-    <div class="main-content">
-        <h1>Chess Position Saver</h1>
-        <p class="lead">Build and save chess positions with FEN notation</p>
-
-        <!-- FEN Builder Section -->
-        <div class="fen-container">
-            <!-- Load Image Button and Preview -->
-            <div style="margin-bottom: 15px; text-align: center;">
-                <button id="loadImageBtn" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;" onclick="document.getElementById('imageFileInput').click()">🖼️ Load Reference Image</button>
-                <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
-            </div>
-
-            <div class="fen-controls"></div>
-
-            <!-- Image Preview Container -->
-            <div id="imagePreviewContainer" style="display: none; margin-top: 15px; text-align: center; position: relative;">
-                <img id="imagePreview" style="max-width: 100%; max-height: 400px; border-radius: 5px; cursor: pointer;" onclick="toggleImageSize()">
-                <button onclick="closeImagePreview()" style="position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 18px; line-height: 1;">×</button>
-                <div style="margin-top: 8px;">
-                    <button id="imageToFenBtn" style="background: #6f42c1; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;" onclick="readFenFromImage()">🤖 Read FEN from image</button>
-                    <select id="imageToFenModel" title="OpenAI model used to read the board" style="margin-left: 6px; padding: 8px; border-radius: 5px; font-size: 14px;">
-                        <option value="gpt-4o-mini">gpt-4o-mini (cheapest, least accurate)</option>
-                        <option value="gpt-4.1">gpt-4.1</option>
-                        <option value="gpt-5.4-mini">gpt-5.4-mini</option>
-                        <option value="gpt-5.4" selected>gpt-5.4 (recommended)</option>
-                        <option value="gpt-5.5">gpt-5.5 (best, slower)</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="button-section">
-                <div class="button-grid">
-                    <button class="complete-btn" onclick="loadFenOnBoard()">&#127937; Load on Board</button>
-                    <button class="copy-btn" onclick="flipBoard()">&#8635; Flip Board</button>
-                    <button class="copy-btn" onclick="clearFenDisplay()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear FEN</button>
-                    <button id="pasteFenBtn" class="copy-btn" onclick="pasteFenFromClipboard()" title="Paste a FEN from the clipboard and load it on the board (a PGN is loaded like Paste PGN)" style="background-color: rgba(0, 150, 136, 0.3);">&#128203; Paste FEN</button>
-                    <button id="pastePgnBtn" class="copy-btn" onclick="pastePgnFromClipboard()" style="background-color: rgba(0, 150, 136, 0.3);">&#128203; Paste PGN</button>
-                    <button id="cyclePrevBtn" class="copy-btn" onclick="cycleBoardPrev()" style="background-color: rgba(233, 30, 99, 0.3);">Prev &#128260;</button>
-                    <button id="cycleBoardBtn" class="copy-btn" onclick="cycleBoard()" style="background-color: rgba(233, 30, 99, 0.3);">&#128260; Cycle Board</button>
-                    <button id="lichessLinksBtn" class="copy-btn" onclick="openLichessLinksModal()" style="background-color: #629924; color: white; font-weight: bold;">Lichess Links</button>
-                </div>
-            </div>
-
-            <!-- PGN of the moves played from the loaded FEN (Lichess "From Position" format) -->
-            <div style="margin-top: 10px;">
-                <textarea id="moveHistoryTextArea" readonly rows="3" placeholder="Moves you drop on the board appear here as a Lichess-style PGN..."></textarea>
-                <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('moveHistoryTextArea').value.trim()).then(()=>showToast('PGN copied!'))" style="margin-top: 6px;">📋 Copy PGN</button>
-                <button class="copy-btn" onclick="clearPgn()" style="margin-top: 6px; background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear PGN</button>
-                <button class="copy-btn" onclick="resetFen()" style="margin-top: 6px; background-color: rgba(255, 152, 0, 0.3);">↺ Reset FEN</button>
-            </div>
-
-            <!-- Turn Toggle Slider (above board — set whose move before loading) -->
-            <div class="turn-toggle-container">
-                <span class="turn-toggle-label" id="turnToggleLabel">♔ White to Move</span>
-                <label class="turn-toggle-switch">
-                    <input type="checkbox" id="turnToggleCheckbox" onchange="toggleTurn()">
-                    <span class="turn-toggle-slider"></span>
-                </label>
-            </div>
-
-            <!-- Interactive Chess Board -->
-            <div class="board-sticky-wrapper" id="boardStickyWrapper">
-                <div id="myBoard" class="board"></div>
-            </div>
-
+    <!-- Side panes: ☰ Puzzles (left) and Tools ☰ (right) open beside the board -->
+    <button class="pane-btn" id="paneLeftBtn" onclick="paneToggle('left')" title="Open the Puzzles pane: browse, save and bulk-add puzzles" aria-label="Open the Puzzles pane">☰ Puzzles</button>
+    <button class="pane-btn" id="paneRightBtn" onclick="paneToggle('right')" title="Open the Tools pane: load an image, paste FEN / PGN, flip the board, Dictate PGN" aria-label="Open the Tools pane">Tools ☰</button>
+    <aside class="side-pane" id="paneLeft" aria-label="Puzzles">
+        <div class="side-pane-header"><span>Puzzles</span><button onclick="paneToggle('left', false)" title="Close this pane" aria-label="Close the Puzzles pane">✕</button></div>
             <!-- Supabase Puzzles -->
             <div id="sbPuzzleSection" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; margin: 12px 0 8px;">
                 <div style="color: #888; margin-bottom: 8px;">Supabase Puzzles</div>
@@ -757,10 +730,8 @@
                     <span id="sbLoadedPuzzleId" title="Supabase id of the puzzle currently on the board" style="color: #3ecf8e; font-weight: bold; min-width: 40px;"></span>
                     <input type="text" id="sbPuzzleIdInput" placeholder="Load by ID..." onkeydown="if(event.key==='Enter') sbLoadPuzzleByIdInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 100px;">
                     <button onclick="sbLoadPuzzleByIdInput()" title="Fetch straight from Supabase by id — no need to pick a category first" style="padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Load ID</button>
-                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category (← key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
-                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category (→ key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
-                    <button id="sbCyclePrevBtn" class="copy-btn" onclick="cycleBoardPrev()" style="background-color: rgba(233, 30, 99, 0.3);">Prev &#128260;</button>
-                    <button id="sbCycleBoardBtn" class="copy-btn" onclick="cycleBoard()" style="background-color: rgba(233, 30, 99, 0.3);">&#128260; Cycle Board</button>
+                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category (↑ key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
+                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category (↓ key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
                     <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
                     <label style="display: flex; align-items: center; gap: 4px; color: #aaa; font-size: 12px; cursor: pointer;" title="Show each puzzle's note automatically as you step through with Next / Prev">
                         <input type="checkbox" id="sbAutoNoteToggle" onchange="sbSetAutoNote(this.checked)"> Auto-reveal notes
@@ -817,7 +788,7 @@
 
                     <p style="margin: 8px 0 4px;"><b style="color: #ddd;">💾 Save to Supabase</b></p>
                     <ul style="margin: 0 0 0 18px; padding: 0;">
-                        <li>Saves the FEN in the FEN box. If a PGN is loaded and you are stepping through it with Prev / Cycle Board, it saves the whole PGN instead.</li>
+                        <li>Saves the FEN in the FEN box. If a PGN is loaded (a puzzle, a pasted PGN, or moves you dropped), it saves the whole PGN instead, variations and comments included.</li>
                         <li>Adds a new row with a new id at the end of the category. It never replaces a row, so saving the same FEN twice gives two rows.</li>
                     </ul>
 
@@ -848,20 +819,47 @@
                     </ul>
                 </details>
             </div>
-
-            <!-- Move History Display -->
-            <div style="margin: 12px 0;">
-                <div id="moveListContainer" style="min-height: 40px; max-height: 200px; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; line-height: 1.8; margin-bottom: 8px;">
-                    <span style="color: #888;">Move history will appear here...</span>
-                </div>
-                <div style="display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 6px;">
-                    <button class="copy-btn" onclick="moveNavPrev()" title="Previous move (Shift+Space)" style="padding: 8px 18px; font-size: 14px;">← Back</button>
-                    <span id="moveNavIndicator" style="font-weight: bold; min-width: 60px; text-align: center; color: #eee; font-size: 13px;">Start</span>
-                    <button class="copy-btn" onclick="moveNavNext()" title="Next move (Space)" style="padding: 8px 18px; font-size: 14px;">Next →</button>
-                </div>
-                <button class="copy-btn" onclick="copyMoveHistory()" style="width: 100%; padding: 8px; font-size: 13px;">📋 Copy Move History</button>
+    </aside>
+    <aside class="side-pane" id="paneRight" aria-label="Tools">
+        <div class="side-pane-header"><span>Tools</span><button onclick="paneToggle('right', false)" title="Close this pane" aria-label="Close the Tools pane">✕</button></div>
+            <!-- Load Image Button and Preview -->
+            <div style="margin-bottom: 15px; text-align: center;">
+                <button id="loadImageBtn" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;" onclick="document.getElementById('imageFileInput').click()">🖼️ Load Reference Image</button>
+                <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
             </div>
-
+            <div class="fen-controls"></div>
+            <!-- Image Preview Container -->
+            <div id="imagePreviewContainer" style="display: none; margin-top: 15px; text-align: center; position: relative;">
+                <img id="imagePreview" style="max-width: 100%; max-height: 400px; border-radius: 5px; cursor: pointer;" onclick="toggleImageSize()">
+                <button onclick="closeImagePreview()" style="position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 18px; line-height: 1;">×</button>
+                <div style="margin-top: 8px;">
+                    <button id="imageToFenBtn" style="background: #6f42c1; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;" onclick="readFenFromImage()">🤖 Read FEN from image</button>
+                    <select id="imageToFenModel" title="OpenAI model used to read the board" style="margin-left: 6px; padding: 8px; border-radius: 5px; font-size: 14px;">
+                        <option value="gpt-4o-mini">gpt-4o-mini (cheapest, least accurate)</option>
+                        <option value="gpt-4.1">gpt-4.1</option>
+                        <option value="gpt-5.4-mini">gpt-5.4-mini</option>
+                        <option value="gpt-5.4" selected>gpt-5.4 (recommended)</option>
+                        <option value="gpt-5.5">gpt-5.5 (best, slower)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="button-section">
+                <div class="button-grid">
+                    <button class="complete-btn" onclick="loadFenOnBoard()">&#127937; Load on Board</button>
+                    <button class="copy-btn" onclick="flipBoard()">&#8635; Flip Board</button>
+                    <button class="copy-btn" onclick="clearFenDisplay()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear FEN</button>
+                    <button id="pasteFenBtn" class="copy-btn" onclick="pasteFenFromClipboard()" title="Paste a FEN from the clipboard and load it on the board (a PGN is loaded like Paste PGN)" style="background-color: rgba(0, 150, 136, 0.3);">&#128203; Paste FEN</button>
+                    <button id="pastePgnBtn" class="copy-btn" onclick="pastePgnFromClipboard()" style="background-color: rgba(0, 150, 136, 0.3);">&#128203; Paste PGN</button>
+                    <button id="lichessLinksBtn" class="copy-btn" onclick="openLichessLinksModal()" style="background-color: #629924; color: white; font-weight: bold;">Lichess Links</button>
+                </div>
+            </div>
+            <!-- PGN of the moves played from the loaded FEN (Lichess "From Position" format) -->
+            <div style="margin-top: 10px;">
+                <textarea id="moveHistoryTextArea" readonly rows="3" placeholder="Moves you drop on the board appear here as a Lichess-style PGN..."></textarea>
+                <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('moveHistoryTextArea').value.trim()).then(()=>showToast('PGN copied!'))" style="margin-top: 6px;">📋 Copy PGN</button>
+                <button class="copy-btn" onclick="clearPgn()" style="margin-top: 6px; background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear PGN</button>
+                <button class="copy-btn" onclick="resetFen()" style="margin-top: 6px; background-color: rgba(255, 152, 0, 0.3);">↺ Reset FEN</button>
+            </div>
             <!-- Dictate PGN Section -->
             <div style="margin: 12px 0;">
                 <div class="section-title">Dictate PGN</div>
@@ -906,6 +904,56 @@
                     <code style="display:block; color:#ccc;">O-O &nbsp; O-O-O &nbsp; dxe5 &nbsp; Bxf7+</code>
                 </div>
             </div>
+    </aside>
+
+    <div class="main-content">
+        <h1>Chess Position Saver</h1>
+        <p class="lead">Build and save chess positions with FEN notation</p>
+
+        <!-- FEN Builder Section -->
+        <div class="fen-container">
+
+
+
+
+
+            <!-- Turn Toggle Slider (above board — set whose move before loading) -->
+            <div class="turn-toggle-container">
+                <span class="turn-toggle-label" id="turnToggleLabel">♔ White to Move</span>
+                <label class="turn-toggle-switch">
+                    <input type="checkbox" id="turnToggleCheckbox" onchange="toggleTurn()">
+                    <span class="turn-toggle-slider"></span>
+                </label>
+            </div>
+
+            <!-- Interactive Chess Board -->
+            <div class="board-sticky-wrapper" id="boardStickyWrapper">
+                <div id="myBoard" class="board"></div>
+            </div>
+
+            <!-- Line navigator: the moves of the loaded / recorded PGN, with variations -->
+            <div style="margin: 12px 0;">
+                <div id="moveListContainer" style="min-height: 40px; max-height: 240px; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; line-height: 1.8; margin-bottom: 8px;">
+                    <span style="color: #888;">Move history will appear here...</span>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin-bottom: 6px;">
+                    <button class="copy-btn" onclick="lineFirst()" title="Back to the start position" style="padding: 8px 14px; font-size: 14px;">⏮</button>
+                    <button class="copy-btn" onclick="moveNavPrev()" title="Previous move (← or Shift+Space)" style="padding: 8px 18px; font-size: 14px;">← Back</button>
+                    <span id="moveNavIndicator" style="font-weight: bold; min-width: 80px; text-align: center; color: #eee; font-size: 13px;">Start</span>
+                    <button class="copy-btn" onclick="moveNavNext()" title="Next move (→ or Space)" style="padding: 8px 18px; font-size: 14px;">Next →</button>
+                    <button class="copy-btn" onclick="lineLast()" title="To the end of the current line" style="padding: 8px 14px; font-size: 14px;">⏭</button>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 8px;">
+                    <button class="copy-btn" onclick="lineVariation(-1)" title="Previous variation ( [ key )" style="padding: 6px 14px; font-size: 13px;">[ Var</button>
+                    <span id="lineVarIndicator" style="min-width: 110px; text-align: center; color: #aaa; font-size: 12px;"></span>
+                    <button class="copy-btn" onclick="lineVariation(1)" title="Next variation ( ] key )" style="padding: 6px 14px; font-size: 13px;">Var ]</button>
+                </div>
+                <div id="lineComment" style="display: none; margin-bottom: 8px; padding: 8px 10px; background: rgba(0,0,0,0.3); border-left: 3px solid #ffd700; border-radius: 5px; font-size: 13px; line-height: 1.5; color: #ffd43b;"></div>
+                <button class="copy-btn" onclick="copyMoveHistory()" style="width: 100%; padding: 8px; font-size: 13px;">📋 Copy Move History</button>
+            </div>
+
+
+
 
             <!-- Lichess Analysis URL Display -->
             <div id="lichessUrlDisplay" style="display: none; margin-top: 15px; padding: 12px; background-color: rgba(255, 255, 255, 0.1); border-radius: 5px; border: 1px solid rgba(255, 255, 255, 0.2);">
@@ -1130,6 +1178,9 @@
         let lastCycledFen = null;    // Last FEN that was cycled
         let currentCyclingIndex = null; // Track which table row is currently being cycled
         let lastSelectedRow = null; // Track last selected/added row for highlighting
+        let lineRoot = null;        // Root of the line tree (the header position), null when there is no line
+        let lineNode = null;        // The node the board is showing
+        let lineSource = '';        // The PGN exactly as loaded while the tree is unedited ('' once a move was dropped)
 
         // Populate the category dropdown on page open — { noLoad: true } skips
         // auto-loading a puzzle onto the board, since that part races ahead of
@@ -1269,8 +1320,7 @@
                 // Reset and sync chess.js with the new position
                 chess = new Chess(completeFen);
                 startingFen = completeFen; // Store as starting position
-                pgnStartFen = completeFen;
-                pgnMoves = [];
+                lineStart(completeFen);    // a fresh line from this position (no moves yet)
 
                 // Update fenDisplay
                 document.getElementById('fenDisplay').value = completeFen;
@@ -1293,10 +1343,7 @@
                 document.getElementById('turnToggleLabel').textContent =
                     turnField === 'b' ? '♚ Black to Move' : '♔ White to Move';
 
-                // Reset cycling state (loading regular FEN)
-                cyclePositions = [];
-                cyclePgnSource = '';
-                cycleIndex = 0;
+                // Reset the table-row cycling state (loading a regular FEN)
                 lastCycledFen = null;
                 currentCyclingIndex = null;
 
@@ -1334,33 +1381,16 @@
         }
 
         // "1. Qxf7 b5 2. Qxh5 a3" (or "1... b5 2. ..." when Black moves first), numbered from the header FEN
-        function formatPgnMoves() {
-            const parts = pgnStartFen.split(' ');
-            let turn = parts[1] || 'w';
-            let number = parseInt(parts[5], 10) || 1;
-            const out = [];
-            pgnMoves.forEach((move, i) => {
-                if (turn === 'w') {
-                    out.push(number + '. ' + move);
-                } else {
-                    out.push((i === 0 ? number + '... ' : '') + move);
-                    number++;
-                }
-                turn = turn === 'w' ? 'b' : 'w';
-            });
-            return out.join(' ');
-        }
-
         function renderPgn() {
             let text = '';
-            if (pgnStartFen) {
-                text = '[Variant "From Position"]\n[FEN "' + pgnStartFen + '"]';
-                if (pgnMoves.length) text += '\n\n' + formatPgnMoves();
-                startingFen = pgnStartFen;
+            if (lineRoot) {
+                text = lineSerialize(lineRoot);
+                startingFen = lineRoot.fen;
             }
             document.getElementById('moveHistoryTextArea').value = text;
             document.getElementById('positionFen').value = text;
-            cyclePgnSource = pgnMoves.length ? text : '';
+            // What Save writes: the PGN exactly as it was loaded while untouched, else the line as it is now
+            cyclePgnSource = (lineRoot && lineRoot.children.length) ? (lineSource || text) : '';
         }
 
         function showTurn(turn) {
@@ -1371,15 +1401,12 @@
 
         // Start recording from this FEN (fresh header, no moves, cycle cleared)
         function pgnRebase(fen) {
-            pgnStartFen = fen;
-            pgnMoves = [];
             currentFen = fen;
             try { chess = new Chess(fen); } catch (e) { /* board is unaffected */ }
             document.getElementById('fenDisplay').value = fen;
             showTurn(fen.split(' ')[1]);
             updateLichessUrls(fen);
-            cyclePositions = [];
-            cycleIndex = 0;
+            lineStart(fen);
             lastCycledFen = null;
             currentCyclingIndex = null;
             renderPgn();
@@ -1390,26 +1417,26 @@
             const oldPlacement = Chessboard.objToFen(oldPos);
             const newPlacement = Chessboard.objToFen(newPos);
 
-            if (!pgnStartFen) {
+            if (!lineRoot) {
                 // Nothing loaded yet: the position before this move becomes the header FEN
                 const turn = document.getElementById('turnToggleCheckbox').checked ? 'b' : 'w';
-                pgnStartFen = fenFor(oldPlacement, turn);
-                pgnMoves = [];
-                cyclePositions = [];
+                lineStart(fenFor(oldPlacement, turn));
             }
-            // If Prev stepped back into the line, the new move replaces everything after that point
-            if (cyclePositions.length > 1 && cycleIndex < pgnMoves.length) {
-                pgnMoves = pgnMoves.slice(0, cycleIndex);
-                cyclePositions = cyclePositions.slice(0, cycleIndex + 1);
-            }
-            if (!cyclePositions.length) cyclePositions = [pgnStartFen];
-
-            pgnMoves.push(moveNotation(from, to, piece, oldPos));
-
             const nextTurn = piece[0] === 'w' ? 'b' : 'w';
             const fen = fenFor(newPlacement, nextTurn);
-            cyclePositions.push(fen);
-            cycleIndex = cyclePositions.length - 1;
+
+            // The move the line already has next: just step into it. Any other move replaces everything
+            // after this point (as before); variations earlier in the line are left alone.
+            const known = lineNode.children.find(c => c.fen === fen);
+            if (known) {
+                lineNode = known;
+            } else {
+                lineNode.children = [];
+                lineNode = lineAddChild(lineNode, moveNotation(from, to, piece, oldPos), '', fen);
+                lineSource = '';
+            }
+            lineChoose(lineNode);
+            lineSync();
 
             currentFen = fen;
             try { chess = new Chess(fen); } catch (e) { /* board is unaffected */ }
@@ -1417,6 +1444,7 @@
             showTurn(nextTurn);
             updateLichessUrls(fen);
             renderPgn();
+            lineRender();
         }
 
         // Spare piece added / piece dragged off the board: the board changes but the PGN header stays
@@ -1429,22 +1457,10 @@
             updateLichessUrls(fen);
         }
 
-        // Adopt a loaded PGN (paste / Supabase / saved table) as the recorded PGN so drops append to it
-        function pgnAdoptFromText(text) {
-            const replay = replayPgnRelaxed(text);
-            if (!replay.start) return;
-            pgnStartFen = replay.start;
-            pgnMoves = replay.moves;
-            renderPgn();
-        }
-
         // Empty the PGN box completely. The board stays as it is; the next piece dropped
         // starts a new PGN whose header FEN is the position just before that drop.
         function clearPgn() {
-            pgnStartFen = '';
-            pgnMoves = [];
-            cyclePositions = [];
-            cycleIndex = 0;
+            lineReset();
             lastCycledFen = null;
             currentCyclingIndex = null;
             renderPgn();
@@ -1480,10 +1496,8 @@
             // Update move history textarea
             document.getElementById('moveHistoryTextArea').value = variantFormat;
 
-            // Update cycling positions from the new move history
-            cyclePositions = parseFenVariantToPositions(variantFormat);
-            cyclePgnSource = variantFormat;
-            cycleIndex = cyclePositions.length - 1; // Point to current (latest) position
+            // Rebuild the line from the new move history and point at its latest position
+            lineLoad(variantFormat, { atEnd: true });
 
             // Update fenDisplay with just the current FEN
             document.getElementById('fenDisplay').value = currentFen;
@@ -1753,57 +1767,29 @@
                 return;
             }
 
-            // Check if clicking the same row again - if so, cycle to next position
-            if (currentCyclingIndex === index && cyclePositions.length > 0) {
-                cycleIndex = (cycleIndex + 1) % cyclePositions.length;
-                loadPositionFromCycle();
+            // Clicking the same row again steps to the next move (wrapping to the start after the last)
+            if (currentCyclingIndex === index && lineRoot && lineRoot.children.length) {
+                lineGo(linePreferred(lineNode) || lineRoot);
                 return;
             }
 
             // New row clicked - parse and load starting position
             currentCyclingIndex = index;
             lastCycledFen = fenText;
-            cyclePositions = parseFenVariantToPositions(fenText);
-            cyclePgnSource = fenText;
-            pgnAdoptFromText(fenText);
-            cycleIndex = 0;
-
-            if (cyclePositions.length > 0) {
-                loadPositionFromCycle();
-
-                if (cyclePositions.length > 1) {
-                    showToast(`Position 1/${cyclePositions.length}. Click row again for next.`);
-                } else {
-                    showToast('Position loaded (no moves to cycle)');
-                }
-            } else {
+            if (!lineLoad(fenText)) {
                 showToast('No valid positions found');
                 currentCyclingIndex = null;
-            }
-        }
-
-        // Cycle to next position (triggered by Cycle Board button)
-        function cycleBoard() {
-            if (cyclePositions.length === 0) {
-                showToast('No positions to cycle. Click a table entry first.');
                 return;
             }
-
-            cycleIndex = (cycleIndex + 1) % cyclePositions.length;
             loadPositionFromCycle();
-        }
-
-        // Step back one position in the cycle
-        function cycleBoardPrev() {
-            if (cyclePositions.length === 0) {
-                showToast('No positions to cycle. Use Paste PGN first.');
-                return;
+            if (cyclePositions.length > 1) {
+                showToast(`Position 1/${cyclePositions.length}. Click row again for next.`);
+            } else {
+                showToast('Position loaded (no moves to step through)');
             }
-            cycleIndex = (cycleIndex - 1 + cyclePositions.length) % cyclePositions.length;
-            loadPositionFromCycle();
         }
 
-        // Read a [FEN "..."] PGN from the clipboard and load it for cycling
+        // Read a [FEN "..."] PGN from the clipboard and load it onto the board
         // Clipboard FEN -> FEN box -> board, in one click. A PGN on the clipboard
         // (has a [FEN "..."] header) is handed to Paste PGN instead.
         async function pasteFenFromClipboard() {
@@ -1821,8 +1807,7 @@
             loadFenOnBoard();
             // A pasted FEN is a single position: leave the PGN box empty (like Clear PGN)
             // so nothing treats it as a PGN. Dropping a piece starts a fresh PGN from here.
-            pgnStartFen = '';
-            pgnMoves = [];
+            lineReset();
             renderPgn();
         }
 
@@ -1835,66 +1820,345 @@
                 return;
             }
             text = (text || '').replace(/\r\n?/g, '\n').trim();
-            const positions = parseFenVariantToPositions(text);
-            if (positions.length === 0) {
+            if (!lineLoad(text)) {
                 showToast('No [FEN "..."] found on clipboard');
                 return;
             }
             currentCyclingIndex = null;
-            cyclePositions = positions;
-            cyclePgnSource = text;
-            pgnAdoptFromText(text);
-            cycleIndex = 0;
             loadPositionFromCycle();
-            showToast(positions.length > 1
-                ? `PGN loaded: ${positions.length} positions. Use Prev / Cycle Board.`
-                : 'Position loaded (no moves to cycle)');
+            showToast(cyclePositions.length > 1
+                ? `PGN loaded: ${cyclePositions.length - 1} moves. ← → step through it, [ ] switch variations.`
+                : 'Position loaded (no moves to step through)');
         }
 
-        // Parse FEN variant format to extract all positions
-        // Positions for cycling, replayed from a "[FEN ...]" PGN. Legal moves use chess.js; a move
-        // that isn't legal is still applied as written (no legality check), so the cycle never skips it.
-        function parseFenVariantToPositions(text) {
-            return replayPgnRelaxed(text).positions;
+        // ===========================================================================
+        // LINE TREE: the loaded / recorded PGN as a tree, so variations can be walked.
+        // lineRoot is the header position; every other node is a move { san, annotation, fen,
+        // comment, moveNumber, isBlack, parent, children }. cyclePositions / pgnMoves /
+        // pgnStartFen / cycleIndex are derived from the current path (root -> lineNode, then on
+        // along each node's preferred child), so everything that reads them (Save, Dictate, the
+        // Google Sheets loader) keeps working. Moves are replayed with chess.js when legal and
+        // applied as written when not (hand-built puzzle positions need that).
+        // ===========================================================================
+        function lineMakeRoot(fen) {
+            return { san: '', annotation: '', fen: fen, parent: null, children: [], comment: '', moveNumber: 0, isBlack: false, pref: null };
         }
 
-        // Replay a "From Position" PGN: returns { start, positions: [FEN...], moves: [SAN...] }
-        function replayPgnRelaxed(text) {
-            const out = { start: '', positions: [], moves: [] };
+        // Add a move played from `parent`'s position; its number and colour follow from the position
+        function lineAddChild(parent, san, annotation, fen) {
+            const parts = parent.fen.split(' ');
+            const isBlack = parts[1] === 'b';
+            const moveNumber = parent.parent
+                ? parent.moveNumber + (parent.isBlack ? 1 : 0)
+                : (parseInt(parts[5], 10) || 1);
+            const node = { san: san, annotation: annotation || '', fen: fen, parent: parent, children: [], comment: '',
+                           moveNumber: moveNumber, isBlack: isBlack, pref: null };
+            parent.children.push(node);
+            return node;
+        }
+
+        // Play one SAN token from parentFen. Returns { san, fen } or null when it isn't a readable move.
+        function linePlayToken(parentFen, token) {
+            const parts = parentFen.split(' ');
+            const pos = Chessboard.fenToObj(parts[0]);
+            if (!pos) return null;
+            const turn = parts[1] === 'b' ? 'b' : 'w';
+            let next = null, san = token;
+            try {
+                const temp = new Chess(fenFor(Chessboard.objToFen(pos), turn));
+                const move = temp.move(token, { sloppy: true });
+                if (move) { next = Chessboard.fenToObj(temp.fen().split(' ')[0]); san = move.san; }
+            } catch (e) { /* not legal: apply it loosely below */ }
+            if (!next) next = relaxedApplyMove(pos, token, turn);
+            if (!next) return null;
+            return { san: san, fen: fenFor(Chessboard.objToFen(next), turn === 'w' ? 'b' : 'w') };
+        }
+
+        // PGN text -> tree root (null when there is no readable [FEN "..."] header). Handles
+        // { comments }, ( variations ) nested to any depth, move numbers, !? marks, $n and results.
+        function lineParse(text) {
             const fenMatch = (text || '').match(/\[FEN\s+"([^"]+)"\]/);
-            if (!fenMatch) return out;
+            if (!fenMatch) return null;
+            if (!Chessboard.fenToObj(fenMatch[1].split(' ')[0])) return null;
+            const root = lineMakeRoot(fenMatch[1]);
 
-            out.start = fenMatch[1];
-            let pos = Chessboard.fenToObj(out.start.split(' ')[0]);
-            if (!pos) return out;
-            let turn = out.start.split(' ')[1] === 'b' ? 'b' : 'w';
-            out.positions.push(out.start);
+            let body = text.replace(/^\s*(?:\[[^\]\n]*\]\s*(?:\n|$))+/, ''); // drop the header lines
+            if (body === text) { const m = text.match(/\]\s*\n\s*\n([\s\S]+)/); body = m ? m[1] : ''; }
 
-            const movesMatch = text.match(/\]\s*\n\s*\n(.+)/s);
-            const tokens = (movesMatch ? movesMatch[1] : '')
-                .replace(/\{[^}]*\}/g, '')          // comments
-                .replace(/\d+\.(\.\.)?/g, '')        // move numbers (1. and 1...)
-                .replace(/\([^)]*\)/g, '')          // variations
-                .split(/\s+/)
-                .filter(t => t && !/^[.\s]*$/.test(t) && !/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t));
+            const tokens = [];
+            const re = /\{[^}]*\}|\(|\)|;[^\n]*|[^\s(){};]+/g;
+            let m;
+            while ((m = re.exec(body))) tokens.push(m[0]);
 
-            for (const token of tokens) {
-                let next = null;
-                let san = token;
-                try {
-                    const temp = new Chess(fenFor(Chessboard.objToFen(pos), turn));
-                    const move = temp.move(token, { sloppy: true });
-                    if (move) { next = Chessboard.fenToObj(temp.fen().split(' ')[0]); san = move.san; }
-                } catch (e) { /* not legal: apply it loosely below */ }
-                if (!next) next = relaxedApplyMove(pos, token, turn);
-                if (!next) continue; // not a readable move at all
-                pos = next;
-                turn = turn === 'w' ? 'b' : 'w';
-                out.positions.push(fenFor(Chessboard.objToFen(pos), turn));
-                out.moves.push(san);
+            let cur = root, prev = null, skip = 0;
+            const stack = [];
+            for (const tk of tokens) {
+                if (skip > 0) { if (tk === '(') skip++; else if (tk === ')') skip--; continue; }
+                if (tk[0] === ';') continue;
+                if (tk[0] === '{') {
+                    const c = tk.slice(1, -1).trim();
+                    const target = prev || root;
+                    if (c) target.comment = target.comment ? target.comment + ' ' + c : c;
+                    continue;
+                }
+                if (tk === '(') {                       // a variation = an alternative to the move just read
+                    if (!prev) { skip = 1; continue; }
+                    stack.push({ cur: cur, prev: prev });
+                    cur = prev.parent;
+                    prev = null;
+                    continue;
+                }
+                if (tk === ')') {
+                    const st = stack.pop();
+                    if (st) { cur = st.cur; prev = st.prev; }
+                    continue;
+                }
+                if (/^\$\d+$/.test(tk) || /^(1-0|0-1|1\/2-1\/2|\*)$/.test(tk)) continue;
+                let t = tk.replace(/^\d+\.+/, '');      // "12.f5" -> "f5"; "12." and "12..." -> ''
+                if (!t || /^[.\s]*$/.test(t)) continue;
+                const am = t.match(/[!?]+$/);
+                const annotation = am ? am[0] : '';
+                if (am) t = t.slice(0, -annotation.length);
+                if (!t) continue;
+                const played = linePlayToken(cur.fen, t);
+                if (!played) continue;                  // not a readable move: skip it
+                prev = lineAddChild(cur, played.san, annotation, played.fen);
+                cur = prev;
             }
-            return out;
+            return root;
         }
+
+        // Tree -> movetext with variations and comments: "12. f5?? {c} ( 12. e4 Nf6 ) 12... exf5"
+        function lineMovetext(root) {
+            const parts = [];
+            function head(n, numberBlack) {
+                if (!n.isBlack) parts.push(n.moveNumber + '.');
+                else if (numberBlack) parts.push(n.moveNumber + '...');
+                parts.push(n.san + n.annotation);
+                if (n.comment) parts.push('{' + n.comment + '}');
+            }
+            function walk(parent, numberBlack) {
+                const kids = parent.children;
+                if (!kids.length) return;
+                head(kids[0], numberBlack);
+                for (let v = 1; v < kids.length; v++) {
+                    parts.push('(');
+                    head(kids[v], true);
+                    walk(kids[v], false);
+                    parts.push(')');
+                }
+                walk(kids[0], kids.length > 1);
+            }
+            walk(root, true);
+            return parts.join(' ');
+        }
+
+        function lineSerialize(root) {
+            const header = '[Variant "From Position"]\n[FEN "' + root.fen + '"]';
+            const mt = lineMovetext(root);
+            return mt ? header + '\n\n' + mt : header;
+        }
+
+        // The child the line continues with from `node`: the one last walked, else the main move
+        function linePreferred(node) {
+            if (!node || !node.children.length) return null;
+            return (node.pref && node.children.indexOf(node.pref) !== -1) ? node.pref : node.children[0];
+        }
+
+        // Remember the way to `node`, so stepping back and forward again returns along the same variation
+        function lineChoose(node) {
+            for (let n = node; n && n.parent; n = n.parent) n.parent.pref = n;
+        }
+
+        // Derive the flat line the rest of the page reads from the tree
+        function lineSync() {
+            if (!lineRoot) { cyclePositions = []; pgnMoves = []; pgnStartFen = ''; cycleIndex = 0; return; }
+            const path = [];
+            for (let n = lineNode; n; n = n.parent) path.unshift(n);
+            const idx = path.length - 1;
+            for (let n = linePreferred(lineNode); n; n = linePreferred(n)) path.push(n);
+            cyclePositions = path.map(n => n.fen);
+            pgnMoves = path.slice(1).map(n => n.san);
+            pgnStartFen = lineRoot.fen;
+            cycleIndex = idx;
+        }
+
+        // A fresh line from this position (no moves yet)
+        function lineStart(fen) {
+            lineRoot = lineMakeRoot(fen);
+            lineNode = lineRoot;
+            lineSource = '';
+            lineSync();
+            lineRender();
+        }
+
+        // No line at all (a pasted bare FEN, Clear PGN)
+        function lineReset() {
+            lineRoot = null;
+            lineNode = null;
+            lineSource = '';
+            lineSync();
+            lineRender();
+        }
+
+        // Load PGN text as the current line. opts.source = the exact text Save should write while
+        // the line is untouched; opts.atEnd = start at the end of the line. false when unreadable.
+        function lineLoad(text, opts) {
+            opts = opts || {};
+            const root = lineParse(text);
+            if (!root) return false;
+            lineRoot = root;
+            lineNode = root;
+            if (opts.atEnd) {
+                for (let n = linePreferred(lineNode); n; n = linePreferred(n)) lineNode = n;
+                lineChoose(lineNode);
+            }
+            lineSource = opts.source != null ? opts.source : text;
+            lineSync();
+            renderPgn();
+            lineRender();
+            return true;
+        }
+
+        // Show `node`'s position on the board and mark it in the move list
+        function lineGo(node) {
+            if (!node || !lineRoot) return;
+            lineNode = node;
+            lineChoose(node);
+            lineSync();
+            loadPositionFromCycle(true);
+            lineRender();
+        }
+
+        window.moveNavNext = function() {
+            const nx = linePreferred(lineNode);
+            if (nx) lineGo(nx);
+        };
+
+        window.moveNavPrev = function() {
+            if (lineNode && lineNode.parent) lineGo(lineNode.parent);
+        };
+
+        function lineFirst() { if (lineRoot) lineGo(lineRoot); }
+
+        function lineLast() {
+            if (!lineRoot) return;
+            let n = lineNode;
+            while (linePreferred(n)) n = linePreferred(n);
+            lineGo(n);
+        }
+
+        // [ / ]: switch between the alternatives at this point. A move with siblings cycles among
+        // them; with none, it cycles the alternatives for the NEXT move (if there are any).
+        function lineVariation(dir) {
+            if (!lineNode) { showToast('No line loaded'); return; }
+            const sibs = lineNode.parent ? lineNode.parent.children : [];
+            if (sibs.length > 1) {
+                lineGo(sibs[(sibs.indexOf(lineNode) + dir + sibs.length) % sibs.length]);
+                return;
+            }
+            const kids = lineNode.children;
+            if (kids.length > 1) {
+                const base = Math.max(0, kids.indexOf(linePreferred(lineNode)));
+                lineGo(kids[(base + dir + kids.length) % kids.length]);
+                return;
+            }
+            showToast('No variation here');
+        }
+
+        function lineCleanComment(c) {
+            return String(c || '').replace(/\[%(?:eval|clk)[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
+        }
+
+        function lineMarkColor(annotation) {
+            if (annotation === '??') return '#ff6b6b';
+            if (annotation === '?') return '#ff9ecb';
+            if (annotation === '?!') return '#ffd43b';
+            if (annotation === '!!' || annotation === '!') return '#69db7c';
+            return '';
+        }
+
+        // Draw the move list (main line, variations in parentheses), the indicator, the variation
+        // counter and the current move's comment
+        function lineRender() {
+            const box = document.getElementById('moveListContainer');
+            if (!box) return;
+            const ind = document.getElementById('moveNavIndicator');
+            const vi = document.getElementById('lineVarIndicator');
+            const cm = document.getElementById('lineComment');
+            box.innerHTML = '';
+            if (!lineRoot || !lineRoot.children.length) {
+                box.innerHTML = '<span style="color: #888;">Move history will appear here...</span>';
+                if (ind) ind.textContent = 'Start';
+                if (vi) vi.textContent = '';
+                if (cm) cm.style.display = 'none';
+                return;
+            }
+
+            function addMove(n, numberBlack, into) {
+                if (!n.isBlack || numberBlack) {
+                    const num = document.createElement('span');
+                    num.className = 'move-number';
+                    num.textContent = n.moveNumber + (n.isBlack ? '...' : '.');
+                    into.appendChild(num);
+                }
+                const sp = document.createElement('span');
+                sp.className = 'move-san' + (n === lineNode ? ' current' : '');
+                sp.textContent = n.san + n.annotation;
+                const col = n === lineNode ? '' : lineMarkColor(n.annotation);
+                if (col) sp.style.color = col;
+                sp.onclick = function() { lineGo(n); };
+                into.appendChild(sp);
+            }
+            function addLine(parent, numberBlack, into) {
+                const kids = parent.children;
+                if (!kids.length) return;
+                addMove(kids[0], numberBlack, into);
+                for (let v = 1; v < kids.length; v++) {
+                    const wrap = document.createElement('span');
+                    wrap.className = 'line-var';
+                    wrap.appendChild(document.createTextNode(' ( '));
+                    addMove(kids[v], true, wrap);
+                    addLine(kids[v], false, wrap);
+                    wrap.appendChild(document.createTextNode(' ) '));
+                    into.appendChild(wrap);
+                }
+                addLine(kids[0], kids.length > 1, into);
+            }
+            addLine(lineRoot, true, box);
+
+            const n = lineNode;
+            if (ind) ind.textContent = (n && n.parent) ? n.moveNumber + (n.isBlack ? '...' : '.') + ' ' + n.san + n.annotation : 'Start';
+            const sibs = (n && n.parent) ? n.parent.children : [];
+            if (vi) vi.textContent = sibs.length > 1
+                ? 'line ' + (sibs.indexOf(n) + 1) + ' of ' + sibs.length
+                : (n && n.children.length > 1 ? n.children.length + ' lines ahead' : '');
+            const c = lineCleanComment(n && n.comment);
+            if (cm) { cm.style.display = c ? '' : 'none'; cm.textContent = c; }
+
+            // keep the current move in view inside the list (without scrolling the page)
+            const cur = box.querySelector('.move-san.current');
+            if (cur) {
+                const bt = box.getBoundingClientRect(), ct = cur.getBoundingClientRect();
+                if (ct.top < bt.top) box.scrollTop -= (bt.top - ct.top) + 8;
+                else if (ct.bottom > bt.bottom) box.scrollTop += (ct.bottom - bt.bottom) + 8;
+            }
+        }
+
+        // ===========================================================================
+        // SIDE PANES: ☰ Puzzles (left) and Tools ☰ (right); remembered across reloads
+        // ===========================================================================
+        function paneToggle(side, force) {
+            const cls = 'pane-' + side + '-open';
+            const open = typeof force === 'boolean' ? force : !document.body.classList.contains(cls);
+            document.body.classList.toggle(cls, open);
+            try { localStorage.setItem('pane_' + side, open ? '1' : '0'); } catch (e) { }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            ['left', 'right'].forEach(function(side) {
+                try { if (localStorage.getItem('pane_' + side) === '1') paneToggle(side, true); } catch (e) { }
+            });
+        });
 
         // Apply one SAN-style move to a chessboard.js position object without checking legality.
         // The moving piece is found from the piece letter, any file/rank hint and the destination,
@@ -2984,16 +3248,12 @@
             if (window.sbAutoNote) sbShowNote();
 
             if (sbIsPgn(puzzle.fen)) {
-                const positions = parseFenVariantToPositions(puzzle.fen.replace(/\r\n?/g, '\n'));
-                if (!positions.length) {
+                // the saved text stays exactly as stored (what Save writes) until you drop a move
+                if (!lineLoad(puzzle.fen.replace(/\r\n?/g, '\n'), { source: puzzle.fen })) {
                     showToast('PGN puzzle has no valid [FEN "..."] header');
                     return;
                 }
                 currentCyclingIndex = null;
-                cyclePositions = positions;
-                cyclePgnSource = puzzle.fen;
-                pgnAdoptFromText(puzzle.fen);
-                cycleIndex = 0;
                 loadPositionFromCycle(true); // silent — no toast for puzzle loads
                 return;
             }
@@ -3156,7 +3416,7 @@
         window.sbLoadPuzzleFromUrlParam = sbLoadPuzzleFromUrlParam; // callable from devtools for debugging
         document.addEventListener('DOMContentLoaded', sbLoadPuzzleFromUrlParam);
 
-        // A saved puzzle is a PGN (cycle with Prev / Cycle Board) if it has a [FEN "..."] header
+        // A saved puzzle is a PGN (step through it with the move navigator) if it has a [FEN "..."] header
         function sbIsPgn(text) {
             return /\[FEN\s+"/.test(text || '');
         }
@@ -3692,10 +3952,7 @@
                         document.getElementById('fenDisplay').value = fenForBoard;
                         loadFenOnBoard();
                         // Set up cycling from the full variant format (includes moves)
-                        cyclePositions = parseFenVariantToPositions(fenRaw);
-                        cyclePgnSource = fenRaw;
-                        pgnAdoptFromText(fenRaw);
-                        cycleIndex = 0;
+                        lineLoad(fenRaw);
                         if (cyclePositions.length > 1) {
                             gdriveSetStatus('Loaded puzzle: "' + (name.length > 50 ? name.substring(0, 50) + '...' : name) + '" — ' + cyclePositions.length + ' positions, use Cycle Board');
                         } else {
@@ -3848,118 +4105,11 @@
     <!-- Move Nav + Dictate PGN Script -->
     <script>
     (function() {
-        // ===== MOVE NAVIGATION =====
-        var moveNavPositions = []; // array of { fen, san, moveNum }
-        var moveNavIndex = -1;     // -1 = start position
-
-        // Render clickable move list from chess.js history
-        function renderMoveList() {
-            var container = document.getElementById('moveListContainer');
-            if (!container) return;
-
-            // Build positions array from chess.js history
-            moveNavPositions = [];
-            var tempChess = new Chess(startingFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
-            var history = chess.history();
-
-            for (var h = 0; h < history.length; h++) {
-                var san = history[h];
-                tempChess.move(san);
-                moveNavPositions.push({
-                    fen: tempChess.fen(),
-                    san: san,
-                    moveNum: Math.floor(h / 2) + 1,
-                    isBlack: h % 2 === 1
-                });
-            }
-
-            if (moveNavPositions.length === 0) {
-                container.innerHTML = '<span style="color: #888;">Move history will appear here...</span>';
-                moveNavIndex = -1;
-                updateMoveNavIndicator();
-                return;
-            }
-
-            container.innerHTML = '';
-            for (var m = 0; m < moveNavPositions.length; m++) {
-                var p = moveNavPositions[m];
-
-                // Add move number before white moves
-                if (!p.isBlack) {
-                    var numSpan = document.createElement('span');
-                    numSpan.className = 'move-number';
-                    numSpan.textContent = p.moveNum + '.';
-                    container.appendChild(numSpan);
-                }
-
-                var moveSpan = document.createElement('span');
-                moveSpan.className = 'move-san';
-                moveSpan.textContent = p.san;
-                moveSpan.dataset.idx = m;
-                moveSpan.onclick = function() { moveNavJump(parseInt(this.dataset.idx)); };
-                container.appendChild(moveSpan);
-            }
-
-            // Default to last move
-            moveNavIndex = moveNavPositions.length - 1;
-            highlightCurrentMove();
-            updateMoveNavIndicator();
-        }
-
-        function highlightCurrentMove() {
-            var spans = document.querySelectorAll('#moveListContainer .move-san');
-            for (var s = 0; s < spans.length; s++) {
-                spans[s].classList.toggle('current', parseInt(spans[s].dataset.idx) === moveNavIndex);
-            }
-            // Scroll current into view
-            var current = document.querySelector('#moveListContainer .move-san.current');
-            if (current) current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        function updateMoveNavIndicator() {
-            var el = document.getElementById('moveNavIndicator');
-            if (!el) return;
-            if (moveNavIndex < 0) {
-                el.textContent = 'Start';
-            } else {
-                var p = moveNavPositions[moveNavIndex];
-                el.textContent = p.moveNum + (p.isBlack ? '...' : '.') + ' ' + p.san;
-            }
-        }
-
-        function moveNavJump(idx) {
-            moveNavIndex = idx;
-            var fen;
-            if (idx < 0) {
-                fen = startingFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-            } else {
-                fen = moveNavPositions[idx].fen;
-            }
-            board.position(fen, false);
-            document.getElementById('fenDisplay').value = fen;
-            updateLichessUrls(fen);
-            highlightCurrentMove();
-            updateMoveNavIndicator();
-        }
-
-        window.moveNavNext = function() {
-            if (moveNavPositions.length === 0) return;
-            if (moveNavIndex < moveNavPositions.length - 1) {
-                moveNavJump(moveNavIndex + 1);
-            }
-        };
-
-        window.moveNavPrev = function() {
-            if (moveNavPositions.length === 0) return;
-            if (moveNavIndex >= 0) {
-                moveNavJump(moveNavIndex - 1);
-            }
-        };
-
         // Keyboard shortcuts (decision is a pure function so it can be tested on its own):
-        //   ←  /  →         previous / next Supabase puzzle  (same as ◀ Prev / Next ▶)
-        //   Space           next move in the move list       (same as Next →)
-        //   Shift + Space   previous move in the move list   (same as ← Back)
+        //   →  /  ←         next / previous move in the line   (same as Next → / ← Back)
+        //   Space           next move                          (Shift + Space: previous move)
+        //   ]  /  [         next / previous variation          (same as Var ] / [ Var)
+        //   ↓  /  ↑         next / previous Supabase puzzle    (same as Next ▶ / ◀ Prev)
         // Ignored while typing in a text box / textarea, while a dropdown has focus
         // (arrows already change it), with Ctrl / Alt / Cmd held, or with the Lichess Links popup open.
         function keyShortcut(k) {
@@ -3967,8 +4117,12 @@
             const typing = k.tag === 'TEXTAREA' || k.tag === 'SELECT' || k.editable ||
                 (k.tag === 'INPUT' && !/^(checkbox|radio|button|submit|range)$/.test(k.type || 'text'));
             if (typing) return null;
-            if (k.key === 'ArrowRight') return 'puzzleNext';
-            if (k.key === 'ArrowLeft') return 'puzzlePrev';
+            if (k.key === 'ArrowRight') return 'moveNext';
+            if (k.key === 'ArrowLeft') return 'movePrev';
+            if (k.key === ']') return 'varNext';
+            if (k.key === '[') return 'varPrev';
+            if (k.key === 'ArrowDown') return 'puzzleNext';
+            if (k.key === 'ArrowUp') return 'puzzlePrev';
             if (k.key === ' ' || k.key === 'Spacebar') return k.shiftKey ? 'movePrev' : 'moveNext';
             return null;
         }
@@ -3991,20 +4145,13 @@
             else if (action === 'puzzlePrev') sbPrevPuzzle();
             else if (action === 'moveNext') window.moveNavNext();
             else if (action === 'movePrev') window.moveNavPrev();
+            else if (action === 'varNext') lineVariation(1);
+            else if (action === 'varPrev') lineVariation(-1);
         });
         // Firefox clicks a focused button on Space *keyup*, so cancel that too
         document.addEventListener('keyup', function(e) {
             if (keyShortcutFromEvent(e) === 'moveNext' || keyShortcutFromEvent(e) === 'movePrev') e.preventDefault();
         });
-
-        // Hook into updateBoardDisplay to re-render move list
-        if (typeof window.updateBoardDisplay === 'function') {
-            var _origUpdate = window.updateBoardDisplay;
-            window.updateBoardDisplay = function() {
-                _origUpdate.apply(this, arguments);
-                renderMoveList();
-            };
-        }
 
         // ===== DICTATION =====
         var dictateChess = null;

@@ -153,13 +153,26 @@ The section is titled **Supabase Puzzles** and has two rows.
 |---|---|
 | **Category dropdown** | Lists the categories. Changing it loads that category's puzzles. |
 | **Puzzle dropdown** | One entry per puzzle, e.g. `1 · FEN — 1k1q4/1pp2rQ1/8/3p…` or `3 ▶ PGN — 2k2r2/pppr1pQ1/…`. `· FEN` = plain FEN, `▶ PGN` = a saved PGN. The preview is the first 24 characters of the start FEN. Picking an entry loads it on the board. |
-| **◀ Prev / Next ▶** | Move to the previous or next puzzle in the category and load it. They wrap around at both ends. Disabled until a category has loaded. |
-| **Prev 🔄 / 🔄 Cycle Board** | Step back or forward through the positions of a **loaded PGN**. For a plain-FEN puzzle there is only one position, so they show "No positions to cycle". |
+| **◀ Prev / Next ▶** | Move to the previous or next puzzle in the category and load it (**↑ / ↓** keys). They wrap around at both ends. Disabled until a category has loaded. |
 | **👁 Reveal Note** | Shows or hides the puzzle's note. The note hides again whenever you load another puzzle. |
 
 **What loading does**
 - **Plain FEN:** the FEN goes into the FEN box and loads on the board, like Load on Board.
-- **PGN:** the PGN is read into the list of positions (start, then one per move), the first position is shown, and Prev 🔄 / Cycle Board step through the rest. The PGN text area is filled too, so dropping more pieces appends moves to it.
+- **PGN:** the PGN is read into a move tree (variations and comments included), the start position is shown, and the **move navigator** under the board steps through it. The PGN text area is filled too, so dropping more pieces extends the line.
+
+**Where things are:** the page has two side panes. **☰ Puzzles** (top left) opens this puzzle browser; **Tools ☰** (top right) holds the FEN / PGN tools: load an image, paste FEN or PGN, flip the board, the PGN recorder and Dictate PGN. Each pane opens and closes on its own and is remembered; on wide screens they push the board aside, on narrow ones they overlay it.
+
+**Move navigator and keys** (under the board; it replaced the old Cycle Board buttons)
+
+| Control | What it does |
+|---|---|
+| **← Back / Next →** (**←** / **→** keys, **Space** / **Shift+Space**) | Step along the current line. They stop at the ends (no wrap-around). |
+| **⏮ / ⏭** | Jump to the start position / the end of the current line. |
+| **[ Var / Var ]** (**[** / **]** keys) | Switch between the alternatives at this point. A move with sibling variations cycles among them; a move with none cycles the alternatives for the next move. The counter shows "line 2 of 3". |
+| **Clicking a move** | Jumps there, in the main line or any variation. |
+| **Comment panel** | Shows the current move's comment. |
+
+Stepping back and forward again stays on the variation you were in. Dropping a piece on the board: if it is the move the line already has next, you just step into it; any other move replaces everything after that point (variations earlier in the line are kept). A PGN you did not edit is saved exactly as stored.
 
 ### Save / delete row
 
@@ -215,7 +228,7 @@ page opens / category changes
   → the first puzzle loads on the board
 pick a puzzle, or press Prev ◀ / Next ▶
   → no request: the list is already in memory (window.sbPuzzlesByCategory)
-  → plain FEN → load on board;  PGN → load into the cycle list
+  → plain FEN → load on board;  PGN → load into the move tree (navigator under the board)
 ```
 
 ### Delete
@@ -281,7 +294,8 @@ Related PGN pieces the feature depends on: `pgnAdoptFromText`, `replayPgnRelaxed
 | Category dropdown says "Failed to load" | The `/api` route is not running (static server instead of `vercel dev`), or the env vars are wrong. Check the browser console and the network tab. |
 | Saving a PGN fails with a length error | `fen` is a short `varchar`. Change it to `text`. |
 | A saved PGN loads as one position | The text has no `[FEN "…"]` header, so it is treated as a plain FEN, or it has a header but no moves. |
-| Prev 🔄 / Cycle Board say "No positions to cycle" | The loaded puzzle is a plain FEN, or no PGN is loaded. |
+| The move navigator is empty / ← → do nothing | The loaded puzzle is a plain FEN (one position), or no PGN is loaded. |
+| ← → no longer switch puzzles | By design: ← → step moves, **[ ]** switch variations, and **↑ ↓** switch puzzles. |
 | New puzzles appear in the wrong place | New saves go to `highest position + 1`. To reorder, edit the CSV and run `python puzzles_csv.py --upload` (section 12). |
 | Bulk add says "Row(s) … could not be read" | Each row needs two cells (the PGN, then the note) and the first must contain `[FEN "…"]`. A stray quote in the PGN that isn't doubled (`""`) breaks the row. Nothing was added. |
 | `puzzles_csv.py` says to set `CHESS_SUPABASE_URL` | Export `CHESS_SUPABASE_URL` and `CHESS_SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`) in your shell. |
