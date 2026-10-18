@@ -2095,6 +2095,26 @@
             return '';
         }
 
+        // The board's frame shows the current move's quality (?? red, ? pink, ?! yellow) and whether the
+        // line is a variation: grey glow inside one, yellow glow on a main-line move that branches.
+        // The border keeps its width so the squares never shift; a shadow ring makes the colour read thicker.
+        function lineBoardMarks() {
+            const board = document.getElementById('myBoard');
+            if (!board) return;
+            const n = lineNode;
+            const a = (n && n.parent) ? n.annotation : '';
+            const frame = a.includes('??') ? '#ff4444' : a.includes('?!') ? '#ffd700' : a.includes('?') && !a.includes('!?') ? '#ff69b4' : '';
+            let inVariation = false;
+            for (let m = n; m && m.parent; m = m.parent) { if (m.parent.children[0] !== m) { inVariation = true; break; } }
+            const branches = !!(n && n.parent && n.parent.children.length > 1);
+            const shadows = [];
+            if (frame) shadows.push('0 0 0 3px ' + frame);
+            if (inVariation) shadows.push('0 0 10px 3px rgba(170, 170, 170, 0.7)');
+            else if (branches) shadows.push('0 0 10px 3px rgba(255, 215, 0, 0.7)');
+            board.style.borderColor = frame;
+            board.style.boxShadow = shadows.join(', ');
+        }
+
         // Draw the move list (main line, variations in parentheses), the indicator, the variation
         // counter and the current move's comment
         function lineRender() {
@@ -2109,6 +2129,7 @@
                 if (ind) ind.textContent = 'Start';
                 if (vi) vi.textContent = '';
                 if (cm) cm.style.display = 'none';
+                lineBoardMarks();
                 return;
             }
 
@@ -2152,6 +2173,7 @@
                 : (n && n.children.length > 1 ? n.children.length + ' lines ahead' : '');
             const c = lineCleanComment(n && n.comment);
             if (cm) { cm.style.display = c ? '' : 'none'; cm.textContent = c; }
+            lineBoardMarks();
 
             // keep the current move in view inside the list (without scrolling the page)
             const cur = box.querySelector('.move-san.current');
