@@ -180,6 +180,15 @@
         }
 
         /* Sticky board container */
+        /* board (with its move navigator) on the left, Saved puzzles on the right; stacks on narrow screens */
+        .board-row { display: flex; gap: 20px; align-items: flex-start; }
+        .board-left { width: 400px; flex-shrink: 0; }
+        .board-right { flex: 1; min-width: 0; }
+        .board-right #sbPuzzleSection { margin-top: 0 !important; }
+        @media (max-width: 860px) {
+            .board-row { flex-direction: column; align-items: stretch; }
+            .board-left { width: 100%; max-width: 400px; margin: 0 auto; }
+        }
         .board-sticky-wrapper {
             max-width: 400px;
             margin: 20px auto;
@@ -823,6 +832,8 @@
 
 
 
+        <div class="board-row">
+            <div class="board-left">
             <!-- Turn Toggle Slider (above board — set whose move before loading) -->
             <div class="turn-toggle-container">
                 <span class="turn-toggle-label" id="turnToggleLabel">♔ White to Move</span>
@@ -857,8 +868,10 @@
                 <div id="lineComment" style="display: none; margin-bottom: 8px; padding: 8px 10px; background: rgba(0,0,0,0.3); border-left: 3px solid #ffd700; border-radius: 5px; font-size: 13px; line-height: 1.5; color: #ffd43b;"></div>
                 <button class="copy-btn" onclick="copyMoveHistory()" style="width: 100%; padding: 8px; font-size: 13px;">📋 Copy Move History</button>
             </div>
+            </div><!-- /board-left -->
+            <div class="board-right">
 
-            <!-- Saved puzzles: sits under the board and move navigator -->
+            <!-- Saved puzzles: to the right of the board (stacks below it on narrow screens) -->
         <!-- Saved puzzles (Supabase): browse, load to the board, reveal the note, delete -->
         <div id="sbPuzzleSection" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; margin: 12px 0 8px;">
             <div style="color: #888; margin-bottom: 8px;">Saved puzzles (Supabase)</div>
@@ -948,6 +961,8 @@
                 </ul>
             </details>
         </div>
+            </div><!-- /board-right -->
+        </div><!-- /board-row -->
 
 
 
