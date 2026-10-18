@@ -843,6 +843,11 @@
                 </label>
             </div>
 
+            <!-- Move list: above the board so it stays in view on a phone; the controls are below the board -->
+                <div id="moveListContainer" style="min-height: 40px; max-height: 140px; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; line-height: 1.8; margin-bottom: 8px;">
+                    <span style="color: #888;">Move history will appear here...</span>
+                </div>
+
             <!-- Interactive Chess Board -->
             <div class="board-sticky-wrapper" id="boardStickyWrapper">
                 <div id="myBoard" class="board"></div>
@@ -850,9 +855,6 @@
 
             <!-- Line navigator: the moves of the loaded / recorded PGN, with variations -->
             <div style="margin: 12px 0;">
-                <div id="moveListContainer" style="min-height: 40px; max-height: 240px; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; line-height: 1.8; margin-bottom: 8px;">
-                    <span style="color: #888;">Move history will appear here...</span>
-                </div>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin-bottom: 6px;">
                     <button class="copy-btn" onclick="lineFirst()" title="Back to the start position" style="padding: 8px 14px; font-size: 14px;">⏮</button>
                     <button class="copy-btn" onclick="moveNavPrev()" title="Previous move (← or Shift+Space)" style="padding: 8px 18px; font-size: 14px;">← Back</button>
