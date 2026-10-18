@@ -42,7 +42,7 @@
             font-weight: bold;
         }
 
-        /* Side panes: ☰ Puzzles opens the left pane, Tools ☰ the right one. Wide screens make room
+        /* Side panes: ☰ To save opens the left pane, Saved ☰ the right one. Wide screens make room
            for them (body padding); narrower ones overlay the page. */
         .pane-btn { position: fixed; top: 58px; z-index: 1000; padding: 8px 12px; background: #16213e; color: #00d4ff;
             border: 1px solid #2a2a4e; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; }
@@ -710,46 +710,14 @@
     <!-- Theme Toggle Button -->
     <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()">&#9788; Light</button>
 
-    <!-- Side panes: ☰ Puzzles (left) and Tools ☰ (right) open beside the board -->
-    <button class="pane-btn" id="paneLeftBtn" onclick="paneToggle('left')" title="Open the Puzzles pane: browse, save and bulk-add puzzles" aria-label="Open the Puzzles pane">☰ Puzzles</button>
-    <button class="pane-btn" id="paneRightBtn" onclick="paneToggle('right')" title="Open the Tools pane: load an image, paste FEN / PGN, flip the board, Dictate PGN" aria-label="Open the Tools pane">Tools ☰</button>
-    <aside class="side-pane" id="paneLeft" aria-label="Puzzles">
-        <div class="side-pane-header"><span>Puzzles</span><button onclick="paneToggle('left', false)" title="Close this pane" aria-label="Close the Puzzles pane">✕</button></div>
-            <!-- Supabase Puzzles -->
-            <div id="sbPuzzleSection" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; margin: 12px 0 8px;">
-                <div style="color: #888; margin-bottom: 8px;">Supabase Puzzles</div>
-
-                <!-- Browse: category -> puzzle -> load to board -> reveal note -->
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-                    <select id="sbCategorySelect" onchange="sbLoadPuzzlesForCategory()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 160px;">
-                        <option value="">Loading categories…</option>
-                    </select>
-                    <select id="sbPuzzleSelect" disabled onchange="sbLoadSelectedPuzzle()" style="flex: 1; min-width: 220px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
-                        <option value="">— pick a category first —</option>
-                    </select>
-                    <span id="sbLoadedPuzzleId" title="Supabase id of the puzzle currently on the board" style="color: #3ecf8e; font-weight: bold; min-width: 40px;"></span>
-                    <input type="text" id="sbPuzzleIdInput" placeholder="Load by ID..." onkeydown="if(event.key==='Enter') sbLoadPuzzleByIdInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 100px;">
-                    <button onclick="sbLoadPuzzleByIdInput()" title="Fetch straight from Supabase by id — no need to pick a category first" style="padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Load ID</button>
-                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category ([ key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
-                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category (] key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
-                    <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
-                    <label style="display: flex; align-items: center; gap: 4px; color: #aaa; font-size: 12px; cursor: pointer;" title="Show each puzzle's note automatically as you step through with Next / Prev">
-                        <input type="checkbox" id="sbAutoNoteToggle" onchange="sbSetAutoNote(this.checked)"> Auto-reveal notes
-                    </label>
-                    <button id="sbCopyLinkBtn" onclick="sbCopyPuzzleLink()" disabled title="Copy a link that opens this puzzle (?id=…)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold;">&#128279; Copy link</button>
-                </div>
-                <div id="sbPuzzleLinks" style="display: none; margin-top: 6px; font-size: 12px; line-height: 1.6;">
-                    <div title="Always opens this exact puzzle, even after you reorder or delete others. Tap once to select the whole link.">
-                        <span style="color: #888;">link</span>
-                        <span id="sbPuzzleLinkId" style="color: #00d4ff; user-select: all; word-break: break-all;"></span>
-                    </div>
-                    <div title="By place in the dropdown: category + number. Shifts if you reorder or delete puzzles. Tap once to select the whole link.">
-                        <span style="color: #888;">by place</span>
-                        <span id="sbPuzzleLinkPlace" style="color: #00d4ff; user-select: all; word-break: break-all;"></span>
-                    </div>
-                </div>
-                <div id="sbNoteDisplay" style="display: none; margin-top: 8px; padding: 10px; background: #0f3460; border-radius: 5px; color: #eee; font-size: 14px;"></div>
-
+    <!-- Side panes: ☰ To save (left) and Saved ☰ (right) open beside the board -->
+    <button class="pane-btn" id="paneLeftBtn" onclick="paneToggle('left')" title="Open the To save pane: build a position (image, paste, dictate), then save it or bulk-add rows" aria-label="Open the To save pane">☰ To save</button>
+    <button class="pane-btn" id="paneRightBtn" onclick="paneToggle('right')" title="Open the Saved pane: browse saved puzzles, reveal notes, copy links, delete, flip the board" aria-label="Open the Saved pane">Saved ☰</button>
+    <aside class="side-pane" id="paneLeft" aria-label="To save">
+        <div class="side-pane-header"><span>To save</span><button onclick="paneToggle('left', false)" title="Close this pane" aria-label="Close the To save pane">✕</button></div>
+            <!-- Save: current board FEN / PGN -> category (existing or new) + note, or paste many rows -->
+            <div id="sbSaveSection" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; margin: 12px 0 8px;">
+                <div style="color: #888; margin-bottom: 8px;">Save to Supabase</div>
                 <!-- Save: current board FEN -> category (existing or new) + note -->
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
                     <select id="sbSaveCategorySelect" onchange="sbToggleNewCategoryInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 160px;">
@@ -758,7 +726,6 @@
                     <input type="text" id="sbNewCategoryInput" placeholder="New category name (e.g. mate_in_5)..." style="min-width: 180px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
                     <input type="text" id="sbNoteInput" placeholder="Note (e.g. win a pawn)..." style="flex: 1; min-width: 200px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
                     <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">💾 Save to Supabase</button>
-                    <button id="sbDeletePuzzleBtn" onclick="sbDeletePuzzle()" title="Delete the puzzle currently selected in the dropdown from Supabase" style="padding: 8px 18px; background: #c0392b; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">🗑️ Delete Loaded FEN/PGN</button>
                 </div>
                 <div id="sbPuzzleStatus" style="margin-top: 6px; font-size: 12px; color: #888;"></div>
 
@@ -770,58 +737,8 @@
                     <button onclick="sbBulkAdd()" style="margin-top: 6px; padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">➕ Add rows to Supabase</button>
                 </details>
 
-                <!-- Supabase `puzzles` is the only source of truth -->
-                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px; color: #888;">
-                    Source of truth: the Supabase <code style="color: #ddd;">puzzles</code> table. <b style="color: #ddd;">💾 Save</b>, <b style="color: #ddd;">➕ Add rows</b> and <b style="color: #ddd;">🗑️ Delete</b> change Supabase only, and need the access code (asked once, remembered in this browser). To back up or bulk edit, use <code style="color: #ddd;">python puzzles_csv.py</code> (see below).
-                </div>
-                <div style="margin-top: 4px; font-size: 12px; color: #888;">
-                    Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Or by category and place in the dropdown: <code style="color: #ddd;">?category=mate_in_5&amp;n=3</code> (3rd entry; <code style="color: #ddd;">n</code> defaults to 1; it follows the dropdown order, so it shifts if you reorder or delete — <code style="color: #ddd;">?id=</code> never does). Otherwise the category dropdown fills in normally, but no puzzle loads onto the board until you pick one.<br>Keys: <b style="color: #ddd;">← / →</b> previous / next puzzle, <b style="color: #ddd;">Space</b> next move, <b style="color: #ddd;">Shift+Space</b> previous move.
-                </div>
-                <details style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5;">
-                    <summary style="cursor: pointer; color: #ddd; font-weight: bold;">How the puzzles are stored (tap to open)</summary>
-
-                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Where things live</b></p>
-                    <ul style="margin: 0 0 0 18px; padding: 0;">
-                        <li><b style="color: #ddd;">Supabase is the only source of truth.</b> The category and puzzle dropdowns, Prev / Next, the <code style="color: #ddd;">?id=</code> links and the puzzle ids all come from the <code style="color: #ddd;">puzzles</code> table. Each puzzle row has a number, shown as #id next to the dropdown.</li>
-                        <li>There is no automatic sync with any file. Nothing you do on this page, and no CSV, can delete puzzles behind your back.</li>
-                    </ul>
-
-                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">💾 Save to Supabase</b></p>
-                    <ul style="margin: 0 0 0 18px; padding: 0;">
-                        <li>Saves the FEN in the FEN box. If a PGN is loaded (a puzzle, a pasted PGN, or moves you dropped), it saves the whole PGN instead, variations and comments included.</li>
-                        <li>Adds a new row with a new id at the end of the category. It never replaces a row, so saving the same FEN twice gives two rows.</li>
-                    </ul>
-
-                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">➕ Bulk add</b></p>
-                    <ul style="margin: 0 0 0 18px; padding: 0;">
-                        <li>Paste <code style="color: #ddd;">fen,note</code> rows into the textarea; they are added to the chosen category, skipping rows already there.</li>
-                    </ul>
-
-                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">🗑️ Delete</b> (the red button here)</p>
-                    <ul style="margin: 0 0 0 18px; padding: 0;">
-                        <li>Deletes the puzzle selected in the dropdown from Supabase. It asks you to confirm first and cannot be undone.</li>
-                    </ul>
-
-                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Access code</b></p>
-                    <ul style="margin: 0 0 0 18px; padding: 0;">
-                        <li>Save, bulk add and delete need the server's <code style="color: #ddd;">ACCESS_CODE</code>. The page asks for it the first time and remembers it in this browser (localStorage). A wrong code is forgotten, so you are asked again. Reading puzzles needs no code.</li>
-                    </ul>
-
-                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Backup and bulk edit: <code style="color: #ddd;">python puzzles_csv.py</code></b></p>
-                    <ul style="margin: 0 0 0 18px; padding: 0;">
-                        <li><code style="color: #ddd;">--download</code> writes one CSV per category (<code style="color: #ddd;">&lt;category&gt;.csv</code>, columns <code style="color: #ddd;">fen,note</code>, in puzzle order) into <code style="color: #ddd;">~/Library/CloudStorage/Dropbox/study/chess</code>, a backup you can also edit.</li>
-                        <li><code style="color: #ddd;">--upload</code> reads those CSVs back into Supabase: rows are matched by FEN (a puzzle keeps its id and <code style="color: #ddd;">?id=</code> links when you reorder, edit its note or move it to another CSV), new rows are inserted, and Supabase rows that match no CSV row are deleted. It shows the plan and asks first; <code style="color: #ddd;">--dry-run</code> only prints it. It refuses to run if the CSVs hold no puzzles.</li>
-                    </ul>
-
-                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Links</b></p>
-                    <ul style="margin: 0 0 8px 18px; padding: 0;">
-                        <li>A <code style="color: #ddd;">?id=</code> link opens that puzzle. After the puzzle is deleted the link stops working and says "Puzzle not found". Moving it to another category does not break it.</li>
-                    </ul>
-                </details>
             </div>
-    </aside>
-    <aside class="side-pane" id="paneRight" aria-label="Tools">
-        <div class="side-pane-header"><span>Tools</span><button onclick="paneToggle('right', false)" title="Close this pane" aria-label="Close the Tools pane">✕</button></div>
+            <!-- Build a position to save: image to FEN, paste FEN / PGN, PGN recorder, Dictate PGN -->
             <!-- Load Image Button and Preview -->
             <div style="margin-bottom: 15px; text-align: center;">
                 <button id="loadImageBtn" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;" onclick="document.getElementById('imageFileInput').click()">🖼️ Load Reference Image</button>
@@ -846,7 +763,6 @@
             <div class="button-section">
                 <div class="button-grid">
                     <button class="complete-btn" onclick="loadFenOnBoard()">&#127937; Load on Board</button>
-                    <button class="copy-btn" onclick="flipBoard()">&#8635; Flip Board</button>
                     <button class="copy-btn" onclick="clearFenDisplay()" style="background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear FEN</button>
                     <button id="pasteFenBtn" class="copy-btn" onclick="pasteFenFromClipboard()" title="Paste a FEN from the clipboard and load it on the board (a PGN is loaded like Paste PGN)" style="background-color: rgba(0, 150, 136, 0.3);">&#128203; Paste FEN</button>
                     <button id="pastePgnBtn" class="copy-btn" onclick="pastePgnFromClipboard()" style="background-color: rgba(0, 150, 136, 0.3);">&#128203; Paste PGN</button>
@@ -903,6 +819,98 @@
                     <code style="display:block; color:#ccc;">1.e4 e5 2.Nf3 Nc6 3.Bb5</code>
                     <code style="display:block; color:#ccc;">O-O &nbsp; O-O-O &nbsp; dxe5 &nbsp; Bxf7+</code>
                 </div>
+            </div>
+    </aside>
+    <aside class="side-pane" id="paneRight" aria-label="Saved">
+        <div class="side-pane-header"><span>Saved</span><button onclick="paneToggle('right', false)" title="Close this pane" aria-label="Close the Saved pane">✕</button></div>
+            <!-- Saved puzzles (Supabase): browse, load to the board, reveal the note, delete -->
+            <div id="sbPuzzleSection" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; margin: 12px 0 8px;">
+                <div style="color: #888; margin-bottom: 8px;">Saved puzzles (Supabase)</div>
+
+                <!-- Browse: category -> puzzle -> load to board -> reveal note -->
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                    <select id="sbCategorySelect" onchange="sbLoadPuzzlesForCategory()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 160px;">
+                        <option value="">Loading categories…</option>
+                    </select>
+                    <select id="sbPuzzleSelect" disabled onchange="sbLoadSelectedPuzzle()" style="flex: 1; min-width: 220px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
+                        <option value="">— pick a category first —</option>
+                    </select>
+                    <span id="sbLoadedPuzzleId" title="Supabase id of the puzzle currently on the board" style="color: #3ecf8e; font-weight: bold; min-width: 40px;"></span>
+                    <input type="text" id="sbPuzzleIdInput" placeholder="Load by ID..." onkeydown="if(event.key==='Enter') sbLoadPuzzleByIdInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 100px;">
+                    <button onclick="sbLoadPuzzleByIdInput()" title="Fetch straight from Supabase by id — no need to pick a category first" style="padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Load ID</button>
+                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category ([ key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
+                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category (] key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
+                    <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
+                    <label style="display: flex; align-items: center; gap: 4px; color: #aaa; font-size: 12px; cursor: pointer;" title="Show each puzzle's note automatically as you step through with Next / Prev">
+                        <input type="checkbox" id="sbAutoNoteToggle" onchange="sbSetAutoNote(this.checked)"> Auto-reveal notes
+                    </label>
+                    <button id="sbCopyLinkBtn" onclick="sbCopyPuzzleLink()" disabled title="Copy a link that opens this puzzle (?id=…)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold;">&#128279; Copy link</button>
+                </div>
+                <div id="sbPuzzleLinks" style="display: none; margin-top: 6px; font-size: 12px; line-height: 1.6;">
+                    <div title="Always opens this exact puzzle, even after you reorder or delete others. Tap once to select the whole link.">
+                        <span style="color: #888;">link</span>
+                        <span id="sbPuzzleLinkId" style="color: #00d4ff; user-select: all; word-break: break-all;"></span>
+                    </div>
+                    <div title="By place in the dropdown: category + number. Shifts if you reorder or delete puzzles. Tap once to select the whole link.">
+                        <span style="color: #888;">by place</span>
+                        <span id="sbPuzzleLinkPlace" style="color: #00d4ff; user-select: all; word-break: break-all;"></span>
+                    </div>
+                </div>
+                <div id="sbNoteDisplay" style="display: none; margin-top: 8px; padding: 10px; background: #0f3460; border-radius: 5px; color: #eee; font-size: 14px;"></div>
+
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                    <button id="sbDeletePuzzleBtn" onclick="sbDeletePuzzle()" title="Delete the puzzle currently selected in the dropdown from Supabase" style="padding: 8px 18px; background: #c0392b; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">🗑️ Delete Loaded FEN/PGN</button>
+                    <button class="copy-btn" onclick="flipBoard()">&#8635; Flip Board</button>
+                </div>
+
+                <!-- Supabase `puzzles` is the only source of truth -->
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px; color: #888;">
+                    Source of truth: the Supabase <code style="color: #ddd;">puzzles</code> table. <b style="color: #ddd;">💾 Save</b>, <b style="color: #ddd;">➕ Add rows</b> and <b style="color: #ddd;">🗑️ Delete</b> change Supabase only, and need the access code (asked once, remembered in this browser). To back up or bulk edit, use <code style="color: #ddd;">python puzzles_csv.py</code> (see below).
+                </div>
+                <div style="margin-top: 4px; font-size: 12px; color: #888;">
+                    Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Or by category and place in the dropdown: <code style="color: #ddd;">?category=mate_in_5&amp;n=3</code> (3rd entry; <code style="color: #ddd;">n</code> defaults to 1; it follows the dropdown order, so it shifts if you reorder or delete — <code style="color: #ddd;">?id=</code> never does). Otherwise the category dropdown fills in normally, but no puzzle loads onto the board until you pick one.<br>Keys: <b style="color: #ddd;">← / →</b> previous / next puzzle, <b style="color: #ddd;">Space</b> next move, <b style="color: #ddd;">Shift+Space</b> previous move.
+                </div>
+                <details style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5;">
+                    <summary style="cursor: pointer; color: #ddd; font-weight: bold;">How the puzzles are stored (tap to open)</summary>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Where things live</b></p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li><b style="color: #ddd;">Supabase is the only source of truth.</b> The category and puzzle dropdowns, Prev / Next, the <code style="color: #ddd;">?id=</code> links and the puzzle ids all come from the <code style="color: #ddd;">puzzles</code> table. Each puzzle row has a number, shown as #id next to the dropdown.</li>
+                        <li>There is no automatic sync with any file. Nothing you do on this page, and no CSV, can delete puzzles behind your back.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">💾 Save to Supabase</b></p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li>Saves the FEN in the FEN box. If a PGN is loaded (a puzzle, a pasted PGN, or moves you dropped), it saves the whole PGN instead, variations and comments included.</li>
+                        <li>Adds a new row with a new id at the end of the category. It never replaces a row, so saving the same FEN twice gives two rows.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">➕ Bulk add</b></p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li>Paste <code style="color: #ddd;">fen,note</code> rows into the textarea; they are added to the chosen category, skipping rows already there.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">🗑️ Delete</b> (the red button here)</p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li>Deletes the puzzle selected in the dropdown from Supabase. It asks you to confirm first and cannot be undone.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Access code</b></p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li>Save, bulk add and delete need the server's <code style="color: #ddd;">ACCESS_CODE</code>. The page asks for it the first time and remembers it in this browser (localStorage). A wrong code is forgotten, so you are asked again. Reading puzzles needs no code.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Backup and bulk edit: <code style="color: #ddd;">python puzzles_csv.py</code></b></p>
+                    <ul style="margin: 0 0 0 18px; padding: 0;">
+                        <li><code style="color: #ddd;">--download</code> writes one CSV per category (<code style="color: #ddd;">&lt;category&gt;.csv</code>, columns <code style="color: #ddd;">fen,note</code>, in puzzle order) into <code style="color: #ddd;">~/Library/CloudStorage/Dropbox/study/chess</code>, a backup you can also edit.</li>
+                        <li><code style="color: #ddd;">--upload</code> reads those CSVs back into Supabase: rows are matched by FEN (a puzzle keeps its id and <code style="color: #ddd;">?id=</code> links when you reorder, edit its note or move it to another CSV), new rows are inserted, and Supabase rows that match no CSV row are deleted. It shows the plan and asks first; <code style="color: #ddd;">--dry-run</code> only prints it. It refuses to run if the CSVs hold no puzzles.</li>
+                    </ul>
+
+                    <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Links</b></p>
+                    <ul style="margin: 0 0 8px 18px; padding: 0;">
+                        <li>A <code style="color: #ddd;">?id=</code> link opens that puzzle. After the puzzle is deleted the link stops working and says "Puzzle not found". Moving it to another category does not break it.</li>
+                    </ul>
+                </details>
             </div>
     </aside>
 
@@ -2151,7 +2159,7 @@
         }
 
         // ===========================================================================
-        // SIDE PANES: ☰ Puzzles (left) and Tools ☰ (right); remembered across reloads
+        // SIDE PANES: ☰ To save (left) and Saved ☰ (right); remembered across reloads
         // ===========================================================================
         function paneToggle(side, force) {
             const cls = 'pane-' + side + '-open';

@@ -145,9 +145,12 @@ Any error Supabase returns is passed back with its own status code. Anything une
 
 ## 5. The panel in the page
 
-The section is titled **Supabase Puzzles** and has two rows.
+The puzzle controls live in two side panes that open beside the board (each has its own button, opens and closes on its own, and is remembered across reloads):
 
-### Browse row
+- **☰ To save** (left pane): everything for getting a position into Supabase. At the top, the save controls (category, note, **💾 Save to Supabase**, bulk add). Below them, the tools that build a position: reference image and **Read FEN from image**, Paste FEN / Paste PGN, Load on Board, the PGN recorder, and **Dictate PGN**.
+- **Saved ☰** (right pane): the puzzles already in Supabase. The browse controls below, plus **🗑️ Delete Loaded FEN/PGN** and **Flip Board**, and the collapsed "How the puzzles are stored" explanation.
+
+### Browse (Saved pane)
 
 | Control | What it does |
 |---|---|
@@ -174,7 +177,7 @@ The section is titled **Supabase Puzzles** and has two rows.
 
 Stepping back and forward again stays on the variation you were in. Dropping a piece on the board: if it is the move the line already has next, you just step into it; any other move replaces everything after that point (variations earlier in the line are kept). A PGN you did not edit is saved exactly as stored.
 
-### Save / delete row
+### Save and delete
 
 | Control | What it does |
 |---|---|
@@ -182,13 +185,13 @@ Stepping back and forward again stays on the variation you were in. Dropping a p
 | **New category name box** | Appears only for **+ New category…**. |
 | **Note box** | Optional hint text stored in `note`. |
 | **💾 Save to Supabase** | Saves either the board's FEN or the whole PGN (rule below). |
-| **🗑️ Delete Loaded FEN/PGN** | Deletes the puzzle selected in the puzzle dropdown, after a confirm dialog. |
+| **🗑️ Delete Loaded FEN/PGN** | In the **Saved** pane, next to the browse controls. Deletes the puzzle selected in the puzzle dropdown, after a confirm dialog. |
 
-A status line under the row shows "Saving…", "Saved FEN to …", "Saved PGN to …" or "Deleted …".
+The save controls are in the **To save** pane. A status line under them shows "Saving…", "Saved FEN to …", "Saved PGN to …" or "Deleted …".
 
 ### Bulk add
 
-Under the save row, **Bulk add rows (paste fen,note)** is a collapsed section with a textarea and an **➕ Add rows to Supabase** button.
+In the **To save** pane, under the save row, **Bulk add rows (paste fen,note)** is a collapsed section with a textarea and an **➕ Add rows to Supabase** button.
 
 - Paste one or many `fen,note` rows (CSV; the PGN in quotes, with `""` for a quote inside it). A `fen,note` header line is skipped.
 - The category comes from the **save row's category dropdown** (or the new-category box when **+ New category…** is selected). The board and the Note box are not used.
