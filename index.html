@@ -776,7 +776,7 @@
                 <textarea id="moveHistoryTextArea" readonly rows="3" placeholder="Moves you drop on the board appear here as a Lichess-style PGN..."></textarea>
                 <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('moveHistoryTextArea').value.trim()).then(()=>showToast('PGN copied!'))" style="margin-top: 6px;">📋 Copy PGN</button>
                 <button class="copy-btn" onclick="clearPgn()" style="margin-top: 6px; background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear PGN</button>
-                <button class="copy-btn" onclick="copyPgnOneLine()" title="Flatten the PGN above to a single line and copy it (for a Google Sheets cell)" style="margin-top: 6px; background: #0f3460; color: #e91e63; border: 1px solid #e91e63; font-weight: bold;">1-Line</button>
+                <button class="copy-btn" onclick="copyPgnOneLine(this)" title="Flatten the PGN above to a single line and copy it (for a Google Sheets cell)" style="margin-top: 6px; background: #0f3460; color: #e91e63; border: 1px solid #e91e63; font-weight: bold;">1-Line</button>
             </div>
             <!-- Dictate PGN Section -->
             <div style="margin: 12px 0;">
@@ -1821,10 +1821,14 @@
         }
 
         // Flatten the PGN box (header tags and moves) to one line and copy it
-        function copyPgnOneLine() {
+        function copyPgnOneLine(btn) {
             const line = document.getElementById('moveHistoryTextArea').value.replace(/\s+/g, ' ').trim();
             if (!line) { showToast('No PGN to copy'); return; }
-            navigator.clipboard.writeText(line).then(() => showToast('PGN copied as one line!'));
+            navigator.clipboard.writeText(line).then(() => {
+                showToast('PGN copied as one line!');
+                btn.textContent = 'Copied!';
+                setTimeout(() => { btn.textContent = '1-Line'; }, 1500);
+            });
         }
 
         // FEN (and board side) out of a lichess.org analysis / editor link, e.g.
