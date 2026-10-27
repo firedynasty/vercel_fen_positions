@@ -768,6 +768,7 @@
                     <button id="pasteFenBtn" class="copy-btn" onclick="pasteFenFromClipboard()" title="Paste a FEN from the clipboard and load it on the board (a PGN is loaded like Paste PGN)" style="background-color: rgba(0, 150, 136, 0.3);">&#128203; Paste FEN</button>
                     <button id="pastePgnBtn" class="copy-btn" onclick="pastePgnFromClipboard()" style="background-color: rgba(0, 150, 136, 0.3);">&#128203; Paste PGN</button>
                     <button id="lichessLinksBtn" class="copy-btn" onclick="openLichessLinksModal()" style="background-color: #629924; color: white; font-weight: bold;">Lichess Links</button>
+                    <button id="pasteLichessUrlBtn" class="copy-btn" onclick="pasteLichessUrlFromClipboard()" title="Paste a lichess.org analysis/editor link from the clipboard and load its position (and board side) here" style="background-color: rgba(98, 153, 36, 0.35);">&#128279; Paste Lichess URL</button>
                 </div>
             </div>
             <!-- PGN of the moves played from the loaded FEN (Lichess "From Position" format) -->
@@ -775,7 +776,7 @@
                 <textarea id="moveHistoryTextArea" readonly rows="3" placeholder="Moves you drop on the board appear here as a Lichess-style PGN..."></textarea>
                 <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('moveHistoryTextArea').value.trim()).then(()=>showToast('PGN copied!'))" style="margin-top: 6px;">📋 Copy PGN</button>
                 <button class="copy-btn" onclick="clearPgn()" style="margin-top: 6px; background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear PGN</button>
-                <button class="copy-btn" onclick="resetFen()" style="margin-top: 6px; background-color: rgba(255, 152, 0, 0.3);">↺ Reset FEN</button>
+                <button class="copy-btn" onclick="copyPgnOneLine()" title="Flatten the PGN above to a single line and copy it (for a Google Sheets cell)" style="margin-top: 6px; background: #0f3460; color: #e91e63; border: 1px solid #e91e63; font-weight: bold;">1-Line</button>
             </div>
             <!-- Dictate PGN Section -->
             <div style="margin: 12px 0;">
@@ -1483,14 +1484,6 @@
             showToast('PGN cleared');
         }
 
-        // Make the position currently on the board the header FEN and drop the recorded moves
-        function resetFen() {
-            if (typeof board === 'undefined' || !board) return;
-            const turn = document.getElementById('turnToggleCheckbox').checked ? 'b' : 'w';
-            pgnRebase(fenFor(board.fen(), turn));
-            showToast('Header FEN reset to the board');
-        }
-
         // Update board display after a move (for chess.js integration)
         function updateBoardDisplay() {
             // Get current FEN and PGN from chess.js
@@ -1823,6 +1816,45 @@
             loadFenOnBoard();
             // A pasted FEN is a single position: leave the PGN box empty (like Clear PGN)
             // so nothing treats it as a PGN. Dropping a piece starts a fresh PGN from here.
+            lineReset();
+            renderPgn();
+        }
+
+        // Flatten the PGN box (header tags and moves) to one line and copy it
+        function copyPgnOneLine() {
+            const line = document.getElementById('moveHistoryTextArea').value.replace(/\s+/g, ' ').trim();
+            if (!line) { showToast('No PGN to copy'); return; }
+            navigator.clipboard.writeText(line).then(() => showToast('PGN copied as one line!'));
+        }
+
+        // FEN (and board side) out of a lichess.org analysis / editor link, e.g.
+        //   https://lichess.org/analysis/4r2k/pp1q1R1n/.../5RK1_b_-_-_2_35?color=black#practice
+        // Returns { fen, color } or null when the text is not such a link.
+        function parseLichessUrl(text) {
+            let url;
+            try { url = new URL(text.trim()); } catch (e) { return null; }
+            if (!/(^|\.)lichess\.org$/.test(url.hostname)) return null;
+            const m = url.pathname.match(/^\/(?:analysis|editor)\/(?:(?:standard|fromPosition|chess960)\/)?(.+)$/i);
+            if (!m) return null;
+            const fen = decodeURIComponent(m[1]).replace(/_/g, ' ').trim();
+            if (!/^[pnbrqkPNBRQK1-8]+(\/[pnbrqkPNBRQK1-8]+){7}(\s|$)/.test(fen)) return null;
+            return { fen: fen, color: url.searchParams.get('color') === 'black' ? 'black' : 'white' };
+        }
+
+        // Clipboard lichess link -> FEN box -> board, facing the side the link was opened from
+        async function pasteLichessUrlFromClipboard() {
+            let text;
+            try {
+                text = await navigator.clipboard.readText();
+            } catch (e) {
+                showToast('Clipboard access denied');
+                return;
+            }
+            const parsed = parseLichessUrl(text || '');
+            if (!parsed) { showToast('Clipboard has no lichess.org analysis/editor link'); return; }
+            document.getElementById('fenDisplay').value = parsed.fen;
+            loadFenOnBoard();
+            if (board && board.orientation() !== parsed.color) board.orientation(parsed.color);
             lineReset();
             renderPgn();
         }
