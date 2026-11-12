@@ -721,12 +721,11 @@
                 <div style="color: #888; margin-bottom: 8px;">Save to Supabase</div>
                 <!-- Save: current board FEN -> category (existing or new) + note -->
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-                    <!-- prefills the name box; hidden until sbLoadCategories finds a category (sbRefreshCategoryPicker) -->
-                    <select id="sbSaveCategorySelect" onchange="sbPickCategory()" style="display: none; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 160px;">
-                        <option value="__new__">+ New category…</option>
-                    </select>
-                    <!-- One box, the whole name: everything before the first ": " is the category, the rest is the note. -->
-                    <input type="text" id="sbNameInput" placeholder="category: note (e.g. mate_in_5: win a pawn)" title="Type the category, then &quot;: &quot;, then the note. The category dropdown beside this box fills in the prefix for you." onkeydown="if(event.key==='Enter') sbSavePuzzle()" style="flex: 1; min-width: 280px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
+                    <!-- One box, the whole name: everything before the first ": " is the category, the rest is the note.
+                         The existing categories come back as autocomplete suggestions (sbCategoryOptions, filled by
+                         sbLoadCategories), each already ending in ": " so picking one leaves you typing the note. -->
+                    <input type="text" id="sbNameInput" list="sbCategoryOptions" autocomplete="off" placeholder="category: note (e.g. mate_in_5: win a pawn)" title="Type the category, then &quot;: &quot;, then the note. Existing categories suggest themselves as you type." onkeydown="if(event.key==='Enter') sbSavePuzzle()" style="flex: 1; min-width: 280px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
+                    <datalist id="sbCategoryOptions"></datalist>
                     <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">💾 Save to Supabase</button>
                 </div>
                 <div id="sbPuzzleStatus" style="margin-top: 6px; font-size: 12px; color: #888;"></div>
@@ -3379,7 +3378,7 @@
         async function sbLoadCategories(opts) {
             opts = opts || {};
             const browseSel = document.getElementById('sbCategorySelect');
-            const saveSel = document.getElementById('sbSaveCategorySelect');
+            const saveList = document.getElementById('sbCategoryOptions');
             try {
                 const categories = await sbApiCategories();
 
@@ -3387,12 +3386,12 @@
                     ? categories.map(c => `<option value="${c}">${c}</option>`).join('')
                     : '<option value="">No categories yet</option>';
 
-                // Pure prefill helper for the name box — there is no "+ New category…"
-                // entry any more, because a new category is just something you type.
-                saveSel.innerHTML = '<option value="">— category —</option>' +
-                    categories.map(c => `<option value="${c}">${c}</option>`).join('');
-                saveSel.value = '';
-                sbRefreshCategoryPicker();
+                // Suggestions for the name box. The trailing ": " is part of the value,
+                // so accepting one drops the cursor straight into the note.
+                if (saveList) {
+                    saveList.innerHTML = categories
+                        .map(c => `<option value="${c}${SB_SEP}">${c}</option>`).join('');
+                }
 
                 // Awaited (not fire-and-forget): callers that immediately change
                 // sbCategorySelect after awaiting this (e.g. sbLoadPuzzleById)
@@ -3715,28 +3714,6 @@
             if (window.sbAutoNote && sbCurrentPuzzle()) sbShowNote();
         }
 
-        // Category and note are one box now (#sbNameInput, "category: note").
-        // The dropdown beside it only types the category prefix for you, so it is
-        // pointless when the table has no categories yet — hide it until there are.
-        function sbRefreshCategoryPicker() {
-            const sel = document.getElementById('sbSaveCategorySelect');
-            if (!sel) return;
-            sel.style.display = sel.options.length <= 1 ? 'none' : '';
-        }
-
-        // Picking a category rewrites only the prefix of the name box, so a note
-        // already typed survives switching category.
-        function sbPickCategory() {
-            const sel = document.getElementById('sbSaveCategorySelect');
-            const box = document.getElementById('sbNameInput');
-            if (!sel || !box || !sel.value) return;
-            const note = sbSplitName(box.value).note;
-            box.value = note ? sbJoinName(sel.value, note) : sel.value + SB_SEP;
-            sel.value = ''; // back to the "— category —" placeholder, so the same one can be picked again
-            box.focus();
-            box.setSelectionRange(box.value.length, box.value.length);
-        }
-
         // Writes (save / bulk / delete) need the server's ACCESS_CODE: asked once, kept in localStorage.
         // A wrong code is forgotten so the next write asks again.
         function sbAccessCode() {
@@ -3868,8 +3845,7 @@
 
                 await sbLoadCategories();
                 document.getElementById('sbCategorySelect').value = category;
-                await sbLoadPuzzlesForCategory();
-                sbRefreshCategoryPicker();
+                await sbLoadPuzzlesForCategory(); // sbLoadCategories above already refreshed the suggestions
             } catch (err) {
                 statusEl.textContent = '';
                 showToast('Save failed: ' + err.message);
