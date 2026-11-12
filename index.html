@@ -26,8 +26,9 @@
         table.chess tr td { background: #F2E0CB; }
         table.chess tr:nth-child(odd) td:nth-child(even), table.chess tr:nth-child(even) td:nth-child(odd) { background: #C4AA8B; }
 
-        /* Theme Toggle Button */
-        .theme-toggle-btn {
+        /* Scroll lock button, where the light/dark toggle used to be — the page is
+           always dark now. Red while the page is frozen. */
+        .scroll-lock-btn {
             position: fixed;
             top: 58px;
             right: 10px;
@@ -41,6 +42,11 @@
             font-size: 14px;
             font-weight: bold;
         }
+        .scroll-lock-btn.on { background: #dc3545; color: #fff; }
+        /* Frozen page: nothing scrolls and no touch gesture is read as a scroll,
+           so a drag across the board can only reach the board. */
+        html.scroll-locked, body.scroll-locked { overflow: hidden; overscroll-behavior: none; }
+        body.scroll-locked { touch-action: none; }
 
         /* Side panes: ☰ To save opens the left pane. Wide screens make room
            for them (body padding); narrower ones overlay the page. */
@@ -61,9 +67,6 @@
         @media (min-width: 1100px) {
             body.pane-left-open { padding-left: 440px; }
         }
-        body.light-mode .side-pane, body.light-mode .side-pane-header { background: #eef1f6; }
-        body.light-mode .side-pane-header { color: #0b6e99; border-bottom-color: #c9d1de; }
-        body.light-mode .pane-btn { background: #fff; color: #0b6e99; border-color: #c9d1de; }
         .line-var { color: #9aa7bd; font-size: 13px; }
         .line-var .move-san { color: #b8c4d9; }
         .line-var .move-san.current { color: #1a1a2e; }
@@ -319,94 +322,24 @@
         }
 
         /* Light Mode */
-        body.light-mode {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
-            color: #333;
-        }
 
-        body.light-mode .fen-container,
-        body.light-mode .position-saver {
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid #ddd;
-        }
 
-        body.light-mode #fenDisplay {
-            background-color: #fff;
-            color: #333;
-            border-color: #ccc;
-        }
 
-        body.light-mode button {
-            background-color: #fff;
-            color: #333;
-            border-color: #ccc;
-        }
 
-        body.light-mode button:hover:not(:disabled) {
-            background-color: rgba(59, 130, 246, 0.15);
-        }
 
-        body.light-mode .complete-btn {
-            background-color: rgba(76, 175, 80, 0.2);
-        }
 
-        body.light-mode .copy-btn {
-            background-color: rgba(33, 150, 243, 0.2);
-        }
 
-        body.light-mode .position-input-row input {
-            background-color: #fff;
-            color: #333;
-            border-color: #ccc;
-        }
 
-        body.light-mode #savedPositionsTable th {
-            background-color: rgba(59, 130, 246, 0.15);
-            color: #1e40af;
-        }
 
-        body.light-mode #savedPositionsTable tbody tr {
-            background-color: #fff;
-        }
 
-        body.light-mode #savedPositionsTable tbody tr:nth-child(even) {
-            background-color: rgba(0, 0, 0, 0.02);
-        }
 
-        body.light-mode #savedPositionsTable tbody tr:hover {
-            background-color: rgba(59, 130, 246, 0.1);
-        }
 
-        body.light-mode .theme-toggle-btn {
-            background: #333;
-            color: #fff;
-        }
 
-        body.light-mode .section-title {
-            color: #333;
-            border-bottom-color: #ddd;
-        }
 
-        body.light-mode h1 {
-            color: #1e40af;
-        }
 
-        body.light-mode .lead {
-            color: #666;
-        }
 
-        body.light-mode #lichessUrlDisplay {
-            background-color: #f0f0f0 !important;
-            border-color: #ddd !important;
-        }
 
-        body.light-mode .lichess-white-section {
-            background-color: #fff !important;
-        }
 
-        body.light-mode .lichess-black-section {
-            background-color: #fff !important;
-        }
 
         /* Sheet Picker Modal */
         .sheet-picker-overlay {
@@ -485,38 +418,12 @@
             background: #3B82F6;
         }
 
-        body.light-mode .sheet-picker-modal {
-            background: #fff;
-            border-color: #ddd;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-        }
 
-        body.light-mode .sheet-picker-header {
-            border-bottom-color: #ddd;
-            color: #1e40af;
-        }
 
-        body.light-mode .sheet-picker-header button {
-            color: #999;
-        }
 
-        body.light-mode .sheet-picker-header button:hover {
-            color: #333;
-            background: rgba(0, 0, 0, 0.05);
-        }
 
-        body.light-mode .sheet-picker-item {
-            color: #333;
-        }
 
-        body.light-mode .sheet-picker-item:hover {
-            background: rgba(59, 130, 246, 0.1);
-        }
 
-        body.light-mode .sheet-picker-item:active {
-            background: #3B82F6;
-            color: #fff;
-        }
 
         /* Turn Toggle Slider */
         .turn-toggle-container {
@@ -595,23 +502,12 @@
             border-color: #4285f4;
         }
 
-        body.light-mode #moveHistoryTextArea {
-            background-color: #fff;
-            color: #333;
-            border-color: #ccc;
-        }
 
         .move-number { color: #888; margin-right: 2px; }
         .move-san { color: #eee; cursor: pointer; padding: 2px 5px; border-radius: 3px; margin-right: 2px; }
         .move-san:hover { background: #17a2b8; color: #fff; }
         .move-san.current { background: #00d4ff; color: #1a1a2e; font-weight: bold; }
-        body.light-mode .move-san { color: #333; }
-        body.light-mode .move-san.current { background: #0088cc; color: #fff; }
-        body.light-mode #moveListContainer { background: rgba(0,0,0,0.05); }
 
-        body.light-mode .turn-toggle-label {
-            color: #333;
-        }
         /* Google Drive Sheets styles */
         .gdrive-section {
             margin-top: 20px;
@@ -640,10 +536,6 @@
         .gdrive-csv-table tbody tr:hover { background: rgba(0, 212, 255, 0.1); cursor: pointer; }
         .gdrive-csv-table tbody tr.gdrive-selected-row { background: rgba(0, 212, 255, 0.25); }
         .gdrive-csv-table-wrapper { max-height: 400px; overflow-y: auto; }
-        body.light-mode .gdrive-section { background: rgba(0, 150, 136, 0.05); border-color: rgba(0, 150, 136, 0.2); }
-        body.light-mode .gdrive-section input[type="text"] { background: #f0f0f0; color: #333; border-color: #ccc; }
-        body.light-mode .gdrive-csv-table th { background: #e0e0e0; color: #333; }
-        body.light-mode .gdrive-csv-table td { background: #fafafa; color: #333; }
         /* Comment modal */
         .gdrive-comment-modal-overlay {
             display: none;
@@ -707,10 +599,6 @@
             cursor: pointer;
             font-size: 16px;
         }
-        body.light-mode .gdrive-comment-modal { background: #fff; border-color: #009688; }
-        body.light-mode .gdrive-comment-modal-title { color: #009688; }
-        body.light-mode .gdrive-comment-modal-body { color: #333; }
-        body.light-mode .gdrive-comment-modal-controls button { background: #e0f2f1; color: #333; border-color: #009688; }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -719,8 +607,10 @@
         <input id="fenDisplay" type="text" placeholder="Paste or build your FEN here..." autocomplete="off" spellcheck="false">
     </div>
 
-    <!-- Theme Toggle Button -->
-    <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()">&#9788; Light</button>
+    <!-- Scroll lock: on a phone, dragging a piece across the board is read as a scroll
+         gesture, so the page slides away under your finger and the piece never lands.
+         Lock it, drag the pieces, unlock it to scroll on. -->
+    <button class="scroll-lock-btn" id="scrollLockBtn" onclick="toggleScrollLock()" aria-pressed="false" title="Freeze the page so dragging a piece can't scroll it">&#128275; Scroll</button>
 
     <!-- Side pane: ☰ To save opens beside the board -->
     <button class="pane-btn" id="paneLeftBtn" onclick="paneToggle('left')" title="Open the To save pane: build a position (image, paste, dictate), then save it or bulk-add rows" aria-label="Open the To save pane">☰ To save</button>
@@ -1295,24 +1185,48 @@
             });
         });
 
-        // Theme toggle
-        function toggleTheme() {
-            document.body.classList.toggle('light-mode');
-            const btn = document.getElementById('themeToggle');
-            if (document.body.classList.contains('light-mode')) {
-                btn.innerHTML = '&#9788; Dark';
-                localStorage.setItem('theme', 'light');
-            } else {
-                btn.innerHTML = '&#9788; Light';
-                localStorage.setItem('theme', 'dark');
-            }
+        // ---- Scroll lock ------------------------------------------------------------
+        // Moving a piece is a touch drag, and a phone reads a drag over the page as a
+        // scroll: the board slides away under your finger and the piece lands nowhere.
+        // Locked, html and body stop scrolling and every touchmove that isn't over a
+        // text box, a pane or the move list is swallowed, so the gesture can only reach
+        // the board. chessboard.js keeps its own touch handlers (preventDefault doesn't
+        // stop them), so the drag itself still works.
+        let scrollLocked = false;
+        const SCROLL_LOCK_KEEP = 'input, textarea, select, #moveListContainer, .side-pane, ' +
+            '#dictateDebug, .gdrive-comment-modal-overlay, .sheet-picker-modal, [data-scroll]';
+
+        function scrollLockTouchMove(e) {
+            const t = e.target;
+            if (t && t.closest && t.closest(SCROLL_LOCK_KEEP)) return; // these still scroll
+            if (e.cancelable) e.preventDefault();
         }
 
-        // Load saved theme
-        if (localStorage.getItem('theme') === 'light') {
-            document.body.classList.add('light-mode');
-            document.getElementById('themeToggle').innerHTML = '&#9788; Dark';
+        function setScrollLock(on) {
+            scrollLocked = !!on;
+            document.documentElement.classList.toggle('scroll-locked', scrollLocked);
+            document.body.classList.toggle('scroll-locked', scrollLocked);
+            const btn = document.getElementById('scrollLockBtn');
+            if (btn) {
+                btn.classList.toggle('on', scrollLocked);
+                btn.innerHTML = scrollLocked ? '&#128274; Locked' : '&#128275; Scroll';
+                btn.setAttribute('aria-pressed', scrollLocked ? 'true' : 'false');
+                btn.title = scrollLocked
+                    ? 'The page is frozen — tap to let it scroll again'
+                    : "Freeze the page so dragging a piece can't scroll it";
+            }
+            document.removeEventListener('touchmove', scrollLockTouchMove, { passive: false });
+            if (scrollLocked) document.addEventListener('touchmove', scrollLockTouchMove, { passive: false });
+            try { localStorage.setItem('scrollLock', scrollLocked ? 'on' : 'off'); } catch (e) {}
         }
+
+        function toggleScrollLock() {
+            setScrollLock(!scrollLocked);
+            showToast(scrollLocked ? 'Page locked — drag pieces freely' : 'Page scrolls again');
+        }
+
+        // Comes back the way you left it. The button says which way that is.
+        try { setScrollLock(localStorage.getItem('scrollLock') === 'on'); } catch (e) {}
 
         // Load FEN on board
         function loadFenOnBoard(silent) {
