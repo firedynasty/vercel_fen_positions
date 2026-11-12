@@ -254,12 +254,12 @@ Cancel in the dialog does nothing. There is no undo.
 
 **`puzzles_csv.py`**: the local backup / bulk-edit script (section 12). It is not part of the web app.
 
-**`index.html`**:
+**`index.html`**: the two category-dropdown functions below were **replaced** in section 13 — `sbLoadCategories()` by `sbLoadAll()`, and `sbLoadPuzzlesForCategory()` by `sbApplyFilter()`. The rest of the table is current.
 
 | Function | Purpose |
 |---|---|
-| `sbLoadCategories()` | Fills the browse and save category dropdowns; starts loading the first category. |
-| `sbLoadPuzzlesForCategory()` | Fills the puzzle dropdown, tags each `· FEN` / `▶ PGN`, and loads the first puzzle. |
+| ~~`sbLoadCategories()`~~ | Filled the browse and save category dropdowns. Now `sbLoadAll()`. |
+| ~~`sbLoadPuzzlesForCategory()`~~ | Filled the puzzle dropdown. Now `sbApplyFilter()`, driven by the name filter. |
 | `sbCurrentPuzzle()` | The puzzle object selected in the dropdown. |
 | `sbLoadSelectedPuzzle()` | Loads the selected puzzle onto the board (FEN or PGN path). |
 | `sbIsPgn(text)` / `sbPgnStartFen(text)` | Detect a PGN and pull its start FEN for the dropdown label. |
@@ -361,11 +361,22 @@ python puzzles_csv.py --upload
 
 ## 13. The 2-column table: `chess_puzzles_redone` and `/api/lines`
 
-A second, flatter place to save, added alongside `puzzles`. Nothing was migrated: `puzzles` keeps every row it had, and sections 1–12 still describe it accurately.
+`chess_puzzles_redone` is **the** table the page uses: everything is saved to it and everything is browsed from it.
 
-**Writes all go to `chess_puzzles_redone`.** Save and Bulk add target it whatever else is on screen, and the buttons say so. `puzzles` is read-only from the page now: browse it, load from it and delete from it as before, but nothing new is written there. The source dropdown at the top of the Saved pane only chooses **what you read**.
+Nothing was migrated. `puzzles` keeps every row it ever had and `/api/puzzles` still serves them, so sections 1–12 remain accurate as a description of that table — but the page no longer reads or writes it. Getting back to those rows means putting the `/api/puzzles` calls back, or moving them across with a bulk add.
 
-Saving while the browse pane is showing `puzzles` works fine — the row lands in `chess_puzzles_redone`, and the status line says to switch the source to see it.
+### Browsing: filter by name
+
+There is no category dropdown. The browse row is a text box that filters on `name`, case-insensitively, anywhere in the string:
+
+| filter | matches |
+|---|---|
+| `as_black` | `as_black_comment1`, `as_black_comment2` |
+| `as_` | those two and `as_white_intermediate` |
+| `comment2` | `as_black_comment2` — it matches mid-name, not just a prefix |
+| *(empty)* | every row |
+
+The table is fetched once and cached, so filtering is instant and costs no requests. Esc clears the box, and the existing names autocomplete in it.
 
 ### The shape
 
@@ -376,7 +387,7 @@ Saving while the browse pane is showing `puzzles` works fine — the row lands i
 | ordering | `position`, then `id` | `id` ascending (save order) |
 | categories | the `category` column | the part of `name` before the first `": "` |
 
-`name` folds category and note into one cell. The page splits it back apart, so the category dropdown, Prev/Next, Reveal Note, Copy link and Delete all behave the same on either table.
+`name` folds category and note into one cell. The page splits it back apart where a note is wanted — Reveal Note shows the part after the first `": "` — while Prev/Next, Copy link and Delete work on the filtered list as before. A name with no separator, like `as_black_comment1`, is simply all name and no note.
 
 ### Table (Supabase SQL Editor)
 
@@ -425,24 +436,25 @@ Writes take the code from the `X-Access-Code` header (what the page's `sbWriteFe
 | Piece | Where |
 |---|---|
 | endpoint | `api/lines.js` |
-| which table is live | `sbSource()` / `sbSetSource()`, remembered in `localStorage['sb_source']` |
 | name ↔ category+note | `sbSplitName()` / `sbJoinName()`, separator `SB_SEP` |
-| one shape for both tables | `sbApiCategories/List/Get/Save/Bulk/Delete` — the only functions that know which table is live |
-| whole-table cache | `sbFlatCache`, dropped after every write (`chess_puzzles_redone` has no category column to filter on server-side, so the page pulls it once and groups locally) |
+| the filter | `sbFilterRows()` (substring match on `name`), `sbApplyFilter()` rebuilds the dropdown |
+| load / refresh | `sbLoadAll()` fetches and refreshes the suggestions, then applies the filter |
+| Supabase calls | `sbApiAll/List/Get/Save/Bulk/Delete` |
+| whole-table cache | `sbFlatCache`, dropped after every write. `chess_puzzles_redone` has no category column to filter on server-side, so the page pulls it once and filters locally |
+| rows on screen | `window.sbMatches` — what the dropdown currently lists, and what `sbCurrentPuzzle()` looks in |
 
 ### Links
 
-An `id` is only unique within one table, so a link copied while reading `chess_puzzles_redone` carries `&src=flat`:
-
 ```
-…/index.html?id=12&src=flat
-…/index.html?category=cheescake_game&n=3&src=flat
+…/index.html?id=12                    that row, always
+…/index.html?filter=as_black&n=3      3rd match for that filter
 ```
 
-Opening such a link switches the live table before loading. Without `src`, a link reads `puzzles` as it always did, so every link made before this feature still means the same thing.
+`?id=` is the stable one. The `?filter=` form follows dropdown order, so it shifts as rows are added or deleted. `?category=` and `?name=` are accepted as spellings of `?filter=`, so older links keep working.
 
 ### Known limits
 
 - `puzzles_csv.py` only knows about `puzzles`. There is no CSV backup for `chess_puzzles_redone` yet.
 - `chess_puzzles_redone` has no `position` column, so rows sit in save order and the CSV reordering trick in section 12 does not apply.
-- The page pulls the whole `chess_puzzles_redone` table in one request (capped at 1000 rows) and groups it in the browser. That is fine for hundreds of rows; a much larger table would want a real `category` column back.
+- The page pulls the whole `chess_puzzles_redone` table in one request (capped at 1000 rows) and filters it in the browser. That is fine for hundreds of rows; a much larger table would want server-side filtering.
+- `puzzles` is no longer reachable from the page at all.

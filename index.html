@@ -723,7 +723,7 @@
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
                     <!-- One box, the whole name: everything before the first ": " is the category, the rest is the note.
                          The existing categories come back as autocomplete suggestions (sbCategoryOptions, filled by
-                         sbLoadCategories), each already ending in ": " so picking one leaves you typing the note. -->
+                         sbLoadAll), each already ending in ": " so picking one leaves you typing the note. -->
                     <input type="text" id="sbNameInput" list="sbCategoryOptions" autocomplete="off" placeholder="category: note (e.g. mate_in_5: win a pawn)" title="Type the category, then &quot;: &quot;, then the note. Existing categories suggest themselves as you type." onkeydown="if(event.key==='Enter') sbSavePuzzle()" style="flex: 1; min-width: 280px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
                     <datalist id="sbCategoryOptions"></datalist>
                     <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;" title="Saves to chess_puzzles_redone. The browse source above only chooses what you read.">💾 Save to chess_puzzles_redone</button>
@@ -881,21 +881,18 @@
         <div id="sbPuzzleSection" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; margin: 12px 0 8px;">
             <div style="color: #888; margin-bottom: 8px;">Saved puzzles (Supabase)</div>
 
-            <!-- Browse: table -> category -> puzzle -> load to board -> reveal note -->
+            <!-- Browse: filter by name -> puzzle -> load to board -> reveal note -->
             <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-                <select id="sbSourceSelect" onchange="sbSetSource(this.value)" title="Which Supabase table to read and write. puzzles keeps category and note in their own columns; chess_puzzles_redone stores one name column (&quot;category: note&quot;) plus the PGN." style="padding: 8px 10px; background: #16213e; color: #3ecf8e; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 13px; min-width: 150px;">
-                    <option value="puzzles">puzzles (3 cols)</option>
-                    <option value="flat">chess_puzzles_redone (2 cols)</option>
-                </select>
-                <select id="sbCategorySelect" onchange="sbLoadPuzzlesForCategory()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 160px;">
-                    <option value="">Loading categories…</option>
-                </select>
+                <!-- Type any part of a name: "as_black" matches as_black_comment1, as_black_comment2, … -->
+                <input type="text" id="sbFilterInput" list="sbNameOptions" autocomplete="off" placeholder="Filter by name (e.g. as_black)…" title="Shows only the rows whose name contains this. Leave it empty for all of them." oninput="sbApplyFilter()" onkeydown="if(event.key==='Escape'){this.value='';sbApplyFilter();}" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 170px;">
+                <datalist id="sbNameOptions"></datalist>
                 <select id="sbPuzzleSelect" disabled onchange="sbLoadSelectedPuzzle()" style="flex: 1; min-width: 220px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
-                    <option value="">— pick a category first —</option>
+                    <option value="">Loading…</option>
                 </select>
+                <span id="sbMatchCount" title="How many rows match the filter" style="color: #888; font-size: 12px;"></span>
                 <span id="sbLoadedPuzzleId" title="Supabase id of the puzzle currently on the board" style="color: #3ecf8e; font-weight: bold; min-width: 40px;"></span>
                 <input type="text" id="sbPuzzleIdInput" placeholder="Load by ID..." onkeydown="if(event.key==='Enter') sbLoadPuzzleByIdInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 100px;">
-                <button onclick="sbLoadPuzzleByIdInput()" title="Fetch straight from Supabase by id — no need to pick a category first" style="padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Load ID</button>
+                <button onclick="sbLoadPuzzleByIdInput()" title="Fetch straight from Supabase by id — ignores the filter" style="padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Load ID</button>
                 <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category ([ key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
                 <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category (] key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
                 <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
@@ -926,7 +923,7 @@
                 Source of truth: the Supabase <code style="color: #ddd;">puzzles</code> table. <b style="color: #ddd;">💾 Save</b>, <b style="color: #ddd;">➕ Add rows</b> and <b style="color: #ddd;">🗑️ Delete</b> change Supabase only, and need the access code (asked once, remembered in this browser). To back up or bulk edit, use <code style="color: #ddd;">python puzzles_csv.py</code> (see below).
             </div>
             <div style="margin-top: 4px; font-size: 12px; color: #888;">
-                Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Or by category and place in the dropdown: <code style="color: #ddd;">?category=mate_in_5&amp;n=3</code> (3rd entry; <code style="color: #ddd;">n</code> defaults to 1; it follows the dropdown order, so it shifts if you reorder or delete — <code style="color: #ddd;">?id=</code> never does). Otherwise the category dropdown fills in normally, but no puzzle loads onto the board until you pick one.<br>Keys: <b style="color: #ddd;">← / →</b> previous / next puzzle, <b style="color: #ddd;">Space</b> next move, <b style="color: #ddd;">Shift+Space</b> previous move.
+                Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Or by filter term and place in the dropdown: <code style="color: #ddd;">?filter=as_black&amp;n=3</code> (3rd match; <code style="color: #ddd;">n</code> defaults to 1; it follows the dropdown order, so it shifts as rows are added or deleted — <code style="color: #ddd;">?id=</code> never does). <code style="color: #ddd;">?category=</code> still works as a filter term. Otherwise the list fills in normally, but no puzzle loads onto the board until you pick one.<br>Keys: <b style="color: #ddd;">← / →</b> previous / next puzzle, <b style="color: #ddd;">Space</b> next move, <b style="color: #ddd;">Shift+Space</b> previous move.
             </div>
             <details style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5;">
                 <summary style="cursor: pointer; color: #ddd; font-weight: bold;">How the puzzles are stored (tap to open)</summary>
@@ -1203,9 +1200,9 @@
         let lineNode = null;        // The node the board is showing
         let lineSource = '';        // The PGN exactly as loaded while the tree is unedited ('' once a move was dropped)
 
-        // Populate the category dropdown on page open — { noLoad: true } skips
+        // Populate the puzzle list on page open — { noLoad: true } skips
         // auto-loading a puzzle onto the board, since that part races ahead of
-        // `board` being created below (sbLoadPuzzlesForCategory -> sbLoadSelectedPuzzle
+        // `board` being created below (sbApplyFilter -> sbLoadSelectedPuzzle
         // -> board.position(...)). The ?id= deep-link loader (sbLoadPuzzleFromUrlParam)
         // handles loading an actual puzzle, polling for `board` first.
         window.addEventListener('DOMContentLoaded', function() {
@@ -1215,9 +1212,7 @@
             if (urlSrc === 'flat' || urlSrc === 'puzzles') {
                 try { localStorage.setItem('sb_source', urlSrc); } catch (e) {}
             }
-            const srcSel = document.getElementById('sbSourceSelect');
-            if (srcSel) srcSel.value = sbSource();
-            sbLoadCategories({ noLoad: true });
+            sbLoadAll({ noLoad: true });
         });
 
         window.addEventListener('DOMContentLoaded', function() {
@@ -1946,7 +1941,11 @@
             if (!Chessboard.fenToObj(fenMatch[1].split(' ')[0])) return null;
             const root = lineMakeRoot(fenMatch[1]);
 
-            let body = text.replace(/^\s*(?:\[[^\]\n]*\]\s*(?:\n|$))+/, ''); // drop the header lines
+            // Drop the [Tag "…"] headers. Not line-based: a saved PGN is stored
+            // flattened to one line, so the tags can be separated by spaces rather
+            // than newlines ('[Variant "…"] [FEN "…"] 1. Rf6'). Matching only
+            // newline-terminated tags left the body empty and lost every move.
+            let body = text.replace(/^\s*(?:\[[^\]]*\]\s*)+/, '');
             if (body === text) { const m = text.match(/\]\s*\n\s*\n([\s\S]+)/); body = m ? m[1] : ''; }
 
             const tokens = [];
@@ -3225,45 +3224,28 @@
         }
 
         // ---------------------------------------------------------------
-        // Supabase Puzzles — category dropdown -> puzzle dropdown -> board,
+        // Supabase Puzzles — name filter -> puzzle dropdown -> board,
         // plus a save form that posts the board's current FEN back to it.
         // ---------------------------------------------------------------
 
-        window.sbPuzzlesByCategory = {}; // category -> [{id, category, note, fen}]
-
         // ---------------------------------------------------------------
-        // Two storage shapes, one UI.
+        // One table, filtered by name.
         //
-        //   puzzles          id | category | note | fen | position   (/api/puzzles)
-        //   chess_puzzles_redone id | name     | pgn                     (/api/lines)
+        //   chess_puzzles_redone   id | name | pgn      (/api/lines)
         //
-        // The flat table folds category and note into one `name` cell:
-        //   "cheescake_game: how to finish it"
-        // Everything below the adapter still works on {id, category, note, fen},
-        // so the category dropdown, Prev/Next, Reveal Note, Copy link and Delete
-        // are untouched — sbApi* is the only place that knows which table is live.
+        // `name` is the whole label — "as_black_comment1", or "category: note"
+        // when you use a separator. Browsing is a substring filter over it:
+        // typing "as_black" leaves as_black_comment1, as_black_comment2, …
+        //
+        // The old `puzzles` table is no longer read by this page. Its rows are
+        // still in Supabase and /api/puzzles still serves them, but nothing here
+        // points at it any more.
         // ---------------------------------------------------------------
 
         const SB_FLAT_TABLE = 'chess_puzzles_redone';
-        const SB_SEP = ': '; // what joins category and note inside `name`
+        const SB_SEP = ': '; // optional, splits `name` into a category and a note
 
-        function sbSource() {
-            try { return localStorage.getItem('sb_source') === 'flat' ? 'flat' : 'puzzles'; }
-            catch (e) { return 'puzzles'; }
-        }
-
-        function sbSourceLabel() {
-            return sbSource() === 'flat' ? SB_FLAT_TABLE : 'puzzles';
-        }
-
-        async function sbSetSource(value) {
-            try { localStorage.setItem('sb_source', value === 'flat' ? 'flat' : 'puzzles'); } catch (e) {}
-            sbFlatCache = null;
-            window.sbPuzzlesByCategory = {};
-            document.getElementById('sbPuzzleStatus').textContent =
-                'Reading ' + (sbSource() === 'flat' ? SB_FLAT_TABLE + ' (name + pgn)' : 'puzzles (category + note + fen)') + '.';
-            await sbLoadCategories();
-        }
+        window.sbMatches = []; // the rows currently listed in the puzzle dropdown
 
         // "cat: note" -> { category: "cat", note: "note" }. Splits on the FIRST
         // separator only, so a note may contain ": " freely. A name with no
@@ -3299,45 +3281,23 @@
             return sbFlatCache;
         }
 
-        async function sbApiCategories() {
-            if (sbSource() === 'flat') {
-                const all = await sbFlatAll(true);
-                return [...new Set(all.map(r => r.category))].filter(Boolean).sort();
-            }
-            const res = await fetch('/api/puzzles?action=categories');
-            const categories = await res.json();
-            if (!res.ok) throw new Error(categories.error || 'Request failed');
-            return categories;
+        // Every row in the table, newest state. The browse list is filtered from this.
+        async function sbApiAll(force) {
+            return await sbFlatAll(force);
         }
 
-        // `source` overrides the browse source — bulk add passes 'flat', because it
-        // de-dupes against the table it is about to write to, not the one on screen.
-        async function sbApiList(category, source) {
-            if ((source || sbSource()) === 'flat') {
-                return (await sbFlatAll()).filter(r => r.category === category);
-            }
-            const res = await fetch('/api/puzzles?action=list&category=' + encodeURIComponent(category));
-            const puzzles = await res.json();
-            if (!res.ok) throw new Error(puzzles.error || 'Request failed');
-            return puzzles;
+        // Rows whose category part matches exactly — used by bulk add to de-dupe.
+        async function sbApiList(category) {
+            return (await sbFlatAll()).filter(r => r.category === category);
         }
 
         async function sbApiGet(id) {
-            if (sbSource() === 'flat') {
-                const res = await fetch('/api/lines?action=get&id=' + encodeURIComponent(id) + '&table=' + encodeURIComponent(SB_FLAT_TABLE));
-                const row = await res.json();
-                if (!res.ok) throw new Error(row.error || 'Request failed');
-                return sbFlatRow(row);
-            }
-            const res = await fetch('/api/puzzles?action=get&id=' + encodeURIComponent(id));
-            const puzzle = await res.json();
-            if (!res.ok) throw new Error(puzzle.error || 'Request failed');
-            return puzzle;
+            const res = await fetch('/api/lines?action=get&id=' + encodeURIComponent(id) + '&table=' + encodeURIComponent(SB_FLAT_TABLE));
+            const row = await res.json();
+            if (!res.ok) throw new Error(row.error || 'Request failed');
+            return sbFlatRow(row);
         }
 
-        // New rows always go to SB_FLAT_TABLE, whatever the browse source is set to.
-        // `puzzles` is read-only from the page now: it keeps the old rows and you can
-        // still browse and delete them, but nothing new is written there.
         async function sbApiSave(category, note, fen) {
             const res = await sbWriteFetch('/api/lines', {
                 method: 'POST',
@@ -3367,100 +3327,103 @@
         }
 
         async function sbApiDelete(id) {
-            const url = sbSource() === 'flat'
-                ? '/api/lines?table=' + encodeURIComponent(SB_FLAT_TABLE) + '&id=' + encodeURIComponent(id)
-                : '/api/puzzles?id=' + encodeURIComponent(id);
-            const res = await sbWriteFetch(url, { method: 'DELETE' });
+            const res = await sbWriteFetch(
+                '/api/lines?table=' + encodeURIComponent(SB_FLAT_TABLE) + '&id=' + encodeURIComponent(id),
+                { method: 'DELETE' });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Delete failed');
             sbFlatCache = null;
             return data;
         }
 
-        async function sbLoadCategories(opts) {
+        // Pull the table (one request, cached) and refresh the name suggestions,
+        // then rebuild the list through the current filter.
+        //   opts.force  : re-fetch instead of using the cache (after a write)
+        //   opts.noLoad : fill the dropdown but do not put a puzzle on the board
+        async function sbLoadAll(opts) {
             opts = opts || {};
-            const browseSel = document.getElementById('sbCategorySelect');
-            const saveList = document.getElementById('sbCategoryOptions');
+            const puzzleSel = document.getElementById('sbPuzzleSelect');
             try {
-                const categories = await sbApiCategories();
+                const rows = await sbApiAll(opts.force !== false);
 
-                browseSel.innerHTML = categories.length
-                    ? categories.map(c => `<option value="${c}">${c}</option>`).join('')
-                    : '<option value="">No categories yet</option>';
+                // Suggestions shared by the filter box and the save name box.
+                const names = [...new Set(rows.map(r => r.name || sbJoinName(r.category, r.note)))].sort();
+                const cats = [...new Set(rows.map(r => r.category))].filter(Boolean).sort();
+                const nameList = document.getElementById('sbNameOptions');
+                if (nameList) nameList.innerHTML = names.map(n => `<option value="${n}"></option>`).join('');
+                const saveList = document.getElementById('sbCategoryOptions');
+                // The trailing ": " is part of the value, so accepting one leaves the cursor on the note.
+                if (saveList) saveList.innerHTML = cats.map(c => `<option value="${c}${SB_SEP}">${c}</option>`).join('');
 
-                // Suggestions for the name box. The trailing ": " is part of the value,
-                // so accepting one drops the cursor straight into the note.
-                if (saveList) {
-                    saveList.innerHTML = categories
-                        .map(c => `<option value="${c}${SB_SEP}">${c}</option>`).join('');
-                }
-
-                // Awaited (not fire-and-forget): callers that immediately change
-                // sbCategorySelect after awaiting this (e.g. sbLoadPuzzleById)
-                // need this to have actually finished first, or its dropdown
-                // populate can land later and clobber their category switch.
-                // opts.noLoad skips it entirely — used when the caller is about
-                // to switch to a different category anyway, so the default
-                // (alphabetically-first) category's puzzle never briefly
-                // flashes onto the board first.
-                if (categories.length && !opts.noLoad) await sbLoadPuzzlesForCategory();
+                sbApplyFilter(opts);
             } catch (err) {
-                browseSel.innerHTML = '<option value="">Failed to load</option>';
-                showToast('Loading puzzle categories failed: ' + err.message);
+                puzzleSel.innerHTML = '<option value="">Failed to load</option>';
+                puzzleSel.disabled = true;
+                showToast('Loading puzzles failed: ' + err.message);
             }
         }
 
-        // opts.index: 0-based dropdown entry to load instead of the first one (used by the ?category=&n= deep link)
-        async function sbLoadPuzzlesForCategory(opts) {
-            opts = (opts && typeof opts.index === 'number') ? opts : {};
-            const category = document.getElementById('sbCategorySelect').value;
+        // Case-insensitive substring match on the name: "as_black" keeps
+        // as_black_comment1, as_black_comment2, … An empty filter keeps everything.
+        function sbFilterRows(rows, term) {
+            const q = String(term || '').trim().toLowerCase();
+            if (!q) return rows;
+            return rows.filter(r => String(r.name || sbJoinName(r.category, r.note)).toLowerCase().includes(q));
+        }
+
+        // Rebuild the puzzle dropdown from the cached rows and the filter box.
+        //   opts.index  : 0-based entry to select (the ?name=&n= deep link)
+        //   opts.id     : select this row id instead
+        //   opts.noLoad : do not put it on the board
+        function sbApplyFilter(opts) {
+            opts = opts || {};
             const puzzleSel = document.getElementById('sbPuzzleSelect');
             const revealBtn = document.getElementById('sbRevealNoteBtn');
+            const countEl = document.getElementById('sbMatchCount');
+            const term = (document.getElementById('sbFilterInput') || {}).value || '';
             sbHideNote();
-            if (!category) {
-                puzzleSel.innerHTML = '<option value="">— pick a category first —</option>';
+
+            const all = sbFlatCache || [];
+            const rows = sbFilterRows(all, term);
+            window.sbMatches = rows;
+
+            if (countEl) {
+                countEl.textContent = !all.length ? 'empty table'
+                    : term.trim() ? rows.length + ' of ' + all.length
+                    : all.length + ' saved';
+            }
+
+            if (!rows.length) {
+                puzzleSel.innerHTML = '<option value="">' +
+                    (all.length ? 'Nothing matches "' + term.trim() + '"' : 'Nothing saved yet') + '</option>';
                 puzzleSel.disabled = true;
                 document.getElementById('sbNextPuzzleBtn').disabled = true;
                 document.getElementById('sbPrevPuzzleBtn').disabled = true;
                 revealBtn.disabled = true;
                 return;
             }
-            puzzleSel.innerHTML = '<option value="">Loading…</option>';
-            puzzleSel.disabled = true;
-                document.getElementById('sbNextPuzzleBtn').disabled = true;
-                document.getElementById('sbPrevPuzzleBtn').disabled = true;
-            revealBtn.disabled = true;
-            try {
-                const puzzles = await sbApiList(category);
 
-                window.sbPuzzlesByCategory[category] = puzzles;
-                if (!puzzles.length) {
-                    puzzleSel.innerHTML = '<option value="">No puzzles in this category</option>';
-                    return;
-                }
-                puzzleSel.innerHTML = puzzles.map((p, i) => {
-                    const isPgn = sbIsPgn(p.fen);
-                    // PGN puzzles: preview the start position from the [FEN "..."] header
-                    const text = isPgn ? sbPgnStartFen(p.fen) : (p.fen || '');
-                    const preview = text.slice(0, 24);
-                    return `<option value="${p.id}">${i + 1} ${isPgn ? '▶ PGN' : '· FEN'} — ${preview}${text.length > 24 ? '…' : ''}</option>`;
-                }).join('');
-                puzzleSel.disabled = false;
-                document.getElementById('sbNextPuzzleBtn').disabled = false;
-                document.getElementById('sbPrevPuzzleBtn').disabled = false;
-                if (typeof opts.index === 'number') puzzleSel.selectedIndex = Math.max(0, Math.min(puzzles.length - 1, opts.index));
-                sbLoadSelectedPuzzle();
-            } catch (err) {
-                puzzleSel.innerHTML = '<option value="">Failed to load</option>';
-                showToast('Loading puzzles failed: ' + err.message);
+            puzzleSel.innerHTML = rows.map((p, i) => {
+                const isPgn = sbIsPgn(p.fen);
+                const label = p.name || sbJoinName(p.category, p.note);
+                return `<option value="${p.id}">${i + 1} ${isPgn ? '▶ PGN' : '· FEN'} — ${label}</option>`;
+            }).join('');
+            puzzleSel.disabled = false;
+            document.getElementById('sbNextPuzzleBtn').disabled = false;
+            document.getElementById('sbPrevPuzzleBtn').disabled = false;
+
+            if (opts.id != null) {
+                const at = rows.findIndex(r => String(r.id) === String(opts.id));
+                if (at >= 0) puzzleSel.selectedIndex = at;
+            } else if (typeof opts.index === 'number') {
+                puzzleSel.selectedIndex = Math.max(0, Math.min(rows.length - 1, opts.index));
             }
+            if (!opts.noLoad) sbLoadSelectedPuzzle();
         }
 
         function sbCurrentPuzzle() {
-            const category = document.getElementById('sbCategorySelect').value;
             const id = document.getElementById('sbPuzzleSelect').value;
-            const puzzles = window.sbPuzzlesByCategory[category] || [];
-            return puzzles.find(p => String(p.id) === String(id)) || null;
+            return (window.sbMatches || []).find(p => String(p.id) === String(id)) || null;
         }
 
         function sbLoadSelectedPuzzle() {
@@ -3507,9 +3470,12 @@
             try {
                 const puzzle = await sbApiGet(id);
 
-                await sbLoadCategories({ noLoad: true }); // populates sbCategorySelect only — we're about to pick a different category anyway
-                document.getElementById('sbCategorySelect').value = puzzle.category;
-                await sbLoadPuzzlesForCategory(); // populates sbPuzzleSelect (and auto-loads its first entry)
+                // Clear the filter first: the row must be in the list for Prev/Next and
+                // Reveal Note to work on it, and an unrelated filter would hide it.
+                const filterEl = document.getElementById('sbFilterInput');
+                if (filterEl) filterEl.value = '';
+                await sbLoadAll({ noLoad: true });
+                sbApplyFilter({ id: puzzle.id, noLoad: true });
                 document.getElementById('sbPuzzleSelect').value = String(puzzle.id);
                 sbLoadSelectedPuzzle(); // correct the board to the actually-requested puzzle
 
@@ -3523,16 +3489,13 @@
         }
 
         // The two deep links for a puzzle (read back by sbParseDeepLink):
-        //   id    <page>?id=<id>                      always that puzzle
-        //   place <page>?category=<category>&n=<n>    Nth entry of the category's dropdown (shifts on reorder/delete)
-        // An id is only unique within one table, so a link made while reading
-        // chess_puzzles_redone carries &src=flat; without it the link would
-        // silently open whatever row happens to have that id in `puzzles`.
+        //   id    <page>?id=<id>                   always that row
+        //   place <page>?filter=<term>&n=<n>       Nth entry under that filter (shifts as rows are added or deleted)
         function sbBuildPuzzleLinks(base, puzzle, n) {
-            const src = sbSource() === 'flat' ? '&src=flat' : '';
+            const term = puzzle.category || puzzle.name || '';
             return {
-                id: base + '?id=' + puzzle.id + src,
-                place: base + '?category=' + encodeURIComponent(puzzle.category) + '&n=' + n + src
+                id: base + '?id=' + puzzle.id,
+                place: base + '?filter=' + encodeURIComponent(term) + '&n=' + n
             };
         }
 
@@ -3570,25 +3533,22 @@
             await sbLoadPuzzleById(id);
         }
 
-        // Load the Nth entry (1-based, as numbered in the puzzle dropdown) of a category.
-        // Same order as the dropdown (position, then id), so it can shift if you reorder or
-        // delete; ?id= is the stable link.
-        async function sbLoadPuzzleByCategory(category, n) {
+        // Load the Nth entry (1-based, as numbered in the dropdown) under a filter term.
+        // The position shifts as rows are added or deleted; ?id= is the stable link.
+        async function sbLoadPuzzleByFilter(term, n) {
             const statusEl = document.getElementById('sbPuzzleStatus');
             statusEl.textContent = 'Loading…';
             try {
-                await sbLoadCategories({ noLoad: true });
-                const catSel = document.getElementById('sbCategorySelect');
-                if (![...catSel.options].some(o => o.value === category)) throw new Error('no category "' + category + '"');
-                catSel.value = category;
-                await sbLoadPuzzlesForCategory({ index: n - 1 }); // loads that entry straight away, no first-puzzle flash
+                const filterEl = document.getElementById('sbFilterInput');
+                if (filterEl) filterEl.value = term;
+                await sbLoadAll({ index: n - 1 }); // lands on that entry straight away, no first-puzzle flash
 
                 const puzzleSel = document.getElementById('sbPuzzleSelect');
                 const total = puzzleSel.options.length;
-                if (puzzleSel.disabled) throw new Error('"' + category + '" has no puzzles');
+                if (puzzleSel.disabled) throw new Error('nothing matches "' + term + '"');
                 const shown = puzzleSel.selectedIndex + 1;
-                statusEl.textContent = 'Loaded "' + category + '" ' + shown + ' of ' + total +
-                    (shown !== n ? ' (asked for ' + n + ', only ' + total + ' exist)' : '') + '.';
+                statusEl.textContent = 'Loaded "' + term + '" ' + shown + ' of ' + total +
+                    (shown !== n ? ' (asked for ' + n + ', only ' + total + ' match)' : '') + '.';
                 return true;
             } catch (err) {
                 statusEl.textContent = 'Load failed: ' + err.message;
@@ -3609,13 +3569,13 @@
                 return /^\d+$/.test(id) ? { id: id } : null;
             }
             const params = new URLSearchParams(search);
-            const src = params.get('src') === 'flat' ? 'flat' : null;
             const id = params.get('id') || params.get('puzzle_id');
-            if (id && /^\d+$/.test(id)) return { id: id, src: src };
-            const category = (params.get('category') || '').trim();
-            if (!category) return null;
+            if (id && /^\d+$/.test(id)) return { id: id };
+            // ?category= still works: it is now just a filter term.
+            const filter = (params.get('filter') || params.get('name') || params.get('category') || '').trim();
+            if (!filter) return null;
             const n = parseInt(params.get('n') || params.get('pos') || params.get('position') || '1', 10);
-            return { category: category, n: n >= 1 ? n : 1, src: src };
+            return { filter: filter, n: n >= 1 ? n : 1 };
         }
 
         // Deep-link support, see sbParseDeepLink for the accepted forms.
@@ -3628,21 +3588,13 @@
         function sbLoadPuzzleFromUrlParam() {
             const target = sbParseDeepLink(window.location.search);
             if (!target) return;
-            // A &src= link switches the live table before loading, so the id resolves
-            // against the table the link was made from.
-            if (target.src) {
-                try { localStorage.setItem('sb_source', target.src); } catch (e) {}
-                sbFlatCache = null;
-                const srcSel = document.getElementById('sbSourceSelect');
-                if (srcSel) srcSel.value = target.src;
-            }
             const input = document.getElementById('sbPuzzleIdInput');
             if (input && target.id) input.value = target.id;
 
             let attempt = 0;
             const maxAttempts = 100; // ~10s at 100ms
             const statusEl = document.getElementById('sbPuzzleStatus');
-            const what = target.id ? 'id=' + target.id : 'category=' + target.category + '&n=' + target.n;
+            const what = target.id ? 'id=' + target.id : 'filter=' + target.filter + '&n=' + target.n;
             const timer = setInterval(function ping() {
                 attempt++;
                 const ready = typeof board !== 'undefined';
@@ -3651,7 +3603,7 @@
                 if (ready) {
                     clearInterval(timer);
                     if (target.id) sbLoadPuzzleById(target.id);
-                    else sbLoadPuzzleByCategory(target.category, target.n);
+                    else sbLoadPuzzleByFilter(target.filter, target.n);
                 } else if (attempt >= maxAttempts) {
                     clearInterval(timer);
                     if (statusEl) statusEl.textContent = 'Board never finished loading — could not auto-load ' + what;
@@ -3670,6 +3622,12 @@
         function sbPgnStartFen(text) {
             const m = (text || '').match(/\[FEN\s+"([^"]+)"\]/);
             return m ? m[1] : '';
+        }
+
+        // The movetext left once the [Tag "…"] headers are removed — '' when the PGN
+        // box holds only a header (a position with no moves played from it yet).
+        function sbPgnMovetext(text) {
+            return String(text || '').replace(/\[[^\]]*\]/g, '').trim();
         }
 
         // Load the previous puzzle in the current category (wraps to the last from the first)
@@ -3757,11 +3715,7 @@
                 statusEl.textContent = 'Deleted ' + kind + ' puzzle from "' + category + '".';
                 showToast(kind + ' puzzle deleted');
 
-                await sbLoadCategories();
-                const browseSel = document.getElementById('sbCategorySelect');
-                // stay in the same category unless it is now empty and gone
-                if ([...browseSel.options].some(o => o.value === category)) browseSel.value = category;
-                await sbLoadPuzzlesForCategory();
+                await sbLoadAll(); // keeps the filter box as it is; the deleted row drops out of the list
             } catch (err) {
                 statusEl.textContent = '';
                 showToast('Delete failed: ' + err.message);
@@ -3793,7 +3747,7 @@
             // Drop rows already in this category, and repeats within the paste.
             let existing = [];
             try {
-                existing = (await sbApiList(category, 'flat')).map(p => String(p.fen).trim());
+                existing = (await sbApiList(category)).map(p => String(p.fen).trim());
             } catch (e) {}
             const seen = new Set(existing);
             const fresh = rows.filter(r => !seen.has(r.fen) && seen.add(r.fen));
@@ -3811,7 +3765,7 @@
                 statusEl.textContent = 'Added ' + data.added + ' row(s) to "' + category + '" (' + SB_FLAT_TABLE + ').';
                 document.getElementById('sbBulkInput').value = '';
                 showToast('Added ' + data.added + ' puzzles');
-                await sbLoadCategories();
+                await sbLoadAll();
             } catch (err) {
                 statusEl.textContent = '';
                 showToast('Bulk add failed: ' + err.message);
@@ -3826,35 +3780,36 @@
             // save or after picking a category, and trimming would eat the separator
             // and leave the colon stuck on the category. sbSplitName trims the parts.
             const { category, note } = sbSplitName(document.getElementById('sbNameInput').value);
-            // While a PGN cycle is active, save the whole PGN into the FEN cell so it can be
-            // cycled again later; otherwise save the single FEN from the FEN box
-            const cycleActive = cyclePositions.length > 1 && cyclePgnSource.trim();
-            const fen = cycleActive ? cyclePgnSource.trim() : document.getElementById('fenDisplay').value.trim();
+            // What gets stored. A PGN carries the start position AND the moves, so it
+            // wins whenever the move box has any: saving the FEN box instead would
+            // store the position as it looks right now and throw away how you got
+            // there. Only a board with no moves played falls back to the bare FEN.
+            // Stored flattened to one line — lineParse strips space-separated headers.
+            const pgnSource = (cyclePositions.length > 1 && cyclePgnSource.trim())
+                ? cyclePgnSource
+                : document.getElementById('moveHistoryTextArea').value;
+            const pgn = String(pgnSource || '').replace(/\s+/g, ' ').trim();
+            const savePgn = sbIsPgn(pgn) && !!sbPgnMovetext(pgn);
+            const fen = savePgn ? pgn : document.getElementById('fenDisplay').value.trim();
 
             if (!category) { showToast('Name it first — e.g. mate_in_5: win a pawn'); return; }
             if (!fen) { showToast('No FEN on the board to save'); return; }
 
-            statusEl.textContent = cycleActive ? 'Saving PGN (' + cyclePositions.length + ' positions)…' : 'Saving…';
+            statusEl.textContent = savePgn ? 'Saving PGN…' : 'Saving…';
             try {
                 await sbApiSave(category, note, fen);
 
-                statusEl.textContent = 'Saved ' + (cycleActive ? 'PGN' : 'FEN') + ' as "' +
+                statusEl.textContent = 'Saved ' + (savePgn ? 'PGN' : 'FEN') + ' as "' +
                     sbJoinName(category, note) + '" (' + SB_FLAT_TABLE + ').';
                 // Keep the category prefix, drop the note — the next save in the
                 // same category is then one note away.
                 document.getElementById('sbNameInput').value = category + SB_SEP;
-                showToast(cycleActive ? 'PGN saved (' + cyclePositions.length + ' positions)!' : 'Puzzle saved!');
+                showToast(savePgn ? 'PGN saved!' : 'FEN saved!');
 
-                // The row landed in SB_FLAT_TABLE. Only re-browse to it when that is
-                // what is on screen; otherwise the browse pane is showing `puzzles`
-                // and the new row simply is not in it.
-                if (sbSource() === 'flat') {
-                    await sbLoadCategories();
-                    document.getElementById('sbCategorySelect').value = category;
-                    await sbLoadPuzzlesForCategory(); // sbLoadCategories above already refreshed the suggestions
-                } else {
-                    statusEl.textContent += ' Browsing puzzles — switch the source to see it.';
-                }
+                // Point the filter at what was just saved, so the new row is on screen.
+                const filterEl = document.getElementById('sbFilterInput');
+                if (filterEl) filterEl.value = category;
+                await sbLoadAll({ noLoad: true });
             } catch (err) {
                 statusEl.textContent = '';
                 showToast('Save failed: ' + err.message);
