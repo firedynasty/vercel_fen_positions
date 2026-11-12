@@ -721,11 +721,12 @@
                 <div style="color: #888; margin-bottom: 8px;">Save to Supabase</div>
                 <!-- Save: current board FEN -> category (existing or new) + note -->
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-                    <select id="sbSaveCategorySelect" onchange="sbToggleNewCategoryInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 160px;">
+                    <!-- prefills the name box; hidden until sbLoadCategories finds a category (sbRefreshCategoryPicker) -->
+                    <select id="sbSaveCategorySelect" onchange="sbPickCategory()" style="display: none; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 160px;">
                         <option value="__new__">+ New category…</option>
                     </select>
-                    <input type="text" id="sbNewCategoryInput" placeholder="New category name (e.g. mate_in_5)..." style="min-width: 180px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
-                    <input type="text" id="sbNoteInput" placeholder="Note (e.g. win a pawn)..." style="flex: 1; min-width: 200px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
+                    <!-- One box, the whole name: everything before the first ": " is the category, the rest is the note. -->
+                    <input type="text" id="sbNameInput" placeholder="category: note (e.g. mate_in_5: win a pawn)" title="Type the category, then &quot;: &quot;, then the note. The category dropdown beside this box fills in the prefix for you." onkeydown="if(event.key==='Enter') sbSavePuzzle()" style="flex: 1; min-width: 280px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
                     <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">💾 Save to Supabase</button>
                 </div>
                 <div id="sbPuzzleStatus" style="margin-top: 6px; font-size: 12px; color: #888;"></div>
@@ -733,7 +734,7 @@
                 <!-- Bulk add: paste fen,note rows exactly as exported from the chess app; category = the dropdown in the Save row above -->
                 <details style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
                     <summary style="cursor: pointer; color: #ddd; font-weight: bold; font-size: 13px;">Bulk add rows (paste fen,note)</summary>
-                    <p style="font-size: 12px; color: #888; margin: 6px 0;">Paste one or many <code style="color: #ddd;">fen,note</code> rows (CSV, the PGN in quotes). They are added to the category chosen in the Save row above (or the new category name typed there). A <code style="color: #ddd;">fen,note</code> header line is skipped, and rows already in that category are ignored. The board and the Note box are not used.</p>
+                    <p style="font-size: 12px; color: #888; margin: 6px 0;">Paste one or many <code style="color: #ddd;">fen,note</code> rows (CSV, the PGN in quotes). They are added to the category in the name box above — the part before the first <code style="color: #ddd;">: </code> — and each row brings its own note, so anything after the colon there is ignored. A <code style="color: #ddd;">fen,note</code> header line is skipped, and rows already in that category are ignored. The board is not used.</p>
                     <textarea id="sbBulkInput" rows="6" placeholder='"[Variant ""From Position""]&#10;[FEN ""…""]&#10;&#10;12. f5?? …","note text — https://…"' style="width: 100%; box-sizing: border-box; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 13px;"></textarea>
                     <button onclick="sbBulkAdd()" style="margin-top: 6px; padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">➕ Add rows to Supabase</button>
                 </details>
@@ -881,8 +882,12 @@
         <div id="sbPuzzleSection" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; margin: 12px 0 8px;">
             <div style="color: #888; margin-bottom: 8px;">Saved puzzles (Supabase)</div>
 
-            <!-- Browse: category -> puzzle -> load to board -> reveal note -->
+            <!-- Browse: table -> category -> puzzle -> load to board -> reveal note -->
             <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                <select id="sbSourceSelect" onchange="sbSetSource(this.value)" title="Which Supabase table to read and write. puzzles keeps category and note in their own columns; chess_puzzles_redone stores one name column (&quot;category: note&quot;) plus the PGN." style="padding: 8px 10px; background: #16213e; color: #3ecf8e; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 13px; min-width: 150px;">
+                    <option value="puzzles">puzzles (3 cols)</option>
+                    <option value="flat">chess_puzzles_redone (2 cols)</option>
+                </select>
                 <select id="sbCategorySelect" onchange="sbLoadPuzzlesForCategory()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 160px;">
                     <option value="">Loading categories…</option>
                 </select>
@@ -1205,6 +1210,14 @@
         // -> board.position(...)). The ?id= deep-link loader (sbLoadPuzzleFromUrlParam)
         // handles loading an actual puzzle, polling for `board` first.
         window.addEventListener('DOMContentLoaded', function() {
+            // Pick the table first (?src= beats the remembered choice), so this
+            // first listing already reads the right one.
+            const urlSrc = new URLSearchParams(window.location.search).get('src');
+            if (urlSrc === 'flat' || urlSrc === 'puzzles') {
+                try { localStorage.setItem('sb_source', urlSrc); } catch (e) {}
+            }
+            const srcSel = document.getElementById('sbSourceSelect');
+            if (srcSel) srcSel.value = sbSource();
             sbLoadCategories({ noLoad: true });
         });
 
@@ -3219,23 +3232,167 @@
 
         window.sbPuzzlesByCategory = {}; // category -> [{id, category, note, fen}]
 
+        // ---------------------------------------------------------------
+        // Two storage shapes, one UI.
+        //
+        //   puzzles          id | category | note | fen | position   (/api/puzzles)
+        //   chess_puzzles_redone id | name     | pgn                     (/api/lines)
+        //
+        // The flat table folds category and note into one `name` cell:
+        //   "cheescake_game: how to finish it"
+        // Everything below the adapter still works on {id, category, note, fen},
+        // so the category dropdown, Prev/Next, Reveal Note, Copy link and Delete
+        // are untouched — sbApi* is the only place that knows which table is live.
+        // ---------------------------------------------------------------
+
+        const SB_FLAT_TABLE = 'chess_puzzles_redone';
+        const SB_SEP = ': '; // what joins category and note inside `name`
+
+        function sbSource() {
+            try { return localStorage.getItem('sb_source') === 'flat' ? 'flat' : 'puzzles'; }
+            catch (e) { return 'puzzles'; }
+        }
+
+        function sbSourceLabel() {
+            return sbSource() === 'flat' ? SB_FLAT_TABLE : 'puzzles';
+        }
+
+        async function sbSetSource(value) {
+            try { localStorage.setItem('sb_source', value === 'flat' ? 'flat' : 'puzzles'); } catch (e) {}
+            sbFlatCache = null;
+            window.sbPuzzlesByCategory = {};
+            document.getElementById('sbPuzzleStatus').textContent =
+                'Reading ' + (sbSource() === 'flat' ? SB_FLAT_TABLE + ' (name + pgn)' : 'puzzles (category + note + fen)') + '.';
+            await sbLoadCategories();
+        }
+
+        // "cat: note" -> { category: "cat", note: "note" }. Splits on the FIRST
+        // separator only, so a note may contain ": " freely. A name with no
+        // separator is all category, which is exactly what sbJoinName writes for
+        // an empty note — so the pair round-trips.
+        function sbSplitName(name) {
+            const s = String(name || '');
+            const i = s.indexOf(SB_SEP);
+            // A trailing colon with nothing after it ("mate_in_5:") is a half-typed
+            // name, not part of the category — drop it.
+            if (i === -1) return { category: s.trim().replace(/:+$/, '').trim(), note: '' };
+            return { category: s.slice(0, i).trim(), note: s.slice(i + SB_SEP.length).trim() };
+        }
+
+        function sbJoinName(category, note) {
+            return note ? category + SB_SEP + note : String(category || '').trim();
+        }
+
+        function sbFlatRow(row) {
+            const split = sbSplitName(row.name);
+            return { id: row.id, category: split.category, note: split.note, fen: row.pgn, name: row.name };
+        }
+
+        // chess_puzzles_redone has no category column to filter or sort on, so the
+        // whole table is pulled once and grouped here. Dropped after every write.
+        let sbFlatCache = null;
+        async function sbFlatAll(force) {
+            if (sbFlatCache && !force) return sbFlatCache;
+            const res = await fetch('/api/lines?action=list&cols=full&table=' + encodeURIComponent(SB_FLAT_TABLE));
+            const rows = await res.json();
+            if (!res.ok) throw new Error(rows.error || 'Request failed');
+            sbFlatCache = rows.map(sbFlatRow);
+            return sbFlatCache;
+        }
+
+        async function sbApiCategories() {
+            if (sbSource() === 'flat') {
+                const all = await sbFlatAll(true);
+                return [...new Set(all.map(r => r.category))].filter(Boolean).sort();
+            }
+            const res = await fetch('/api/puzzles?action=categories');
+            const categories = await res.json();
+            if (!res.ok) throw new Error(categories.error || 'Request failed');
+            return categories;
+        }
+
+        async function sbApiList(category) {
+            if (sbSource() === 'flat') {
+                return (await sbFlatAll()).filter(r => r.category === category);
+            }
+            const res = await fetch('/api/puzzles?action=list&category=' + encodeURIComponent(category));
+            const puzzles = await res.json();
+            if (!res.ok) throw new Error(puzzles.error || 'Request failed');
+            return puzzles;
+        }
+
+        async function sbApiGet(id) {
+            if (sbSource() === 'flat') {
+                const res = await fetch('/api/lines?action=get&id=' + encodeURIComponent(id) + '&table=' + encodeURIComponent(SB_FLAT_TABLE));
+                const row = await res.json();
+                if (!res.ok) throw new Error(row.error || 'Request failed');
+                return sbFlatRow(row);
+            }
+            const res = await fetch('/api/puzzles?action=get&id=' + encodeURIComponent(id));
+            const puzzle = await res.json();
+            if (!res.ok) throw new Error(puzzle.error || 'Request failed');
+            return puzzle;
+        }
+
+        async function sbApiSave(category, note, fen) {
+            const body = sbSource() === 'flat'
+                ? { action: 'save', table: SB_FLAT_TABLE, name: sbJoinName(category, note), pgn: fen }
+                : { action: 'save', category, note, fen };
+            const res = await sbWriteFetch(sbSource() === 'flat' ? '/api/lines' : '/api/puzzles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Save failed');
+            sbFlatCache = null;
+            return data;
+        }
+
+        // rows: [{ fen, note }] — the same shape sbParseBulk produces for either table.
+        async function sbApiBulk(category, rows) {
+            const body = sbSource() === 'flat'
+                ? { action: 'bulk', table: SB_FLAT_TABLE, rows: rows.map(r => ({ name: sbJoinName(category, r.note), pgn: r.fen })) }
+                : { action: 'bulk', category, rows };
+            const res = await sbWriteFetch(sbSource() === 'flat' ? '/api/lines' : '/api/puzzles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Bulk add failed');
+            sbFlatCache = null;
+            return data;
+        }
+
+        async function sbApiDelete(id) {
+            const url = sbSource() === 'flat'
+                ? '/api/lines?table=' + encodeURIComponent(SB_FLAT_TABLE) + '&id=' + encodeURIComponent(id)
+                : '/api/puzzles?id=' + encodeURIComponent(id);
+            const res = await sbWriteFetch(url, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Delete failed');
+            sbFlatCache = null;
+            return data;
+        }
+
         async function sbLoadCategories(opts) {
             opts = opts || {};
             const browseSel = document.getElementById('sbCategorySelect');
             const saveSel = document.getElementById('sbSaveCategorySelect');
             try {
-                const res = await fetch('/api/puzzles?action=categories');
-                const categories = await res.json();
-                if (!res.ok) throw new Error(categories.error || 'Request failed');
+                const categories = await sbApiCategories();
 
                 browseSel.innerHTML = categories.length
                     ? categories.map(c => `<option value="${c}">${c}</option>`).join('')
                     : '<option value="">No categories yet</option>';
 
-                const saveOptions = categories.map(c => `<option value="${c}">${c}</option>`).join('');
-                saveSel.innerHTML = saveOptions + '<option value="__new__">+ New category…</option>';
-                if (categories.length) saveSel.value = categories[0];
-                sbToggleNewCategoryInput();
+                // Pure prefill helper for the name box — there is no "+ New category…"
+                // entry any more, because a new category is just something you type.
+                saveSel.innerHTML = '<option value="">— category —</option>' +
+                    categories.map(c => `<option value="${c}">${c}</option>`).join('');
+                saveSel.value = '';
+                sbRefreshCategoryPicker();
 
                 // Awaited (not fire-and-forget): callers that immediately change
                 // sbCategorySelect after awaiting this (e.g. sbLoadPuzzleById)
@@ -3273,9 +3430,7 @@
                 document.getElementById('sbPrevPuzzleBtn').disabled = true;
             revealBtn.disabled = true;
             try {
-                const res = await fetch('/api/puzzles?action=list&category=' + encodeURIComponent(category));
-                const puzzles = await res.json();
-                if (!res.ok) throw new Error(puzzles.error || 'Request failed');
+                const puzzles = await sbApiList(category);
 
                 window.sbPuzzlesByCategory[category] = puzzles;
                 if (!puzzles.length) {
@@ -3349,9 +3504,7 @@
             const statusEl = document.getElementById('sbPuzzleStatus');
             statusEl.textContent = 'Loading…';
             try {
-                const res = await fetch('/api/puzzles?action=get&id=' + encodeURIComponent(id));
-                const puzzle = await res.json();
-                if (!res.ok) throw new Error(puzzle.error || 'Request failed');
+                const puzzle = await sbApiGet(id);
 
                 await sbLoadCategories({ noLoad: true }); // populates sbCategorySelect only — we're about to pick a different category anyway
                 document.getElementById('sbCategorySelect').value = puzzle.category;
@@ -3371,10 +3524,14 @@
         // The two deep links for a puzzle (read back by sbParseDeepLink):
         //   id    <page>?id=<id>                      always that puzzle
         //   place <page>?category=<category>&n=<n>    Nth entry of the category's dropdown (shifts on reorder/delete)
+        // An id is only unique within one table, so a link made while reading
+        // chess_puzzles_redone carries &src=flat; without it the link would
+        // silently open whatever row happens to have that id in `puzzles`.
         function sbBuildPuzzleLinks(base, puzzle, n) {
+            const src = sbSource() === 'flat' ? '&src=flat' : '';
             return {
-                id: base + '?id=' + puzzle.id,
-                place: base + '?category=' + encodeURIComponent(puzzle.category) + '&n=' + n
+                id: base + '?id=' + puzzle.id + src,
+                place: base + '?category=' + encodeURIComponent(puzzle.category) + '&n=' + n + src
             };
         }
 
@@ -3451,12 +3608,13 @@
                 return /^\d+$/.test(id) ? { id: id } : null;
             }
             const params = new URLSearchParams(search);
+            const src = params.get('src') === 'flat' ? 'flat' : null;
             const id = params.get('id') || params.get('puzzle_id');
-            if (id && /^\d+$/.test(id)) return { id: id };
+            if (id && /^\d+$/.test(id)) return { id: id, src: src };
             const category = (params.get('category') || '').trim();
             if (!category) return null;
             const n = parseInt(params.get('n') || params.get('pos') || params.get('position') || '1', 10);
-            return { category: category, n: n >= 1 ? n : 1 };
+            return { category: category, n: n >= 1 ? n : 1, src: src };
         }
 
         // Deep-link support, see sbParseDeepLink for the accepted forms.
@@ -3469,6 +3627,14 @@
         function sbLoadPuzzleFromUrlParam() {
             const target = sbParseDeepLink(window.location.search);
             if (!target) return;
+            // A &src= link switches the live table before loading, so the id resolves
+            // against the table the link was made from.
+            if (target.src) {
+                try { localStorage.setItem('sb_source', target.src); } catch (e) {}
+                sbFlatCache = null;
+                const srcSel = document.getElementById('sbSourceSelect');
+                if (srcSel) srcSel.value = target.src;
+            }
             const input = document.getElementById('sbPuzzleIdInput');
             if (input && target.id) input.value = target.id;
 
@@ -3549,10 +3715,26 @@
             if (window.sbAutoNote && sbCurrentPuzzle()) sbShowNote();
         }
 
-        function sbToggleNewCategoryInput() {
+        // Category and note are one box now (#sbNameInput, "category: note").
+        // The dropdown beside it only types the category prefix for you, so it is
+        // pointless when the table has no categories yet — hide it until there are.
+        function sbRefreshCategoryPicker() {
             const sel = document.getElementById('sbSaveCategorySelect');
-            const input = document.getElementById('sbNewCategoryInput');
-            input.style.display = sel.value === '__new__' ? '' : 'none';
+            if (!sel) return;
+            sel.style.display = sel.options.length <= 1 ? 'none' : '';
+        }
+
+        // Picking a category rewrites only the prefix of the name box, so a note
+        // already typed survives switching category.
+        function sbPickCategory() {
+            const sel = document.getElementById('sbSaveCategorySelect');
+            const box = document.getElementById('sbNameInput');
+            if (!sel || !box || !sel.value) return;
+            const note = sbSplitName(box.value).note;
+            box.value = note ? sbJoinName(sel.value, note) : sel.value + SB_SEP;
+            sel.value = ''; // back to the "— category —" placeholder, so the same one can be picked again
+            box.focus();
+            box.setSelectionRange(box.value.length, box.value.length);
         }
 
         // Writes (save / bulk / delete) need the server's ACCESS_CODE: asked once, kept in localStorage.
@@ -3591,9 +3773,7 @@
 
             statusEl.textContent = 'Deleting…';
             try {
-                const res = await sbWriteFetch('/api/puzzles?id=' + encodeURIComponent(puzzle.id), { method: 'DELETE' });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Delete failed');
+                await sbApiDelete(puzzle.id);
 
                 statusEl.textContent = 'Deleted ' + kind + ' puzzle from "' + category + '".';
                 showToast(kind + ' puzzle deleted');
@@ -3625,19 +3805,16 @@
 
         async function sbBulkAdd() {
             const statusEl = document.getElementById('sbPuzzleStatus');
-            const sel = document.getElementById('sbSaveCategorySelect');
-            const category = sel.value === '__new__'
-                ? document.getElementById('sbNewCategoryInput').value.trim()
-                : sel.value;
-            if (!category) { showToast('Pick or enter a category in the Save row first'); return; }
+            // Only the category part of the name box is used — each pasted row brings its own note.
+            const category = sbSplitName(document.getElementById('sbNameInput').value).category;
+            if (!category) { showToast('Type a category in the name box in the Save row first'); return; }
             const { rows, bad } = sbParseBulk(document.getElementById('sbBulkInput').value);
             if (bad.length) { statusEl.textContent = 'Row(s) ' + bad.join(', ') + ' could not be read (need two cells: a PGN with [FEN "…"], then the note). Nothing added.'; return; }
 
             // Drop rows already in this category, and repeats within the paste.
             let existing = [];
             try {
-                const r = await fetch('/api/puzzles?action=list&category=' + encodeURIComponent(category));
-                if (r.ok) existing = (await r.json()).map(p => String(p.fen).trim());
+                existing = (await sbApiList(category)).map(p => String(p.fen).trim());
             } catch (e) {}
             const seen = new Set(existing);
             const fresh = rows.filter(r => !seen.has(r.fen) && seen.add(r.fen));
@@ -3651,13 +3828,8 @@
             const statusEl = document.getElementById('sbPuzzleStatus');
             statusEl.textContent = 'Adding ' + rows.length + ' row(s)…';
             try {
-                const res = await sbWriteFetch('/api/puzzles', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'bulk', category, rows })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Bulk add failed');
-                statusEl.textContent = 'Added ' + data.added + ' row(s) to "' + category + '" (Supabase).';
+                const data = await sbApiBulk(category, rows);
+                statusEl.textContent = 'Added ' + data.added + ' row(s) to "' + category + '" (' + sbSourceLabel() + ').';
                 document.getElementById('sbBulkInput').value = '';
                 showToast('Added ' + data.added + ' puzzles');
                 await sbLoadCategories();
@@ -3669,38 +3841,35 @@
 
         async function sbSavePuzzle() {
             const statusEl = document.getElementById('sbPuzzleStatus');
-            const sel = document.getElementById('sbSaveCategorySelect');
-            const category = sel.value === '__new__'
-                ? document.getElementById('sbNewCategoryInput').value.trim()
-                : sel.value;
-            const note = document.getElementById('sbNoteInput').value.trim();
+            // One box -> category + note. "mate_in_5: win a pawn" splits on the first
+            // ": "; a name with no separator is all category, no note.
+            // Deliberately NOT trimmed first: the box sits at "mate_in_5: " after a
+            // save or after picking a category, and trimming would eat the separator
+            // and leave the colon stuck on the category. sbSplitName trims the parts.
+            const { category, note } = sbSplitName(document.getElementById('sbNameInput').value);
             // While a PGN cycle is active, save the whole PGN into the FEN cell so it can be
             // cycled again later; otherwise save the single FEN from the FEN box
             const cycleActive = cyclePositions.length > 1 && cyclePgnSource.trim();
             const fen = cycleActive ? cyclePgnSource.trim() : document.getElementById('fenDisplay').value.trim();
 
-            if (!category) { showToast('Enter a category name'); return; }
+            if (!category) { showToast('Name it first — e.g. mate_in_5: win a pawn'); return; }
             if (!fen) { showToast('No FEN on the board to save'); return; }
 
             statusEl.textContent = cycleActive ? 'Saving PGN (' + cyclePositions.length + ' positions)…' : 'Saving…';
             try {
-                const res = await sbWriteFetch('/api/puzzles', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'save', category, note, fen })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Save failed');
+                await sbApiSave(category, note, fen);
 
-                statusEl.textContent = 'Saved ' + (cycleActive ? 'PGN' : 'FEN') + ' to "' + category + '" (Supabase).';
-                document.getElementById('sbNoteInput').value = '';
+                statusEl.textContent = 'Saved ' + (cycleActive ? 'PGN' : 'FEN') + ' as "' +
+                    (sbSource() === 'flat' ? sbJoinName(category, note) : category) + '" (' + sbSourceLabel() + ').';
+                // Keep the category prefix, drop the note — the next save in the
+                // same category is then one note away.
+                document.getElementById('sbNameInput').value = category + SB_SEP;
                 showToast(cycleActive ? 'PGN saved (' + cyclePositions.length + ' positions)!' : 'Puzzle saved!');
 
                 await sbLoadCategories();
                 document.getElementById('sbCategorySelect').value = category;
                 await sbLoadPuzzlesForCategory();
-                document.getElementById('sbSaveCategorySelect').value = category;
-                sbToggleNewCategoryInput();
+                sbRefreshCategoryPicker();
             } catch (err) {
                 statusEl.textContent = '';
                 showToast('Save failed: ' + err.message);

@@ -356,3 +356,89 @@ python puzzles_csv.py --upload
 ```
 
 **Take a `--download` first and read the `--upload --dry-run` plan.** An upload makes Supabase match the CSVs exactly, so anything added on the page since your last download (for example a bulk add) is deleted unless it is in the files. An upload straight after a download reports `+0 ~0 -0`.
+
+---
+
+## 13. The 2-column table: `chess_puzzles_redone` and `/api/lines`
+
+A second, flatter place to save, added alongside `puzzles`. Nothing was migrated: `puzzles` and everything in section 1–12 works exactly as before. The source dropdown at the top of the Saved pane picks which table the page reads and writes.
+
+### The shape
+
+| | `puzzles` | `chess_puzzles_redone` |
+|---|---|---|
+| columns | `id, category, note, fen, position, created_at` | `id, name, pgn` |
+| a row | `cheescake_game` \| `how to finish it` \| `1k1q4/…` | `cheescake_game: how to finish it` \| `1k1q4/…` |
+| ordering | `position`, then `id` | `id` ascending (save order) |
+| categories | the `category` column | the part of `name` before the first `": "` |
+
+`name` folds category and note into one cell. The page splits it back apart, so the category dropdown, Prev/Next, Reveal Note, Copy link and Delete all behave the same on either table.
+
+### Table (Supabase SQL Editor)
+
+```sql
+create table if not exists chess_puzzles_redone (
+  id    bigint generated always as identity primary key,
+  name  text not null check (name !~ '^[0-9]+$'),
+  pgn   text not null
+);
+create index if not exists chess_puzzles_redone_name_idx on chess_puzzles_redone (name);
+alter table chess_puzzles_redone enable row level security;
+```
+
+`name` is not unique, so every save appends. RLS with no policies means only `service_role` — i.e. only `/api/lines` — reaches it. No new environment variables: it reuses `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `ACCESS_CODE`.
+
+Any other table named `chess_<letters/digits/underscores>` with `name` + `pgn` columns works the same way — copy the SQL and change the name.
+
+### The separator
+
+`SB_SEP` in `index.html` is `": "`. Joining and splitting round-trip both ways:
+
+- `("cheescake_game", "how to finish it")` → `"cheescake_game: how to finish it"` → back to the pair.
+- A note may itself contain `": "` — the split takes the **first** occurrence only.
+- An empty note writes just the category, and a name with no separator reads back as all category, empty note.
+
+### The API: `/api/lines`
+
+Only tables matching `/^chess_[a-z0-9_]+$/` are reachable, so this endpoint cannot read or write `puzzles`.
+
+| Call | Does |
+|---|---|
+| `GET /api/lines?action=tables` | the `chess_*` tables that have `name` + `pgn` |
+| `GET /api/lines?action=list&table=chess_puzzles_redone&cols=full` | all rows; `cols=full` includes the pgn (what the page uses) |
+| `GET /api/lines?action=get&table=…&id=12` | one row by id |
+| `GET /api/lines?action=get&table=…&name=spear` | one row by name |
+| `POST /api/lines` `{action:"save", table, name, pgn}` | append a row — needs the access code |
+| `POST /api/lines` `{action:"bulk", table, rows:[{name,pgn}]}` | append many — needs the access code |
+| `DELETE /api/lines?table=…&id=12` | delete a row — needs the access code |
+
+Writes take the code from the `X-Access-Code` header (what the page's `sbWriteFetch` sends) **or** from `accessCode` in the body (the contract used in `react-chess-analysis_vercel`). Either is accepted. A PGN over 200,000 characters is rejected with 413. A `name` that is all digits is rejected, because a number means a row #.
+
+`save` also accepts `replace: true`, which merges onto an existing row with that name instead of appending — that needs a unique index on `name`, which the SQL above does not create.
+
+### Where the code lives
+
+| Piece | Where |
+|---|---|
+| endpoint | `api/lines.js` |
+| which table is live | `sbSource()` / `sbSetSource()`, remembered in `localStorage['sb_source']` |
+| name ↔ category+note | `sbSplitName()` / `sbJoinName()`, separator `SB_SEP` |
+| one shape for both tables | `sbApiCategories/List/Get/Save/Bulk/Delete` — the only functions that know which table is live |
+| whole-table cache | `sbFlatCache`, dropped after every write (`chess_puzzles_redone` has no category column to filter on server-side, so the page pulls it once and groups locally) |
+
+### Links
+
+An `id` is only unique within one table, so a link copied while reading `chess_puzzles_redone` carries `&src=flat`:
+
+```
+…/index.html?id=12&src=flat
+…/index.html?category=cheescake_game&n=3&src=flat
+```
+
+Opening such a link switches the live table before loading. Without `src`, a link reads `puzzles` as it always did, so every link made before this feature still means the same thing.
+
+### Known limits
+
+- `puzzles_csv.py` only knows about `puzzles`. There is no CSV backup for `chess_puzzles_redone` yet.
+- `chess_puzzles_redone` has no `position` column, so rows sit in save order and the CSV reordering trick in section 12 does not apply.
+- The page pulls the whole `chess_puzzles_redone` table in one request (capped at 1000 rows) and groups it in the browser. That is fine for hundreds of rows; a much larger table would want a real `category` column back.
