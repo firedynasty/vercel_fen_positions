@@ -677,6 +677,7 @@
                 <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('moveHistoryTextArea').value.trim()).then(()=>showToast('PGN copied!'))" style="margin-top: 6px;">📋 Copy PGN</button>
                 <button class="copy-btn" onclick="clearPgn()" style="margin-top: 6px; background-color: rgba(244, 67, 54, 0.3);">🗑️ Clear PGN</button>
                 <button class="copy-btn" onclick="clearMovesKeepFen()" title="Drop the moves and put the pieces back on the PGN's start position — the FEN stays" style="margin-top: 6px; background-color: rgba(255, 152, 0, 0.3);">↺ Clear moves, keep FEN</button>
+                <button class="copy-btn" onclick="grabFenFromBoard()" title="Take the position as it stands on the board right now as the new FEN, and start the PGN over from it" style="margin-top: 6px; background-color: rgba(156, 39, 176, 0.3);">📥 Grab FEN from board</button>
                 <button class="copy-btn" onclick="copyPgnOneLine(this)" title="Flatten the PGN above to a single line and copy it (for a Google Sheets cell)" style="margin-top: 6px; background: #0f3460; color: #e91e63; border: 1px solid #e91e63; font-weight: bold;">1-Line</button>
             </div>
             <!-- Dictate PGN Section -->
@@ -1438,6 +1439,22 @@
             document.getElementById('fenDisplay').value = fen;
             loadFenOnBoard(true);          // re-seeds board, chess.js, the line and the move box
             showToast('Moves cleared — FEN kept');
+        }
+
+        // The other way round: keep the pieces exactly where they are now and throw the
+        // moves away. Whatever you played or dragged into place becomes the start
+        // position, so Save writes that bare FEN instead of a PGN that walks to it.
+        function grabFenFromBoard() {
+            if (typeof board === 'undefined' || !board) { showToast('No board available'); return; }
+            const placement = board.fen(); // chessboard.js: just the piece placement
+            if (!placement || placement === '8/8/8/8/8/8/8/8') { showToast('No pieces on the board'); return; }
+            // Whose move: chess.js when it still agrees with the pieces on the board (it
+            // does after legal moves), otherwise the turn toggle (after a hand-edited board).
+            let turn = null;
+            try { if (chess && chess.fen().split(' ')[0] === placement) turn = chess.turn(); } catch (e) {}
+            if (!turn) turn = document.getElementById('turnToggleCheckbox').checked ? 'b' : 'w';
+            pgnRebase(fenFor(placement, turn));  // new header FEN, no moves
+            showToast('FEN grabbed from the board');
         }
 
         // Update board display after a move (for chess.js integration)
