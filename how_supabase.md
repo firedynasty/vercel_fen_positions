@@ -361,7 +361,11 @@ python puzzles_csv.py --upload
 
 ## 13. The 2-column table: `chess_puzzles_redone` and `/api/lines`
 
-A second, flatter place to save, added alongside `puzzles`. Nothing was migrated: `puzzles` and everything in section 1–12 works exactly as before. The source dropdown at the top of the Saved pane picks which table the page reads and writes.
+A second, flatter place to save, added alongside `puzzles`. Nothing was migrated: `puzzles` keeps every row it had, and sections 1–12 still describe it accurately.
+
+**Writes all go to `chess_puzzles_redone`.** Save and Bulk add target it whatever else is on screen, and the buttons say so. `puzzles` is read-only from the page now: browse it, load from it and delete from it as before, but nothing new is written there. The source dropdown at the top of the Saved pane only chooses **what you read**.
+
+Saving while the browse pane is showing `puzzles` works fine — the row lands in `chess_puzzles_redone`, and the status line says to switch the source to see it.
 
 ### The shape
 

@@ -718,7 +718,7 @@
         <div class="side-pane-header close-near"><span>To save</span><button onclick="paneToggle('left', false)" title="Close this pane" aria-label="Close the To save pane">✕</button></div>
             <!-- Save: current board FEN / PGN -> category (existing or new) + note, or paste many rows -->
             <div id="sbSaveSection" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: monospace; font-size: 14px; margin: 12px 0 8px;">
-                <div style="color: #888; margin-bottom: 8px;">Save to Supabase</div>
+                <div style="color: #888; margin-bottom: 8px;">Save to <code style="color: #3ecf8e;">chess_puzzles_redone</code></div>
                 <!-- Save: current board FEN -> category (existing or new) + note -->
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
                     <!-- One box, the whole name: everything before the first ": " is the category, the rest is the note.
@@ -726,7 +726,7 @@
                          sbLoadCategories), each already ending in ": " so picking one leaves you typing the note. -->
                     <input type="text" id="sbNameInput" list="sbCategoryOptions" autocomplete="off" placeholder="category: note (e.g. mate_in_5: win a pawn)" title="Type the category, then &quot;: &quot;, then the note. Existing categories suggest themselves as you type." onkeydown="if(event.key==='Enter') sbSavePuzzle()" style="flex: 1; min-width: 280px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
                     <datalist id="sbCategoryOptions"></datalist>
-                    <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">💾 Save to Supabase</button>
+                    <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;" title="Saves to chess_puzzles_redone. The browse source above only chooses what you read.">💾 Save to chess_puzzles_redone</button>
                 </div>
                 <div id="sbPuzzleStatus" style="margin-top: 6px; font-size: 12px; color: #888;"></div>
 
@@ -735,7 +735,7 @@
                     <summary style="cursor: pointer; color: #ddd; font-weight: bold; font-size: 13px;">Bulk add rows (paste fen,note)</summary>
                     <p style="font-size: 12px; color: #888; margin: 6px 0;">Paste one or many <code style="color: #ddd;">fen,note</code> rows (CSV, the PGN in quotes). They are added to the category in the name box above — the part before the first <code style="color: #ddd;">: </code> — and each row brings its own note, so anything after the colon there is ignored. A <code style="color: #ddd;">fen,note</code> header line is skipped, and rows already in that category are ignored. The board is not used.</p>
                     <textarea id="sbBulkInput" rows="6" placeholder='"[Variant ""From Position""]&#10;[FEN ""…""]&#10;&#10;12. f5?? …","note text — https://…"' style="width: 100%; box-sizing: border-box; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 13px;"></textarea>
-                    <button onclick="sbBulkAdd()" style="margin-top: 6px; padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">➕ Add rows to Supabase</button>
+                    <button onclick="sbBulkAdd()" style="margin-top: 6px; padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;" title="Adds to chess_puzzles_redone.">➕ Add rows to chess_puzzles_redone</button>
                 </details>
 
             </div>
@@ -937,7 +937,7 @@
                     <li>There is no automatic sync with any file. Nothing you do on this page, and no CSV, can delete puzzles behind your back.</li>
                 </ul>
 
-                <p style="margin: 8px 0 4px;"><b style="color: #ddd;">💾 Save to Supabase</b></p>
+                <p style="margin: 8px 0 4px;"><b style="color: #ddd;">💾 Save to chess_puzzles_redone</b></p>
                 <ul style="margin: 0 0 0 18px; padding: 0;">
                     <li>Saves the FEN in the FEN box. If a PGN is loaded (a puzzle, a pasted PGN, or moves you dropped), it saves the whole PGN instead, variations and comments included.</li>
                     <li>Adds a new row with a new id at the end of the category. It never replaces a row, so saving the same FEN twice gives two rows.</li>
@@ -3310,8 +3310,10 @@
             return categories;
         }
 
-        async function sbApiList(category) {
-            if (sbSource() === 'flat') {
+        // `source` overrides the browse source — bulk add passes 'flat', because it
+        // de-dupes against the table it is about to write to, not the one on screen.
+        async function sbApiList(category, source) {
+            if ((source || sbSource()) === 'flat') {
                 return (await sbFlatAll()).filter(r => r.category === category);
             }
             const res = await fetch('/api/puzzles?action=list&category=' + encodeURIComponent(category));
@@ -3333,14 +3335,14 @@
             return puzzle;
         }
 
+        // New rows always go to SB_FLAT_TABLE, whatever the browse source is set to.
+        // `puzzles` is read-only from the page now: it keeps the old rows and you can
+        // still browse and delete them, but nothing new is written there.
         async function sbApiSave(category, note, fen) {
-            const body = sbSource() === 'flat'
-                ? { action: 'save', table: SB_FLAT_TABLE, name: sbJoinName(category, note), pgn: fen }
-                : { action: 'save', category, note, fen };
-            const res = await sbWriteFetch(sbSource() === 'flat' ? '/api/lines' : '/api/puzzles', {
+            const res = await sbWriteFetch('/api/lines', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify({ action: 'save', table: SB_FLAT_TABLE, name: sbJoinName(category, note), pgn: fen })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Save failed');
@@ -3348,15 +3350,15 @@
             return data;
         }
 
-        // rows: [{ fen, note }] — the same shape sbParseBulk produces for either table.
+        // rows: [{ fen, note }], as sbParseBulk produces. Also always SB_FLAT_TABLE.
         async function sbApiBulk(category, rows) {
-            const body = sbSource() === 'flat'
-                ? { action: 'bulk', table: SB_FLAT_TABLE, rows: rows.map(r => ({ name: sbJoinName(category, r.note), pgn: r.fen })) }
-                : { action: 'bulk', category, rows };
-            const res = await sbWriteFetch(sbSource() === 'flat' ? '/api/lines' : '/api/puzzles', {
+            const res = await sbWriteFetch('/api/lines', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify({
+                    action: 'bulk', table: SB_FLAT_TABLE,
+                    rows: rows.map(r => ({ name: sbJoinName(category, r.note), pgn: r.fen }))
+                })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Bulk add failed');
@@ -3791,13 +3793,13 @@
             // Drop rows already in this category, and repeats within the paste.
             let existing = [];
             try {
-                existing = (await sbApiList(category)).map(p => String(p.fen).trim());
+                existing = (await sbApiList(category, 'flat')).map(p => String(p.fen).trim());
             } catch (e) {}
             const seen = new Set(existing);
             const fresh = rows.filter(r => !seen.has(r.fen) && seen.add(r.fen));
             if (!fresh.length) { statusEl.textContent = 'Nothing new: every row is already in "' + category + '".'; return; }
             const skipped = rows.length - fresh.length;
-            if (!confirm('Add ' + fresh.length + ' row(s) to "' + category + '"?' + (skipped ? '\n(' + skipped + ' duplicate(s) skipped)' : ''))) return;
+            if (!confirm('Add ' + fresh.length + ' row(s) to "' + category + '" in ' + SB_FLAT_TABLE + '?' + (skipped ? '\n(' + skipped + ' duplicate(s) skipped)' : ''))) return;
             await sbBulkSave(category, fresh);
         }
 
@@ -3806,7 +3808,7 @@
             statusEl.textContent = 'Adding ' + rows.length + ' row(s)…';
             try {
                 const data = await sbApiBulk(category, rows);
-                statusEl.textContent = 'Added ' + data.added + ' row(s) to "' + category + '" (' + sbSourceLabel() + ').';
+                statusEl.textContent = 'Added ' + data.added + ' row(s) to "' + category + '" (' + SB_FLAT_TABLE + ').';
                 document.getElementById('sbBulkInput').value = '';
                 showToast('Added ' + data.added + ' puzzles');
                 await sbLoadCategories();
@@ -3837,15 +3839,22 @@
                 await sbApiSave(category, note, fen);
 
                 statusEl.textContent = 'Saved ' + (cycleActive ? 'PGN' : 'FEN') + ' as "' +
-                    (sbSource() === 'flat' ? sbJoinName(category, note) : category) + '" (' + sbSourceLabel() + ').';
+                    sbJoinName(category, note) + '" (' + SB_FLAT_TABLE + ').';
                 // Keep the category prefix, drop the note — the next save in the
                 // same category is then one note away.
                 document.getElementById('sbNameInput').value = category + SB_SEP;
                 showToast(cycleActive ? 'PGN saved (' + cyclePositions.length + ' positions)!' : 'Puzzle saved!');
 
-                await sbLoadCategories();
-                document.getElementById('sbCategorySelect').value = category;
-                await sbLoadPuzzlesForCategory(); // sbLoadCategories above already refreshed the suggestions
+                // The row landed in SB_FLAT_TABLE. Only re-browse to it when that is
+                // what is on screen; otherwise the browse pane is showing `puzzles`
+                // and the new row simply is not in it.
+                if (sbSource() === 'flat') {
+                    await sbLoadCategories();
+                    document.getElementById('sbCategorySelect').value = category;
+                    await sbLoadPuzzlesForCategory(); // sbLoadCategories above already refreshed the suggestions
+                } else {
+                    statusEl.textContent += ' Browsing puzzles — switch the source to see it.';
+                }
             } catch (err) {
                 statusEl.textContent = '';
                 showToast('Save failed: ' + err.message);
