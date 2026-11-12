@@ -775,13 +775,13 @@
                      the puzzle either side of this one. Stepping one move at a time is the ← / →
                      and Space keys, and tapping a move in the list above the board. -->
                 <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin-bottom: 6px;">
-                    <button class="copy-btn" onclick="lineFirst()" title="Back to the start of this line" style="padding: 10px 14px; min-height: 44px; font-size: 14px;">⏮</button>
-                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in the filter ([ or ← key)" style="padding: 10px 16px; min-height: 44px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
-                    <span id="moveNavIndicator" title="Which move of the line is on the board" style="font-weight: bold; min-width: 80px; text-align: center; color: #eee; font-size: 13px;">Start</span>
-                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in the filter (] or → key)" style="padding: 10px 16px; min-height: 44px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
-                    <button class="copy-btn" onclick="lineLast()" title="To the end of this line" style="padding: 10px 14px; min-height: 44px; font-size: 14px;">⏭</button>
+                    <button class="copy-btn" onclick="lineFirst()" title="Back to the start of this line" style="padding: 10px 12px; min-height: 44px; font-size: 14px; font-weight: bold; letter-spacing: -1px;">&lt;&lt;&lt;</button>
+                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in the filter ([ or ← key)" style="flex: 1 1 auto; padding: 10px 12px; min-height: 44px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev Puz</button>
+                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in the filter (] or → key)" style="flex: 1 1 auto; padding: 10px 12px; min-height: 44px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next Puz ▶</button>
+                    <button class="copy-btn" onclick="lineLast()" title="To the end of this line" style="padding: 10px 12px; min-height: 44px; font-size: 14px; font-weight: bold; letter-spacing: -1px;">&gt;&gt;&gt;</button>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 8px;">
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin-bottom: 8px;">
+                    <span id="moveNavIndicator" title="Which move of the line is on the board" style="font-weight: bold; min-width: 60px; text-align: center; color: #eee; font-size: 13px;">Start</span>
                     <button class="copy-btn" onclick="lineExitVariation()" title="Back to the main-line move ( ↑ key )" style="padding: 6px 14px; font-size: 13px;">↑ Out</button>
                     <span id="lineVarIndicator" style="min-width: 110px; text-align: center; color: #aaa; font-size: 12px;"></span>
                     <button class="copy-btn" onclick="lineEnterVariation()" title="Step into a variation ( ↓ key )" style="padding: 6px 14px; font-size: 13px;">Var ↓</button>
