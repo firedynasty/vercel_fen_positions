@@ -767,12 +767,15 @@
 
             <!-- Line navigator: the moves of the loaded / recorded PGN, with variations -->
             <div style="margin: 12px 0;">
+                <!-- Under the board, where a thumb lands: the whole line in two taps (⏮ ⏭) and
+                     the puzzle either side of this one. Stepping one move at a time is the ← / →
+                     and Space keys, and tapping a move in the list above the board. -->
                 <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin-bottom: 6px;">
-                    <button class="copy-btn" onclick="lineFirst()" title="Back to the start position" style="padding: 8px 14px; font-size: 14px;">⏮</button>
-                    <button class="copy-btn" onclick="moveNavPrev()" title="Previous move (← or Shift+Space)" style="padding: 8px 18px; font-size: 14px;">← Back</button>
-                    <span id="moveNavIndicator" style="font-weight: bold; min-width: 80px; text-align: center; color: #eee; font-size: 13px;">Start</span>
-                    <button class="copy-btn" onclick="moveNavNext()" title="Next move (→ or Space)" style="padding: 8px 18px; font-size: 14px;">Next →</button>
-                    <button class="copy-btn" onclick="lineLast()" title="To the end of the current line" style="padding: 8px 14px; font-size: 14px;">⏭</button>
+                    <button class="copy-btn" onclick="lineFirst()" title="Back to the start of this line" style="padding: 10px 14px; min-height: 44px; font-size: 14px;">⏮</button>
+                    <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in the filter ([ or ← key)" style="padding: 10px 16px; min-height: 44px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
+                    <span id="moveNavIndicator" title="Which move of the line is on the board" style="font-weight: bold; min-width: 80px; text-align: center; color: #eee; font-size: 13px;">Start</span>
+                    <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in the filter (] or → key)" style="padding: 10px 16px; min-height: 44px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
+                    <button class="copy-btn" onclick="lineLast()" title="To the end of this line" style="padding: 10px 14px; min-height: 44px; font-size: 14px;">⏭</button>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 8px;">
                     <button class="copy-btn" onclick="lineExitVariation()" title="Back to the main-line move ( ↑ key )" style="padding: 6px 14px; font-size: 13px;">↑ Out</button>
@@ -802,8 +805,8 @@
                 <span id="sbLoadedPuzzleId" title="Supabase id of the puzzle currently on the board" style="color: #3ecf8e; font-weight: bold; min-width: 40px;"></span>
                 <input type="text" id="sbPuzzleIdInput" placeholder="Load by ID..." onkeydown="if(event.key==='Enter') sbLoadPuzzleByIdInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 100px;">
                 <button onclick="sbLoadPuzzleByIdInput()" title="Fetch straight from Supabase by id — ignores the filter" style="padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Load ID</button>
-                <button id="sbPrevPuzzleBtn" onclick="sbPrevPuzzle()" disabled title="Load the previous puzzle in this category ([ key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">◀ Prev</button>
-                <button id="sbNextPuzzleBtn" onclick="sbNextPuzzle()" disabled title="Load the next puzzle in this category (] key)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Next ▶</button>
+                <!-- ◀ Prev / Next ▶ moved to the row under the board, where a thumb can reach
+                     them without scrolling past the board. -->
                 <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
                 <label style="display: flex; align-items: center; gap: 4px; color: #aaa; font-size: 12px; cursor: pointer;" title="Show each puzzle's note automatically as you step through with Next / Prev">
                     <input type="checkbox" id="sbAutoNoteToggle" onchange="sbSetAutoNote(this.checked)"> Auto-reveal notes
