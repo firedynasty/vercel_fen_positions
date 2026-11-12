@@ -767,6 +767,10 @@
 
             <!-- Line navigator: the moves of the loaded / recorded PGN, with variations -->
             <div style="margin: 12px 0;">
+                <!-- Which row is on the board: the `name` column of chess_puzzles_redone,
+                     repeated here because the Saved puzzles dropdown is off-screen on a phone. -->
+                <div id="sbLoadedName" title="The name this puzzle is saved under in chess_puzzles_redone" style="display: none; margin-bottom: 6px; padding: 6px 10px; background: rgba(0,0,0,0.3); border-radius: 5px; text-align: center; font-family: monospace; font-size: 14px; font-weight: bold; color: #3ecf8e; word-break: break-word;"></div>
+
                 <!-- Under the board, where a thumb lands: the whole line in two taps (⏮ ⏭) and
                      the puzzle either side of this one. Stepping one move at a time is the ← / →
                      and Space keys, and tapping a move in the list above the board. -->
@@ -3402,18 +3406,29 @@
             const puzzle = sbCurrentPuzzle();
             const revealBtn = document.getElementById('sbRevealNoteBtn');
             const idEl = document.getElementById('sbLoadedPuzzleId');
+            const nameEl = document.getElementById('sbLoadedName'); // the copy above the board buttons
             sbHideNote();
             const linkBtn = document.getElementById('sbCopyLinkBtn');
             if (!puzzle) {
                 revealBtn.disabled = true;
                 if (linkBtn) linkBtn.disabled = true;
                 if (idEl) idEl.textContent = '';
+                if (nameEl) { nameEl.textContent = ''; nameEl.style.display = 'none'; }
                 sbRefreshPuzzleLinks();
                 return;
             }
             revealBtn.disabled = false;
             if (linkBtn) linkBtn.disabled = false;
             if (idEl) idEl.textContent = '#' + puzzle.id;
+            if (nameEl) {
+                // textContent, not innerHTML: the name is whatever was typed into Supabase
+                nameEl.textContent = puzzle.name || sbJoinName(puzzle.category, puzzle.note) || '(unnamed)';
+                const idTag = document.createElement('span');
+                idTag.style.cssText = 'color: #888; font-weight: normal; margin-left: 8px;';
+                idTag.textContent = '#' + puzzle.id;
+                nameEl.appendChild(idTag);
+                nameEl.style.display = '';
+            }
             sbRefreshPuzzleLinks();
             if (window.sbAutoNote) sbShowNote();
 
