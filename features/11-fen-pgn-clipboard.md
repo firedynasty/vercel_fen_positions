@@ -1,4 +1,4 @@
-# 12. fen-pgn-clipboard
+# 11. fen-pgn-clipboard
 
 **Verdict:** TBD -- keep / merge into ? / cut
 
@@ -8,7 +8,7 @@ TBD -- one sentence, in user words.
 
 ## Entry point
 
-`pasteFenBtn` at `index.html:668`
+`pasteFenBtn` at `index.html:660`
 
 ## Footprint
 
@@ -27,12 +27,12 @@ TBD -- one sentence, in user words.
 | line | id | label | handler |
 |---:|---|---|---|
 | 520 | `—` | ✏️ Redo Input (Edit FEN) | `redoFenInput` |
-| 665 | `pasteFenBtn` | 📋 Paste FEN | `pasteFenFromClipboard` |
-| 666 | `pastePgnBtn` | 📋 Paste PGN | `pastePgnFromClipboard` |
-| 674 | `—` | 📋 Copy PGN | `writeText, getElementById, trim, then` |
-| 675 | `—` | 🗑️ Clear PGN | `clearPgn` |
-| 676 | `—` | ↺ Clear moves, keep FEN | `clearMovesKeepFen` |
-| 678 | `—` | 1-Line | `copyPgnOneLine` |
+| 660 | `pasteFenBtn` | 📋 Paste FEN | `pasteFenFromClipboard` |
+| 661 | `pastePgnBtn` | 📋 Paste PGN | `pastePgnFromClipboard` |
+| 669 | `—` | 📋 Copy PGN | `writeText, getElementById, trim, then` |
+| 670 | `—` | 🗑️ Clear PGN | `clearPgn` |
+| 671 | `—` | ↺ Clear moves, keep FEN | `clearMovesKeepFen` |
+| 673 | `—` | 1-Line | `copyPgnOneLine` |
 
 <!-- /generated:buttons -->
 

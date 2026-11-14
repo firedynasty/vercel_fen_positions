@@ -1,4 +1,4 @@
-# 05. dictate-moves
+# 05. move-navigation
 
 **Verdict:** TBD -- keep / merge into ? / cut
 
@@ -8,7 +8,7 @@ TBD -- one sentence, in user words.
 
 ## Entry point
 
-`♟ Clean Board` at `index.html:687`
+`&lt;&lt;&lt;` at `index.html:726`
 
 ## Footprint
 
@@ -16,9 +16,9 @@ TBD -- one sentence, in user words.
 
 **Buttons:** 5 (0 hidden, 0 proxy)
 
-**Matching lines:** 56 in `index.html`
+**Matching lines:** 12 in `index.html`
 
-**Rule:** `\bdictate[A-Z]\w*|undoDictatedMove`
+**Rule:** `\bline(First|Last|ExitVariation|EnterVariation)\b|copyMoveHistory`
 
 **localStorage keys on matching lines:** none
 
@@ -26,11 +26,11 @@ TBD -- one sentence, in user words.
 
 | line | id | label | handler |
 |---:|---|---|---|
-| 684 | `—` | ♟ Clean Board | `dictateCleanBoard` |
-| 685 | `—` | ↩ Undo | `undoDictatedMove` |
-| 697 | `—` | Go to move | `dictateGoToMove` |
-| 698 | `—` | Load PGN from input | `dictateLoadPgn` |
-| 702 | `—` | += Apply Moves | `dictateApplyMoves` |
+| 726 | `—` | <<< | `lineFirst` |
+| 729 | `—` | >>> | `lineLast` |
+| 733 | `—` | ↑ Out | `lineExitVariation` |
+| 735 | `—` | Var ↓ | `lineEnterVariation` |
+| 738 | `—` | 📋 Copy Move History | `copyMoveHistory` |
 
 <!-- /generated:buttons -->
 

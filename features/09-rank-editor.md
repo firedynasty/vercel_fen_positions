@@ -1,4 +1,4 @@
-# 10. rank-editor
+# 09. rank-editor
 
 **Verdict:** TBD -- keep / merge into ? / cut
 

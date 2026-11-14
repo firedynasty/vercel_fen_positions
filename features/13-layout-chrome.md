@@ -1,4 +1,4 @@
-# 14. layout-chrome
+# 13. layout-chrome
 
 **Verdict:** TBD -- keep / merge into ? / cut
 
@@ -8,7 +8,7 @@ TBD -- one sentence, in user words.
 
 ## Entry point
 
-`scrollLockBtn` at `index.html:613`
+`scrollLockBtn` at `index.html:609`
 
 ## Footprint
 
@@ -26,9 +26,9 @@ TBD -- one sentence, in user words.
 
 | line | id | label | handler |
 |---:|---|---|---|
-| 613 | `scrollLockBtn` | 🔓 Scroll | `toggleScrollLock` |
-| 616 | `paneLeftBtn` | ☰ To save | `paneToggle` |
-| 618 | `—` | ✕ | `paneToggle` |
+| 609 | `scrollLockBtn` | 🔓 Scroll | `toggleScrollLock` |
+| 612 | `paneLeftBtn` | ☰ To save | `paneToggle` |
+| 614 | `—` | ✕ | `paneToggle` |
 
 <!-- /generated:buttons -->
 

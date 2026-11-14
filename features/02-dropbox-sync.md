@@ -26,13 +26,13 @@ TBD -- one sentence, in user words.
 
 | line | id | label | handler |
 |---:|---|---|---|
-| 857 | `dbLoginBtn` | DB Login | `dropboxSignIn` |
-| 858 | `dbFilesBtn` | DB Files **(hidden)** | `openDropboxSidebar` |
-| 859 | `dbLogoutBtn` | DB Logout **(hidden)** | `dropboxSignOut` |
-| 959 | `closeDropboxSidebar` | × | `closeDropboxSidebar` |
-| 963 | `dropboxSearchBtn` | Search | `dropboxSearch, getElementById` |
-| 969 | `dropboxSaveConfirmBtn` | Save | `dropboxConfirmSave` |
-| 973 | `dropboxBackBtn` | ← Back | `dropboxGoBack` |
+| 808 | `dbLoginBtn` | DB Login | `dropboxSignIn` |
+| 809 | `dbFilesBtn` | DB Files **(hidden)** | `openDropboxSidebar` |
+| 810 | `dbLogoutBtn` | DB Logout **(hidden)** | `dropboxSignOut` |
+| 910 | `closeDropboxSidebar` | × | `closeDropboxSidebar` |
+| 914 | `dropboxSearchBtn` | Search | `dropboxSearch, getElementById` |
+| 920 | `dropboxSaveConfirmBtn` | Save | `dropboxConfirmSave` |
+| 924 | `dropboxBackBtn` | ← Back | `dropboxGoBack` |
 
 <!-- /generated:buttons -->
 

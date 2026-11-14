@@ -1,4 +1,4 @@
-# 07. lichess-links
+# 06. lichess-links
 
 **Verdict:** TBD -- keep / merge into ? / cut
 
@@ -8,7 +8,7 @@ TBD -- one sentence, in user words.
 
 ## Entry point
 
-`lichessLinksBtn` at `index.html:670`
+`lichessLinksBtn` at `index.html:662`
 
 ## Footprint
 
@@ -28,14 +28,14 @@ TBD -- one sentence, in user words.
 |---:|---|---|---|
 | 509 | `—` | Copy White to Move URL | `copyLichessUrl` |
 | 516 | `—` | Copy Black to Move URL | `copyLichessUrl` |
-| 667 | `lichessLinksBtn` | Lichess Links | `openLichessLinksModal` |
-| 668 | `pasteLichessUrlBtn` | 🔗 Paste Lichess URL | `pasteLichessUrlFromClipboard` |
-| 830 | `—` | Copy White to Move URL | `copyLichessUrl` |
-| 837 | `—` | Copy Black to Move URL | `copyLichessUrl` |
-| 995 | `—` | ✕ | `getElementById` |
-| 1002 | `—` | Copy White Analysis URL | `copyLichessModalUrl` |
-| 1008 | `—` | Copy Black Analysis URL | `copyLichessModalUrl` |
-| 1014 | `—` | Copy Editor URL | `copyLichessModalUrl` |
+| 662 | `lichessLinksBtn` | Lichess Links | `openLichessLinksModal` |
+| 663 | `pasteLichessUrlBtn` | 🔗 Paste Lichess URL | `pasteLichessUrlFromClipboard` |
+| 781 | `—` | Copy White to Move URL | `copyLichessUrl` |
+| 788 | `—` | Copy Black to Move URL | `copyLichessUrl` |
+| 946 | `—` | ✕ | `getElementById` |
+| 953 | `—` | Copy White Analysis URL | `copyLichessModalUrl` |
+| 959 | `—` | Copy Black Analysis URL | `copyLichessModalUrl` |
+| 965 | `—` | Copy Editor URL | `copyLichessModalUrl` |
 
 <!-- /generated:buttons -->
 

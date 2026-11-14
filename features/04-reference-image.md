@@ -14,11 +14,11 @@ TBD -- one sentence, in user words.
 
 <!-- generated:buttons -->
 
-**Buttons:** 9 (0 hidden, 3 proxy)
+**Buttons:** 7 (0 hidden, 2 proxy)
 
-**Matching lines:** 18 in `index.html`, 10 in `fen.html`
+**Matching lines:** 15 in `index.html`, 10 in `fen.html`
 
-**Rule:** `imageFileInput|loadImageBtn|imageToFenBtn|readFenFromImage|closeImagePreview|toggleImageSize|closeBoardRefImage|toggleImgToDictate`
+**Rule:** `imageFileInput|loadImageBtn|imageToFenBtn|readFenFromImage|closeImagePreview|toggleImageSize|closeBoardRefImage`
 
 **localStorage keys on matching lines:** none
 
@@ -29,12 +29,10 @@ TBD -- one sentence, in user words.
 | 383 | `loadImageBtn` | 🖼️ Load Reference Image | `proxy → #imageFileInput` |
 | 393 | `—` | Toggle Size | `toggleImageSize` |
 | 394 | `—` | ✕ Close | `closeImagePreview` |
-| 642 | `loadImageBtn` | 🖼️ Load Reference Image | `proxy → #imageFileInput` |
-| 649 | `—` | × | `closeImagePreview` |
-| 651 | `imageToFenBtn` | 🤖 Read FEN from image | `readFenFromImage` |
-| 692 | `toggleImgBtn` | 🖼️ Img | `toggleImgToDictate` |
-| 693 | `—` | 📂🖼️ | `proxy → #imageFileInput` |
-| 757 | `—` | × | `closeBoardRefImage` |
+| 638 | `loadImageBtn` | 🖼️ Load Reference Image | `proxy → #imageFileInput` |
+| 644 | `—` | × | `closeImagePreview` |
+| 646 | `imageToFenBtn` | 🤖 Read FEN from image | `readFenFromImage` |
+| 708 | `—` | × | `closeBoardRefImage` |
 
 <!-- /generated:buttons -->
 

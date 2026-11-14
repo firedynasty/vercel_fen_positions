@@ -1,4 +1,4 @@
-# 13. positions-csv
+# 12. positions-csv
 
 **Verdict:** TBD -- keep / merge into ? / cut
 
@@ -8,7 +8,7 @@ TBD -- one sentence, in user words.
 
 ## Entry point
 
-`+ Add Position` at `index.html:920`
+`+ Add Position` at `index.html:801`
 
 ## Footprint
 
@@ -26,12 +26,12 @@ TBD -- one sentence, in user words.
 
 | line | id | label | handler |
 |---:|---|---|---|
-| 850 | `—` | + Add Position | `addPosition` |
-| 864 | `—` | ⬆ Load CSV/Excel | `proxy → #csvFileInput` |
-| 865 | `—` | ⬇ Download as CSV | `downloadAsCSV` |
-| 866 | `—` | 📋 Add from Clipboard | `addRowFromClipboard` |
-| 867 | `—` | 🗑️ Clear All | `clearAllPositions` |
-| 1648 | `—` | Delete | `stopPropagation, deletePosition` |
+| 801 | `—` | + Add Position | `addPosition` |
+| 815 | `—` | ⬆ Load CSV/Excel | `proxy → #csvFileInput` |
+| 816 | `—` | ⬇ Download as CSV | `downloadAsCSV` |
+| 817 | `—` | 📋 Add from Clipboard | `addRowFromClipboard` |
+| 818 | `—` | 🗑️ Clear All | `clearAllPositions` |
+| 1599 | `—` | Delete | `stopPropagation, deletePosition` |
 
 <!-- /generated:buttons -->
 

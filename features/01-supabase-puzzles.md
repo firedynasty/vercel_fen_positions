@@ -26,11 +26,11 @@ TBD -- one sentence, in user words.
 
 | line | id | label | handler |
 |---:|---|---|---|
-| 629 | `sbCatsBtn` | ▾ categories | `sbCatsToggle` |
-| 630 | `—` | 💾 Save to chess_puzzles_redone | `sbSavePuzzle` |
-| 776 | `sbPrevPuzzleBtn` | ◀ Prev Puz | `sbPrevPuzzle` |
-| 777 | `sbNextPuzzleBtn` | Next Puz ▶ | `sbNextPuzzle` |
-| 812 | `sbDeletePuzzleBtn` | 🗑️ Delete Loaded FEN/PGN | `sbDeletePuzzle` |
+| 625 | `sbCatsBtn` | ▾ categories | `sbCatsToggle` |
+| 626 | `—` | 💾 Save to chess_puzzles_redone | `sbSavePuzzle` |
+| 727 | `sbPrevPuzzleBtn` | ◀ Prev Puz | `sbPrevPuzzle` |
+| 728 | `sbNextPuzzleBtn` | Next Puz ▶ | `sbNextPuzzle` |
+| 763 | `sbDeletePuzzleBtn` | 🗑️ Delete Loaded FEN/PGN | `sbDeletePuzzle` |
 
 <!-- /generated:buttons -->
 
