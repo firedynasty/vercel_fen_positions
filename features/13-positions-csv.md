@@ -26,12 +26,12 @@ TBD -- one sentence, in user words.
 
 | line | id | label | handler |
 |---:|---|---|---|
-| 899 | `—` | + Add Position | `addPosition` |
-| 913 | `—` | ⬆ Load CSV/Excel | `proxy → #csvFileInput` |
-| 914 | `—` | ⬇ Download as CSV | `downloadAsCSV` |
-| 915 | `—` | 📋 Add from Clipboard | `addRowFromClipboard` |
-| 916 | `—` | 🗑️ Clear All | `clearAllPositions` |
-| 1697 | `—` | Delete | `stopPropagation, deletePosition` |
+| 850 | `—` | + Add Position | `addPosition` |
+| 864 | `—` | ⬆ Load CSV/Excel | `proxy → #csvFileInput` |
+| 865 | `—` | ⬇ Download as CSV | `downloadAsCSV` |
+| 866 | `—` | 📋 Add from Clipboard | `addRowFromClipboard` |
+| 867 | `—` | 🗑️ Clear All | `clearAllPositions` |
+| 1648 | `—` | Delete | `stopPropagation, deletePosition` |
 
 <!-- /generated:buttons -->
 

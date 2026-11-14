@@ -812,55 +812,6 @@
                 <button id="sbDeletePuzzleBtn" onclick="sbDeletePuzzle()" title="Delete the puzzle currently selected in the dropdown from Supabase" style="padding: 8px 18px; background: #c0392b; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">🗑️ Delete Loaded FEN/PGN</button>
                 <button class="copy-btn" onclick="flipBoard()">&#8635; Flip Board</button>
             </div>
-
-            <!-- Supabase `puzzles` is the only source of truth -->
-            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px; color: #888;">
-                Source of truth: the Supabase <code style="color: #ddd;">puzzles</code> table. <b style="color: #ddd;">💾 Save</b>, <b style="color: #ddd;">➕ Add rows</b> and <b style="color: #ddd;">🗑️ Delete</b> change Supabase only, and need the access code (asked once, remembered in this browser). To back up or bulk edit, use <code style="color: #ddd;">python puzzles_csv.py</code> (see below).
-            </div>
-            <div style="margin-top: 4px; font-size: 12px; color: #888;">
-                Deep link a puzzle: append <code style="color: #ddd;">?id=&lt;id&gt;</code> or just <code style="color: #ddd;">?&lt;id&gt;</code> to the URL — auto-loads on page open. Or by filter term and place in the dropdown: <code style="color: #ddd;">?filter=as_black&amp;n=3</code> (3rd match; <code style="color: #ddd;">n</code> defaults to 1; it follows the dropdown order, so it shifts as rows are added or deleted — <code style="color: #ddd;">?id=</code> never does). <code style="color: #ddd;">?category=</code> still works as a filter term. Otherwise the list fills in normally, but no puzzle loads onto the board until you pick one.<br>Keys: <b style="color: #ddd;">← / →</b> previous / next puzzle, <b style="color: #ddd;">Space</b> next move, <b style="color: #ddd;">Shift+Space</b> previous move.
-            </div>
-            <details style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5;">
-                <summary style="cursor: pointer; color: #ddd; font-weight: bold;">How the puzzles are stored (tap to open)</summary>
-
-                <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Where things live</b></p>
-                <ul style="margin: 0 0 0 18px; padding: 0;">
-                    <li><b style="color: #ddd;">Supabase is the only source of truth.</b> The category and puzzle dropdowns, Prev / Next, the <code style="color: #ddd;">?id=</code> links and the puzzle ids all come from the <code style="color: #ddd;">puzzles</code> table. Each puzzle row has a number, shown as #id next to the dropdown.</li>
-                    <li>There is no automatic sync with any file. Nothing you do on this page, and no CSV, can delete puzzles behind your back.</li>
-                </ul>
-
-                <p style="margin: 8px 0 4px;"><b style="color: #ddd;">💾 Save to chess_puzzles_redone</b></p>
-                <ul style="margin: 0 0 0 18px; padding: 0;">
-                    <li>Saves the FEN in the FEN box. If a PGN is loaded (a puzzle, a pasted PGN, or moves you dropped), it saves the whole PGN instead, variations and comments included.</li>
-                    <li>Adds a new row with a new id at the end of the category. It never replaces a row, so saving the same FEN twice gives two rows.</li>
-                </ul>
-
-                <p style="margin: 8px 0 4px;"><b style="color: #ddd;">➕ Bulk add</b></p>
-                <ul style="margin: 0 0 0 18px; padding: 0;">
-                    <li>Paste <code style="color: #ddd;">fen,note</code> rows into the textarea; they are added to the chosen category, skipping rows already there.</li>
-                </ul>
-
-                <p style="margin: 8px 0 4px;"><b style="color: #ddd;">🗑️ Delete</b> (the red button here)</p>
-                <ul style="margin: 0 0 0 18px; padding: 0;">
-                    <li>Deletes the puzzle selected in the dropdown from Supabase. It asks you to confirm first and cannot be undone.</li>
-                </ul>
-
-                <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Access code</b></p>
-                <ul style="margin: 0 0 0 18px; padding: 0;">
-                    <li>Save, bulk add and delete need the server's <code style="color: #ddd;">ACCESS_CODE</code>. The page asks for it the first time and remembers it in this browser (localStorage). A wrong code is forgotten, so you are asked again. Reading puzzles needs no code.</li>
-                </ul>
-
-                <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Backup and bulk edit: <code style="color: #ddd;">python puzzles_csv.py</code></b></p>
-                <ul style="margin: 0 0 0 18px; padding: 0;">
-                    <li><code style="color: #ddd;">--download</code> writes one CSV per category (<code style="color: #ddd;">&lt;category&gt;.csv</code>, columns <code style="color: #ddd;">fen,note</code>, in puzzle order) into <code style="color: #ddd;">~/Library/CloudStorage/Dropbox/study/chess</code>, a backup you can also edit.</li>
-                    <li><code style="color: #ddd;">--upload</code> reads those CSVs back into Supabase: rows are matched by FEN (a puzzle keeps its id and <code style="color: #ddd;">?id=</code> links when you reorder, edit its note or move it to another CSV), new rows are inserted, and Supabase rows that match no CSV row are deleted. It shows the plan and asks first; <code style="color: #ddd;">--dry-run</code> only prints it. It refuses to run if the CSVs hold no puzzles.</li>
-                </ul>
-
-                <p style="margin: 8px 0 4px;"><b style="color: #ddd;">Links</b></p>
-                <ul style="margin: 0 0 8px 18px; padding: 0;">
-                    <li>A <code style="color: #ddd;">?id=</code> link opens that puzzle. After the puzzle is deleted the link stops working and says "Puzzle not found". Moving it to another category does not break it.</li>
-                </ul>
-            </details>
         </div>
             </div><!-- /board-right -->
         </div><!-- /board-row -->

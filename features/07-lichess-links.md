@@ -30,12 +30,12 @@ TBD -- one sentence, in user words.
 | 516 | `—` | Copy Black to Move URL | `copyLichessUrl` |
 | 667 | `lichessLinksBtn` | Lichess Links | `openLichessLinksModal` |
 | 668 | `pasteLichessUrlBtn` | 🔗 Paste Lichess URL | `pasteLichessUrlFromClipboard` |
-| 879 | `—` | Copy White to Move URL | `copyLichessUrl` |
-| 886 | `—` | Copy Black to Move URL | `copyLichessUrl` |
-| 1044 | `—` | ✕ | `getElementById` |
-| 1051 | `—` | Copy White Analysis URL | `copyLichessModalUrl` |
-| 1057 | `—` | Copy Black Analysis URL | `copyLichessModalUrl` |
-| 1063 | `—` | Copy Editor URL | `copyLichessModalUrl` |
+| 830 | `—` | Copy White to Move URL | `copyLichessUrl` |
+| 837 | `—` | Copy Black to Move URL | `copyLichessUrl` |
+| 995 | `—` | ✕ | `getElementById` |
+| 1002 | `—` | Copy White Analysis URL | `copyLichessModalUrl` |
+| 1008 | `—` | Copy Black Analysis URL | `copyLichessModalUrl` |
+| 1014 | `—` | Copy Editor URL | `copyLichessModalUrl` |
 
 <!-- /generated:buttons -->
 

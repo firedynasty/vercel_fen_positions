@@ -16,7 +16,7 @@ TBD -- one sentence, in user words.
 
 **Buttons:** 7 (2 hidden, 0 proxy)
 
-**Matching lines:** 150 in `index.html`
+**Matching lines:** 149 in `index.html`
 
 **Rule:** `\bdb[A-Z]\w*|dropbox|Dropbox`
 
@@ -26,13 +26,13 @@ TBD -- one sentence, in user words.
 
 | line | id | label | handler |
 |---:|---|---|---|
-| 906 | `dbLoginBtn` | DB Login | `dropboxSignIn` |
-| 907 | `dbFilesBtn` | DB Files **(hidden)** | `openDropboxSidebar` |
-| 908 | `dbLogoutBtn` | DB Logout **(hidden)** | `dropboxSignOut` |
-| 1008 | `closeDropboxSidebar` | × | `closeDropboxSidebar` |
-| 1012 | `dropboxSearchBtn` | Search | `dropboxSearch, getElementById` |
-| 1018 | `dropboxSaveConfirmBtn` | Save | `dropboxConfirmSave` |
-| 1022 | `dropboxBackBtn` | ← Back | `dropboxGoBack` |
+| 857 | `dbLoginBtn` | DB Login | `dropboxSignIn` |
+| 858 | `dbFilesBtn` | DB Files **(hidden)** | `openDropboxSidebar` |
+| 859 | `dbLogoutBtn` | DB Logout **(hidden)** | `dropboxSignOut` |
+| 959 | `closeDropboxSidebar` | × | `closeDropboxSidebar` |
+| 963 | `dropboxSearchBtn` | Search | `dropboxSearch, getElementById` |
+| 969 | `dropboxSaveConfirmBtn` | Save | `dropboxConfirmSave` |
+| 973 | `dropboxBackBtn` | ← Back | `dropboxGoBack` |
 
 <!-- /generated:buttons -->
 

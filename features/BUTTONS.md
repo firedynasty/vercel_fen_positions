@@ -110,30 +110,30 @@ off the button, so check it before acting on it.
 | `index.html` | 787 | `—` | 📋 Copy Move History | `copyMoveHistory` | [move-navigation](06-move-navigation.md) |
 | `index.html` | 812 | `sbDeletePuzzleBtn` | 🗑️ Delete Loaded FEN/PGN | `sbDeletePuzzle` | [supabase-puzzles](01-supabase-puzzles.md) |
 | `index.html` | 813 | `—` | ↻ Flip Board | `flipBoard` | [board-preview](11-board-preview.md) |
-| `index.html` | 879 | `—` | Copy White to Move URL | `copyLichessUrl` | [lichess-links](07-lichess-links.md) |
-| `index.html` | 886 | `—` | Copy Black to Move URL | `copyLichessUrl` | [lichess-links](07-lichess-links.md) |
-| `index.html` | 899 | `—` | + Add Position | `addPosition` | [positions-csv](13-positions-csv.md) |
-| `index.html` | 906 | `dbLoginBtn` | DB Login | `dropboxSignIn` | [dropbox-sync](02-dropbox-sync.md) |
-| `index.html` | 907 | `dbFilesBtn` | DB Files **(hidden)** | `openDropboxSidebar` | [dropbox-sync](02-dropbox-sync.md) |
-| `index.html` | 908 | `dbLogoutBtn` | DB Logout **(hidden)** | `dropboxSignOut` | [dropbox-sync](02-dropbox-sync.md) |
-| `index.html` | 913 | `—` | ⬆ Load CSV/Excel | `proxy → #csvFileInput` | [positions-csv](13-positions-csv.md) |
-| `index.html` | 914 | `—` | ⬇ Download as CSV | `downloadAsCSV` | [positions-csv](13-positions-csv.md) |
-| `index.html` | 915 | `—` | 📋 Add from Clipboard | `addRowFromClipboard` | [positions-csv](13-positions-csv.md) |
-| `index.html` | 916 | `—` | 🗑️ Clear All | `clearAllPositions` | [positions-csv](13-positions-csv.md) |
-| `index.html` | 943 | `gdrive-auth-btn` | Sign In | `gdriveSignIn` | [gdrive-sheets](03-gdrive-sheets.md) |
-| `index.html` | 981 | `—` | Save Puzzle | `gdriveSavePuzzle` | [gdrive-sheets](03-gdrive-sheets.md) |
-| `index.html` | 982 | `—` | Replace Row | `gdriveReplaceRow` | [gdrive-sheets](03-gdrive-sheets.md) |
-| `index.html` | 983 | `—` | Clear Inputs | `gdriveClearInputs` | [gdrive-sheets](03-gdrive-sheets.md) |
-| `index.html` | 992 | `—` | × | `getElementById, remove` | [gdrive-sheets](03-gdrive-sheets.md) |
-| `index.html` | 995 | `—` | - | `gdriveCommentFontSize` | [gdrive-sheets](03-gdrive-sheets.md) |
-| `index.html` | 997 | `—` | + | `gdriveCommentFontSize` | [gdrive-sheets](03-gdrive-sheets.md) |
-| `index.html` | 1008 | `closeDropboxSidebar` | × | `closeDropboxSidebar` | [dropbox-sync](02-dropbox-sync.md) |
-| `index.html` | 1012 | `dropboxSearchBtn` | Search | `dropboxSearch, getElementById` | [dropbox-sync](02-dropbox-sync.md) |
-| `index.html` | 1018 | `dropboxSaveConfirmBtn` | Save | `dropboxConfirmSave` | [dropbox-sync](02-dropbox-sync.md) |
-| `index.html` | 1022 | `dropboxBackBtn` | ← Back | `dropboxGoBack` | [dropbox-sync](02-dropbox-sync.md) |
-| `index.html` | 1035 | `—` | ✕ | `closeSheetPicker` | [gdrive-sheets](03-gdrive-sheets.md) |
-| `index.html` | 1044 | `—` | ✕ | `getElementById` | [lichess-links](07-lichess-links.md) |
-| `index.html` | 1051 | `—` | Copy White Analysis URL | `copyLichessModalUrl` | [lichess-links](07-lichess-links.md) |
-| `index.html` | 1057 | `—` | Copy Black Analysis URL | `copyLichessModalUrl` | [lichess-links](07-lichess-links.md) |
-| `index.html` | 1063 | `—` | Copy Editor URL | `copyLichessModalUrl` | [lichess-links](07-lichess-links.md) |
-| `index.html` | 1697 | `—` | Delete | `stopPropagation, deletePosition` | [positions-csv](13-positions-csv.md) |
+| `index.html` | 830 | `—` | Copy White to Move URL | `copyLichessUrl` | [lichess-links](07-lichess-links.md) |
+| `index.html` | 837 | `—` | Copy Black to Move URL | `copyLichessUrl` | [lichess-links](07-lichess-links.md) |
+| `index.html` | 850 | `—` | + Add Position | `addPosition` | [positions-csv](13-positions-csv.md) |
+| `index.html` | 857 | `dbLoginBtn` | DB Login | `dropboxSignIn` | [dropbox-sync](02-dropbox-sync.md) |
+| `index.html` | 858 | `dbFilesBtn` | DB Files **(hidden)** | `openDropboxSidebar` | [dropbox-sync](02-dropbox-sync.md) |
+| `index.html` | 859 | `dbLogoutBtn` | DB Logout **(hidden)** | `dropboxSignOut` | [dropbox-sync](02-dropbox-sync.md) |
+| `index.html` | 864 | `—` | ⬆ Load CSV/Excel | `proxy → #csvFileInput` | [positions-csv](13-positions-csv.md) |
+| `index.html` | 865 | `—` | ⬇ Download as CSV | `downloadAsCSV` | [positions-csv](13-positions-csv.md) |
+| `index.html` | 866 | `—` | 📋 Add from Clipboard | `addRowFromClipboard` | [positions-csv](13-positions-csv.md) |
+| `index.html` | 867 | `—` | 🗑️ Clear All | `clearAllPositions` | [positions-csv](13-positions-csv.md) |
+| `index.html` | 894 | `gdrive-auth-btn` | Sign In | `gdriveSignIn` | [gdrive-sheets](03-gdrive-sheets.md) |
+| `index.html` | 932 | `—` | Save Puzzle | `gdriveSavePuzzle` | [gdrive-sheets](03-gdrive-sheets.md) |
+| `index.html` | 933 | `—` | Replace Row | `gdriveReplaceRow` | [gdrive-sheets](03-gdrive-sheets.md) |
+| `index.html` | 934 | `—` | Clear Inputs | `gdriveClearInputs` | [gdrive-sheets](03-gdrive-sheets.md) |
+| `index.html` | 943 | `—` | × | `getElementById, remove` | [gdrive-sheets](03-gdrive-sheets.md) |
+| `index.html` | 946 | `—` | - | `gdriveCommentFontSize` | [gdrive-sheets](03-gdrive-sheets.md) |
+| `index.html` | 948 | `—` | + | `gdriveCommentFontSize` | [gdrive-sheets](03-gdrive-sheets.md) |
+| `index.html` | 959 | `closeDropboxSidebar` | × | `closeDropboxSidebar` | [dropbox-sync](02-dropbox-sync.md) |
+| `index.html` | 963 | `dropboxSearchBtn` | Search | `dropboxSearch, getElementById` | [dropbox-sync](02-dropbox-sync.md) |
+| `index.html` | 969 | `dropboxSaveConfirmBtn` | Save | `dropboxConfirmSave` | [dropbox-sync](02-dropbox-sync.md) |
+| `index.html` | 973 | `dropboxBackBtn` | ← Back | `dropboxGoBack` | [dropbox-sync](02-dropbox-sync.md) |
+| `index.html` | 986 | `—` | ✕ | `closeSheetPicker` | [gdrive-sheets](03-gdrive-sheets.md) |
+| `index.html` | 995 | `—` | ✕ | `getElementById` | [lichess-links](07-lichess-links.md) |
+| `index.html` | 1002 | `—` | Copy White Analysis URL | `copyLichessModalUrl` | [lichess-links](07-lichess-links.md) |
+| `index.html` | 1008 | `—` | Copy Black Analysis URL | `copyLichessModalUrl` | [lichess-links](07-lichess-links.md) |
+| `index.html` | 1014 | `—` | Copy Editor URL | `copyLichessModalUrl` | [lichess-links](07-lichess-links.md) |
+| `index.html` | 1648 | `—` | Delete | `stopPropagation, deletePosition` | [positions-csv](13-positions-csv.md) |

@@ -26,14 +26,14 @@ TBD -- one sentence, in user words.
 
 | line | id | label | handler |
 |---:|---|---|---|
-| 943 | `gdrive-auth-btn` | Sign In | `gdriveSignIn` |
-| 981 | `—` | Save Puzzle | `gdriveSavePuzzle` |
-| 982 | `—` | Replace Row | `gdriveReplaceRow` |
-| 983 | `—` | Clear Inputs | `gdriveClearInputs` |
-| 992 | `—` | × | `getElementById, remove` |
-| 995 | `—` | - | `gdriveCommentFontSize` |
-| 997 | `—` | + | `gdriveCommentFontSize` |
-| 1035 | `—` | ✕ | `closeSheetPicker` |
+| 894 | `gdrive-auth-btn` | Sign In | `gdriveSignIn` |
+| 932 | `—` | Save Puzzle | `gdriveSavePuzzle` |
+| 933 | `—` | Replace Row | `gdriveReplaceRow` |
+| 934 | `—` | Clear Inputs | `gdriveClearInputs` |
+| 943 | `—` | × | `getElementById, remove` |
+| 946 | `—` | - | `gdriveCommentFontSize` |
+| 948 | `—` | + | `gdriveCommentFontSize` |
+| 986 | `—` | ✕ | `closeSheetPicker` |
 
 <!-- /generated:buttons -->
 
