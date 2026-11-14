@@ -14,9 +14,9 @@ TBD -- one sentence, in user words.
 
 <!-- generated:buttons -->
 
-**Buttons:** 7 (0 hidden, 0 proxy)
+**Buttons:** 4 (0 hidden, 0 proxy)
 
-**Matching lines:** 195 in `index.html`
+**Matching lines:** 130 in `index.html`
 
 **Rule:** `\bsb[A-Z]\w*`
 
@@ -29,10 +29,7 @@ TBD -- one sentence, in user words.
 | 629 | `—` | 💾 Save to chess_puzzles_redone | `sbSavePuzzle` |
 | 771 | `sbPrevPuzzleBtn` | ◀ Prev Puz | `sbPrevPuzzle` |
 | 772 | `sbNextPuzzleBtn` | Next Puz ▶ | `sbNextPuzzle` |
-| 803 | `—` | Load ID | `sbLoadPuzzleByIdInput` |
-| 806 | `sbRevealNoteBtn` | 👁 Reveal Note | `sbToggleNote` |
-| 810 | `sbCopyLinkBtn` | 🔗 Copy link | `sbCopyPuzzleLink` |
-| 825 | `sbDeletePuzzleBtn` | 🗑️ Delete Loaded FEN/PGN | `sbDeletePuzzle` |
+| 807 | `sbDeletePuzzleBtn` | 🗑️ Delete Loaded FEN/PGN | `sbDeletePuzzle` |
 
 <!-- /generated:buttons -->
 

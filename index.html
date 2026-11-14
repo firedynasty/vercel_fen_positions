@@ -799,27 +799,9 @@
                 </select>
                 <span id="sbMatchCount" title="How many rows match the filter" style="color: #888; font-size: 12px;"></span>
                 <span id="sbLoadedPuzzleId" title="Supabase id of the puzzle currently on the board" style="color: #3ecf8e; font-weight: bold; min-width: 40px;"></span>
-                <input type="text" id="sbPuzzleIdInput" placeholder="Load by ID..." onkeydown="if(event.key==='Enter') sbLoadPuzzleByIdInput()" style="padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px; min-width: 100px;">
-                <button onclick="sbLoadPuzzleByIdInput()" title="Fetch straight from Supabase by id — ignores the filter" style="padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">Load ID</button>
                 <!-- ◀ Prev / Next ▶ moved to the row under the board, where a thumb can reach
                      them without scrolling past the board. -->
-                <button id="sbRevealNoteBtn" onclick="sbToggleNote()" disabled style="padding: 8px 16px; background: #3ecf8e; color: #08341f; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 14px; font-weight: bold;">👁 Reveal Note</button>
-                <label style="display: flex; align-items: center; gap: 4px; color: #aaa; font-size: 12px; cursor: pointer;" title="Show each puzzle's note automatically as you step through with Next / Prev">
-                    <input type="checkbox" id="sbAutoNoteToggle" onchange="sbSetAutoNote(this.checked)"> Auto-reveal notes
-                </label>
-                <button id="sbCopyLinkBtn" onclick="sbCopyPuzzleLink()" disabled title="Copy a link that opens this puzzle (?id=…)" style="padding: 8px 16px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold;">&#128279; Copy link</button>
             </div>
-            <div id="sbPuzzleLinks" style="display: none; margin-top: 6px; font-size: 12px; line-height: 1.6;">
-                <div title="Always opens this exact puzzle, even after you reorder or delete others. Tap once to select the whole link.">
-                    <span style="color: #888;">link</span>
-                    <span id="sbPuzzleLinkId" style="color: #00d4ff; user-select: all; word-break: break-all;"></span>
-                </div>
-                <div title="By place in the dropdown: category + number. Shifts if you reorder or delete puzzles. Tap once to select the whole link.">
-                    <span style="color: #888;">by place</span>
-                    <span id="sbPuzzleLinkPlace" style="color: #00d4ff; user-select: all; word-break: break-all;"></span>
-                </div>
-            </div>
-            <div id="sbNoteDisplay" style="display: none; margin-top: 8px; padding: 10px; background: #0f3460; border-radius: 5px; color: #eee; font-size: 14px;"></div>
 
             <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
                 <button id="sbDeletePuzzleBtn" onclick="sbDeletePuzzle()" title="Delete the puzzle currently selected in the dropdown from Supabase" style="padding: 8px 18px; background: #c0392b; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;">🗑️ Delete Loaded FEN/PGN</button>
@@ -3278,22 +3260,6 @@
             return data;
         }
 
-        // rows: [{ fen, note }], as sbParseBulk produces. Also always SB_FLAT_TABLE.
-        async function sbApiBulk(category, rows) {
-            const res = await sbWriteFetch('/api/lines', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'bulk', table: SB_FLAT_TABLE,
-                    rows: rows.map(r => ({ name: sbJoinName(category, r.note), pgn: r.fen }))
-                })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Bulk add failed');
-            sbFlatCache = null;
-            return data;
-        }
-
         async function sbApiDelete(id) {
             const res = await sbWriteFetch(
                 '/api/lines?table=' + encodeURIComponent(SB_FLAT_TABLE) + '&id=' + encodeURIComponent(id),
@@ -3346,10 +3312,8 @@
         function sbApplyFilter(opts) {
             opts = opts || {};
             const puzzleSel = document.getElementById('sbPuzzleSelect');
-            const revealBtn = document.getElementById('sbRevealNoteBtn');
             const countEl = document.getElementById('sbMatchCount');
             const term = (document.getElementById('sbFilterInput') || {}).value || '';
-            sbHideNote();
 
             const all = sbFlatCache || [];
             const rows = sbFilterRows(all, term);
@@ -3367,7 +3331,6 @@
                 puzzleSel.disabled = true;
                 document.getElementById('sbNextPuzzleBtn').disabled = true;
                 document.getElementById('sbPrevPuzzleBtn').disabled = true;
-                revealBtn.disabled = true;
                 return;
             }
 
@@ -3396,21 +3359,13 @@
 
         function sbLoadSelectedPuzzle() {
             const puzzle = sbCurrentPuzzle();
-            const revealBtn = document.getElementById('sbRevealNoteBtn');
             const idEl = document.getElementById('sbLoadedPuzzleId');
             const nameEl = document.getElementById('sbLoadedName'); // the copy above the board buttons
-            sbHideNote();
-            const linkBtn = document.getElementById('sbCopyLinkBtn');
             if (!puzzle) {
-                revealBtn.disabled = true;
-                if (linkBtn) linkBtn.disabled = true;
                 if (idEl) idEl.textContent = '';
                 if (nameEl) { nameEl.textContent = ''; nameEl.style.display = 'none'; }
-                sbRefreshPuzzleLinks();
                 return;
             }
-            revealBtn.disabled = false;
-            if (linkBtn) linkBtn.disabled = false;
             if (idEl) idEl.textContent = '#' + puzzle.id;
             if (nameEl) {
                 // textContent, not innerHTML: the name is whatever was typed into Supabase
@@ -3421,8 +3376,6 @@
                 nameEl.appendChild(idTag);
                 nameEl.style.display = '';
             }
-            sbRefreshPuzzleLinks();
-            if (window.sbAutoNote) sbShowNote();
 
             if (sbIsPgn(puzzle.fen)) {
                 // the saved text stays exactly as stored (what Save writes) until you drop a move
@@ -3467,50 +3420,6 @@
             }
         }
 
-        // The two deep links for a puzzle (read back by sbParseDeepLink):
-        //   id    <page>?id=<id>                   always that row
-        //   place <page>?filter=<term>&n=<n>       Nth entry under that filter (shifts as rows are added or deleted)
-        function sbBuildPuzzleLinks(base, puzzle, n) {
-            const term = puzzle.category || puzzle.name || '';
-            return {
-                id: base + '?id=' + puzzle.id,
-                place: base + '?filter=' + encodeURIComponent(term) + '&n=' + n
-            };
-        }
-
-        // Show the links for the loaded puzzle in the selectable line under the browse row (hidden when none)
-        function sbRefreshPuzzleLinks() {
-            const box = document.getElementById('sbPuzzleLinks');
-            if (!box) return;
-            const puzzle = sbCurrentPuzzle();
-            if (!puzzle) { box.style.display = 'none'; return; }
-            const n = document.getElementById('sbPuzzleSelect').selectedIndex + 1;
-            const links = sbBuildPuzzleLinks(window.location.origin + window.location.pathname, puzzle, n);
-            document.getElementById('sbPuzzleLinkId').textContent = links.id;
-            document.getElementById('sbPuzzleLinkPlace').textContent = links.place;
-            box.style.display = 'block';
-        }
-        window.sbRefreshPuzzleLinks = sbRefreshPuzzleLinks;
-
-        // Link that reopens the loaded puzzle: <page>?id=<id>
-        async function sbCopyPuzzleLink() {
-            const puzzle = sbCurrentPuzzle();
-            if (!puzzle) { showToast('Load a puzzle first'); return; }
-            const link = sbBuildPuzzleLinks(window.location.origin + window.location.pathname, puzzle, 0).id;
-            try {
-                await navigator.clipboard.writeText(link);
-                showToast('Copied: ' + link);
-            } catch (e) {
-                prompt('Copy this link:', link);
-            }
-        }
-
-        async function sbLoadPuzzleByIdInput() {
-            const input = document.getElementById('sbPuzzleIdInput');
-            const id = input.value.trim();
-            if (!id) return;
-            await sbLoadPuzzleById(id);
-        }
 
         // Load the Nth entry (1-based, as numbered in the dropdown) under a filter term.
         // The position shifts as rows are added or deleted; ?id= is the stable link.
@@ -3567,8 +3476,6 @@
         function sbLoadPuzzleFromUrlParam() {
             const target = sbParseDeepLink(window.location.search);
             if (!target) return;
-            const input = document.getElementById('sbPuzzleIdInput');
-            if (input && target.id) input.value = target.id;
 
             let attempt = 0;
             const maxAttempts = 100; // ~10s at 100ms
@@ -3626,33 +3533,6 @@
             sbLoadSelectedPuzzle();
         }
 
-        function sbHideNote() {
-            const noteEl = document.getElementById('sbNoteDisplay');
-            noteEl.style.display = 'none';
-            noteEl.textContent = '';
-        }
-
-        function sbShowNote() {
-            const noteEl = document.getElementById('sbNoteDisplay');
-            const puzzle = sbCurrentPuzzle();
-            noteEl.textContent = (puzzle && puzzle.note) ? puzzle.note : 'No note for this puzzle.';
-            noteEl.style.display = 'block';
-        }
-
-        function sbToggleNote() {
-            const noteEl = document.getElementById('sbNoteDisplay');
-            if (noteEl.style.display !== 'none') sbHideNote(); else sbShowNote();
-        }
-
-        // Auto-reveal: show the note whenever a puzzle loads (Next / Prev / dropdown). On by default at every load.
-        window.sbAutoNote = true;
-        document.getElementById('sbAutoNoteToggle').checked = window.sbAutoNote;
-
-        function sbSetAutoNote(on) {
-            window.sbAutoNote = !!on;
-            if (window.sbAutoNote && sbCurrentPuzzle()) sbShowNote();
-        }
-
         // Writes (save / bulk / delete) need the server's ACCESS_CODE: asked once, kept in localStorage.
         // A wrong code is forgotten so the next write asks again.
         function sbAccessCode() {
@@ -3698,56 +3578,6 @@
             } catch (err) {
                 statusEl.textContent = '';
                 showToast('Delete failed: ' + err.message);
-            }
-        }
-
-        // Pasted CSV text -> [{ fen, note }]. Each row is two cells: the PGN/FEN, then the note.
-        function sbParseBulk(text) {
-            const data = Papa.parse(text.replace(/\r/g, ''), { skipEmptyLines: true }).data;
-            if (data.length && String(data[0][0] || '').trim().toLowerCase() === 'fen') data.shift();
-            const rows = [], bad = [];
-            data.forEach((r, i) => {
-                const fen = String(r[0] || '').trim();
-                const note = String(r[1] || '').trim();
-                if (r.length < 2 || !sbIsPgn(fen)) { bad.push(i + 1); return; }
-                rows.push({ fen, note });
-            });
-            return { rows, bad };
-        }
-
-        async function sbBulkAdd() {
-            const statusEl = document.getElementById('sbPuzzleStatus');
-            // Only the category part of the name box is used — each pasted row brings its own note.
-            const category = sbSplitName(document.getElementById('sbNameInput').value).category;
-            if (!category) { showToast('Type a category in the name box in the Save row first'); return; }
-            const { rows, bad } = sbParseBulk(document.getElementById('sbBulkInput').value);
-            if (bad.length) { statusEl.textContent = 'Row(s) ' + bad.join(', ') + ' could not be read (need two cells: a PGN with [FEN "…"], then the note). Nothing added.'; return; }
-
-            // Drop rows already in this category, and repeats within the paste.
-            let existing = [];
-            try {
-                existing = (await sbApiList(category)).map(p => String(p.fen).trim());
-            } catch (e) {}
-            const seen = new Set(existing);
-            const fresh = rows.filter(r => !seen.has(r.fen) && seen.add(r.fen));
-            if (!fresh.length) { statusEl.textContent = 'Nothing new: every row is already in "' + category + '".'; return; }
-            const skipped = rows.length - fresh.length;
-            if (!confirm('Add ' + fresh.length + ' row(s) to "' + category + '" in ' + SB_FLAT_TABLE + '?' + (skipped ? '\n(' + skipped + ' duplicate(s) skipped)' : ''))) return;
-            await sbBulkSave(category, fresh);
-        }
-
-        async function sbBulkSave(category, rows) {
-            const statusEl = document.getElementById('sbPuzzleStatus');
-            statusEl.textContent = 'Adding ' + rows.length + ' row(s)…';
-            try {
-                const data = await sbApiBulk(category, rows);
-                statusEl.textContent = 'Added ' + data.added + ' row(s) to "' + category + '" (' + SB_FLAT_TABLE + ').';
-                document.getElementById('sbBulkInput').value = '';
-                showToast('Added ' + data.added + ' puzzles');
-                await sbLoadAll();
-            } catch (err) {
-                statusEl.textContent = '';
-                showToast('Bulk add failed: ' + err.message);
             }
         }
 

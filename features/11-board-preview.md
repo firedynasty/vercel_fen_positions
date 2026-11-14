@@ -38,7 +38,7 @@ TBD -- one sentence, in user words.
 | 658 | `—` | 🏁 Load on Board | `loadFenOnBoard` |
 | 659 | `—` | 🗑️ Clear FEN | `clearFenDisplay` |
 | 672 | `—` | 📥 Grab FEN from board | `grabFenFromBoard` |
-| 826 | `—` | ↻ Flip Board | `flipBoard` |
+| 808 | `—` | ↻ Flip Board | `flipBoard` |
 
 <!-- /generated:buttons -->
 
