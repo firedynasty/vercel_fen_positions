@@ -624,9 +624,14 @@
                     <!-- One box, the whole name: everything before the first ": " is the category, the rest is the note.
                          The existing categories come back as autocomplete suggestions (sbCategoryOptions, filled by
                          sbLoadAll), each already ending in ": " so picking one leaves you typing the note. -->
-                    <input type="text" id="sbNameInput" list="sbCategoryOptions" autocomplete="off" placeholder="category: note (e.g. mate_in_5: win a pawn)" title="Type the category, then &quot;: &quot;, then the note. Existing categories suggest themselves as you type." onkeydown="if(event.key==='Enter') sbSavePuzzle()" style="flex: 1; min-width: 280px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
+                    <input type="text" id="sbNameInput" list="sbCategoryOptions" autocomplete="off" placeholder="category: note (e.g. mate_in_5: win a pawn)" title="Type the category, then &quot;: &quot;, then the note. Existing categories suggest themselves as you type." oninput="sbCatsFilter(this.value)" onkeydown="if(event.key==='Enter') sbSavePuzzle(); else if(event.key==='Escape') sbCatsClose();" style="flex: 1; min-width: 280px; padding: 8px 10px; background: #0f3460; color: #eee; border: 1px solid #1a1a2e; border-radius: 5px; font-family: monospace; font-size: 14px;">
                     <datalist id="sbCategoryOptions"></datalist>
+                    <button id="sbCatsBtn" onclick="sbCatsToggle()" title="Show every category already in chess_puzzles_redone — click one to reuse it" style="flex-shrink: 0; padding: 8px 10px; background: #0f3460; color: #3ecf8e; border: 1px solid #3ecf8e; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 12px; font-weight: bold; white-space: nowrap;">▾ categories</button>
                     <button onclick="sbSavePuzzle()" style="padding: 8px 18px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 14px;" title="Saves to chess_puzzles_redone. The browse source above only chooses what you read.">💾 Save to chess_puzzles_redone</button>
+                    <!-- The whole category list, readable and clickable. The datalist above only shows itself
+                         once you have typed the right first letters, which is no help when the question is
+                         "what did I call these last time?". Typing in the name box filters this list. -->
+                    <div id="sbCatsPanel" style="display: none; flex: 0 0 100%; max-height: 190px; overflow-y: auto; background: #121a33; border: 1px solid #3ecf8e; border-radius: 5px; padding: 4px;"></div>
                 </div>
                 <div id="sbPuzzleStatus" style="margin-top: 6px; font-size: 12px; color: #888;"></div>
 
@@ -3288,6 +3293,7 @@
                 const saveList = document.getElementById('sbCategoryOptions');
                 // The trailing ": " is part of the value, so accepting one leaves the cursor on the note.
                 if (saveList) saveList.innerHTML = cats.map(c => `<option value="${c}${SB_SEP}">${c}</option>`).join('');
+                sbCatsIndex(rows);
 
                 sbApplyFilter(opts);
             } catch (err) {
@@ -3297,6 +3303,134 @@
             }
         }
 
+        // ---- The categories already in chess_puzzles_redone, as a list you can read
+        // and click. #sbCategoryOptions only suggests once you have typed the right
+        // first letters; the ▾ categories button opens the whole list with a row count
+        // per category. Counts come off the rows sbLoadAll already fetched.
+        let sbCatNames = [], sbCatCounts = {}, sbCatsErr = '';
+
+        function sbCatsIndex(rows) {
+            sbCatsErr = '';
+            sbCatCounts = {};
+            (rows || []).forEach(r => {
+                const c = r && r.category;
+                if (c) sbCatCounts[c] = (sbCatCounts[c] || 0) + 1;
+            });
+            sbCatNames = Object.keys(sbCatCounts).sort((a, b) => a.localeCompare(b));
+            sbCatsBtnLabel();
+            const panel = document.getElementById('sbCatsPanel');
+            if (panel && panel.style.display !== 'none') sbCatsRender();
+        }
+
+        // Re-read the table. force=true goes past sbFlatCache, so the panel is current
+        // even after a save made somewhere else.
+        async function sbCatsLoad(force) {
+            try {
+                sbCatsIndex(await sbApiAll(force));
+            } catch (err) {
+                sbCatsErr = err.message || 'request failed';
+                sbCatsBtnLabel();
+                const panel = document.getElementById('sbCatsPanel');
+                if (panel && panel.style.display !== 'none') sbCatsRender();
+            }
+        }
+
+        function sbCatsBtnLabel() {
+            const btn = document.getElementById('sbCatsBtn');
+            if (!btn) return;
+            const panel = document.getElementById('sbCatsPanel');
+            const open = !!panel && panel.style.display !== 'none';
+            const n = sbCatNames.length;
+            btn.textContent = (open ? '\u25b4 ' : '\u25be ') +
+                (n ? n + ' categor' + (n === 1 ? 'y' : 'ies') : 'categories');
+        }
+
+        function sbCatsMsgRow(text) {
+            const d = document.createElement('div');
+            d.textContent = text;
+            d.style.cssText = 'padding: 6px 7px; color: #888; font-size: 11.5px;';
+            return d;
+        }
+
+        // Filtered by the category part of the name box, so "mate_in_5: win a pawn"
+        // still narrows to mate_in_5 instead of matching nothing.
+        function sbCatsRender(filter) {
+            const panel = document.getElementById('sbCatsPanel');
+            const nameEl = document.getElementById('sbNameInput');
+            if (!panel) return;
+            const raw = filter === undefined ? (nameEl ? nameEl.value : '') : filter;
+            const q = sbSplitName(raw).category.toLowerCase();
+            panel.innerHTML = '';
+            if (!sbCatNames.length) {
+                panel.appendChild(sbCatsMsgRow(sbCatsErr
+                    ? 'Could not read ' + SB_FLAT_TABLE + ' (' + sbCatsErr + ') — type the category by hand'
+                    : 'No rows in ' + SB_FLAT_TABLE + ' yet — this one will be the first'));
+                return;
+            }
+            const hits = q ? sbCatNames.filter(c => c.toLowerCase().indexOf(q) !== -1) : sbCatNames;
+            if (!hits.length) {
+                panel.appendChild(sbCatsMsgRow('No category contains "' + q + '" — saving makes it a new one'));
+                return;
+            }
+            hits.forEach(c => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display: flex; justify-content: space-between; align-items: baseline; ' +
+                    'gap: 8px; padding: 5px 7px; border-radius: 4px; cursor: pointer;';
+                const label = document.createElement('span');
+                label.textContent = c;
+                label.style.cssText = 'color: #ddd; font-family: monospace; font-size: 12px; ' +
+                    'overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+                const count = document.createElement('span');
+                count.textContent = '\u00d7' + sbCatCounts[c];
+                count.title = sbCatCounts[c] + ' puzzle' + (sbCatCounts[c] === 1 ? '' : 's') + ' in this category';
+                count.style.cssText = 'color: #3ecf8e; font-size: 11px; flex-shrink: 0;';
+                row.appendChild(label);
+                row.appendChild(count);
+                row.onmouseenter = () => { row.style.background = '#0f3460'; };
+                row.onmouseleave = () => { row.style.background = 'transparent'; };
+                row.onclick = () => sbCatsPick(c);
+                panel.appendChild(row);
+            });
+        }
+
+        function sbCatsToggle() {
+            const panel = document.getElementById('sbCatsPanel');
+            if (!panel) return;
+            if (panel.style.display === 'none') {
+                sbCatsRender();
+                panel.style.display = 'block';
+                sbCatsLoad(true);          // refresh while it is on screen
+            } else {
+                panel.style.display = 'none';
+            }
+            sbCatsBtnLabel();
+        }
+
+        function sbCatsClose() {
+            const panel = document.getElementById('sbCatsPanel');
+            if (panel) panel.style.display = 'none';
+            sbCatsBtnLabel();
+        }
+
+        // Typing filters the list, but only while it is open — no surprise panel mid-type.
+        function sbCatsFilter(v) {
+            const panel = document.getElementById('sbCatsPanel');
+            if (panel && panel.style.display !== 'none') sbCatsRender(v);
+        }
+
+        // Picking one leaves the box at "category: " with the cursor on the note,
+        // exactly like accepting a datalist suggestion or finishing a save.
+        function sbCatsPick(c) {
+            const nameEl = document.getElementById('sbNameInput');
+            if (!nameEl) return;
+            nameEl.value = c + SB_SEP;
+            sbCatsClose();
+            nameEl.focus();
+            nameEl.setSelectionRange(nameEl.value.length, nameEl.value.length);
+            const statusEl = document.getElementById('sbPuzzleStatus');
+            if (statusEl) statusEl.textContent = 'Category "' + c + '" — ' + sbCatCounts[c] +
+                ' puzzle' + (sbCatCounts[c] === 1 ? '' : 's') + ' already in it. Type the note, then Enter to save.';
+        }
         // Case-insensitive substring match on the name: "as_black" keeps
         // as_black_comment1, as_black_comment2, … An empty filter keeps everything.
         function sbFilterRows(rows, term) {

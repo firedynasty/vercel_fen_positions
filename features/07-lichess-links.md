@@ -28,14 +28,14 @@ TBD -- one sentence, in user words.
 |---:|---|---|---|
 | 509 | `—` | Copy White to Move URL | `copyLichessUrl` |
 | 516 | `—` | Copy Black to Move URL | `copyLichessUrl` |
-| 662 | `lichessLinksBtn` | Lichess Links | `openLichessLinksModal` |
-| 663 | `pasteLichessUrlBtn` | 🔗 Paste Lichess URL | `pasteLichessUrlFromClipboard` |
-| 874 | `—` | Copy White to Move URL | `copyLichessUrl` |
-| 881 | `—` | Copy Black to Move URL | `copyLichessUrl` |
-| 1039 | `—` | ✕ | `getElementById` |
-| 1046 | `—` | Copy White Analysis URL | `copyLichessModalUrl` |
-| 1052 | `—` | Copy Black Analysis URL | `copyLichessModalUrl` |
-| 1058 | `—` | Copy Editor URL | `copyLichessModalUrl` |
+| 667 | `lichessLinksBtn` | Lichess Links | `openLichessLinksModal` |
+| 668 | `pasteLichessUrlBtn` | 🔗 Paste Lichess URL | `pasteLichessUrlFromClipboard` |
+| 879 | `—` | Copy White to Move URL | `copyLichessUrl` |
+| 886 | `—` | Copy Black to Move URL | `copyLichessUrl` |
+| 1044 | `—` | ✕ | `getElementById` |
+| 1051 | `—` | Copy White Analysis URL | `copyLichessModalUrl` |
+| 1057 | `—` | Copy Black Analysis URL | `copyLichessModalUrl` |
+| 1063 | `—` | Copy Editor URL | `copyLichessModalUrl` |
 
 <!-- /generated:buttons -->
 

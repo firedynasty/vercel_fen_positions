@@ -29,12 +29,12 @@ TBD -- one sentence, in user words.
 | 383 | `loadImageBtn` | 🖼️ Load Reference Image | `proxy → #imageFileInput` |
 | 393 | `—` | Toggle Size | `toggleImageSize` |
 | 394 | `—` | ✕ Close | `closeImagePreview` |
-| 637 | `loadImageBtn` | 🖼️ Load Reference Image | `proxy → #imageFileInput` |
-| 644 | `—` | × | `closeImagePreview` |
-| 646 | `imageToFenBtn` | 🤖 Read FEN from image | `readFenFromImage` |
-| 687 | `toggleImgBtn` | 🖼️ Img | `toggleImgToDictate` |
-| 688 | `—` | 📂🖼️ | `proxy → #imageFileInput` |
-| 752 | `—` | × | `closeBoardRefImage` |
+| 642 | `loadImageBtn` | 🖼️ Load Reference Image | `proxy → #imageFileInput` |
+| 649 | `—` | × | `closeImagePreview` |
+| 651 | `imageToFenBtn` | 🤖 Read FEN from image | `readFenFromImage` |
+| 692 | `toggleImgBtn` | 🖼️ Img | `toggleImgToDictate` |
+| 693 | `—` | 📂🖼️ | `proxy → #imageFileInput` |
+| 757 | `—` | × | `closeBoardRefImage` |
 
 <!-- /generated:buttons -->
 

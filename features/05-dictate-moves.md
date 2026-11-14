@@ -26,11 +26,11 @@ TBD -- one sentence, in user words.
 
 | line | id | label | handler |
 |---:|---|---|---|
-| 679 | `—` | ♟ Clean Board | `dictateCleanBoard` |
-| 680 | `—` | ↩ Undo | `undoDictatedMove` |
-| 692 | `—` | Go to move | `dictateGoToMove` |
-| 693 | `—` | Load PGN from input | `dictateLoadPgn` |
-| 697 | `—` | += Apply Moves | `dictateApplyMoves` |
+| 684 | `—` | ♟ Clean Board | `dictateCleanBoard` |
+| 685 | `—` | ↩ Undo | `undoDictatedMove` |
+| 697 | `—` | Go to move | `dictateGoToMove` |
+| 698 | `—` | Load PGN from input | `dictateLoadPgn` |
+| 702 | `—` | += Apply Moves | `dictateApplyMoves` |
 
 <!-- /generated:buttons -->
 

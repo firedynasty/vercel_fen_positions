@@ -27,12 +27,12 @@ TBD -- one sentence, in user words.
 | line | id | label | handler |
 |---:|---|---|---|
 | 520 | `—` | ✏️ Redo Input (Edit FEN) | `redoFenInput` |
-| 660 | `pasteFenBtn` | 📋 Paste FEN | `pasteFenFromClipboard` |
-| 661 | `pastePgnBtn` | 📋 Paste PGN | `pastePgnFromClipboard` |
-| 669 | `—` | 📋 Copy PGN | `writeText, getElementById, trim, then` |
-| 670 | `—` | 🗑️ Clear PGN | `clearPgn` |
-| 671 | `—` | ↺ Clear moves, keep FEN | `clearMovesKeepFen` |
-| 673 | `—` | 1-Line | `copyPgnOneLine` |
+| 665 | `pasteFenBtn` | 📋 Paste FEN | `pasteFenFromClipboard` |
+| 666 | `pastePgnBtn` | 📋 Paste PGN | `pastePgnFromClipboard` |
+| 674 | `—` | 📋 Copy PGN | `writeText, getElementById, trim, then` |
+| 675 | `—` | 🗑️ Clear PGN | `clearPgn` |
+| 676 | `—` | ↺ Clear moves, keep FEN | `clearMovesKeepFen` |
+| 678 | `—` | 1-Line | `copyPgnOneLine` |
 
 <!-- /generated:buttons -->
 

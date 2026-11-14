@@ -35,10 +35,10 @@ TBD -- one sentence, in user words.
 | 562 | `—` | 🔄 Flip Board | `flipBoard` |
 | 563 | `—` | ♟️ Reset Board | `resetBoard` |
 | 564 | `—` | King vs King | `setKingVsKing` |
-| 658 | `—` | 🏁 Load on Board | `loadFenOnBoard` |
-| 659 | `—` | 🗑️ Clear FEN | `clearFenDisplay` |
-| 672 | `—` | 📥 Grab FEN from board | `grabFenFromBoard` |
-| 808 | `—` | ↻ Flip Board | `flipBoard` |
+| 663 | `—` | 🏁 Load on Board | `loadFenOnBoard` |
+| 664 | `—` | 🗑️ Clear FEN | `clearFenDisplay` |
+| 677 | `—` | 📥 Grab FEN from board | `grabFenFromBoard` |
+| 813 | `—` | ↻ Flip Board | `flipBoard` |
 
 <!-- /generated:buttons -->
 

@@ -26,11 +26,11 @@ TBD -- one sentence, in user words.
 
 | line | id | label | handler |
 |---:|---|---|---|
-| 770 | `—` | <<< | `lineFirst` |
-| 773 | `—` | >>> | `lineLast` |
-| 777 | `—` | ↑ Out | `lineExitVariation` |
-| 779 | `—` | Var ↓ | `lineEnterVariation` |
-| 782 | `—` | 📋 Copy Move History | `copyMoveHistory` |
+| 775 | `—` | <<< | `lineFirst` |
+| 778 | `—` | >>> | `lineLast` |
+| 782 | `—` | ↑ Out | `lineExitVariation` |
+| 784 | `—` | Var ↓ | `lineEnterVariation` |
+| 787 | `—` | 📋 Copy Move History | `copyMoveHistory` |
 
 <!-- /generated:buttons -->
 
